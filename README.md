@@ -1,5 +1,5 @@
 # Palace
-Palace visual chat app built with Electron
+Visual chat app built with Electron v1.8.2-beta.1
 
 **Releases**
 
