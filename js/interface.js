@@ -53,9 +53,10 @@ function chatBoxKeyPress(event) {
 					case 'op':
 					case 'susr':
 						sendOperatorRequest(chatCmd[2]);
-							break;
+						break;
 					case 'clean':
 						sendDrawClear(3);
+						sendPropDelete(-1);
 						break;
 					default:
 						break;

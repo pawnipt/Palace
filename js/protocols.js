@@ -592,14 +592,6 @@ function sendPropDress() {
 	client.write(packet);
 }
 
-function sendPropDelete(idx) {
-	var packet = Buffer.alloc(16);
-	packet.writeInt32LE(TCPmsgConsts.PROPDEL,0);
-	packet.writeInt32LE(4,4);
-	packet.writeInt32LE(idx,12);
-	client.write(packet);
-}
-
 function sendPropDrop(x,y,id) {
 	var packet = Buffer.alloc(24);
 	packet.writeInt32LE(TCPmsgConsts.PROPNEW,0);
