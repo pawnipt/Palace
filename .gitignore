@@ -6,3 +6,6 @@
 # misc
 .DS_Store
 package-lock.json
+
+# release
+/release-builds
