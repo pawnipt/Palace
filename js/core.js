@@ -63,7 +63,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 				buff.clearRect(0,0,44,44);
 				buff.drawImage(this,x*45,y*45,44,44,0,0,44,44);
 				smileys[x+','+y] = document.createElement('img');
-				smileys[x+','+y].src = buff.canvas.toDataURL(); 
+				smileys[x+','+y].src = buff.canvas.toDataURL();
 			}
 		}
 	};
@@ -90,13 +90,13 @@ function setUserCount() {
 
 function loadRoom(room) {
 	deleteAllBubbles();
-	
+
 	document.getElementById('palaceroom').innerText = room.name;
-	
+
 	theRoom.spots = room.spots;
 	theRoom.draws = room.draws;
 	theRoom.looseProps = room.looseprops;
-	
+
 	var media = passUrl(room.background);
 	var ext = parseURL(media).pathname.split('.').pop();
 	if (media != theRoom.lastLoadedBG) {	/* prevent reloading of background media when room is authored */
@@ -109,10 +109,10 @@ function loadRoom(room) {
 			setBackGround(media);
 		}
 	}
-	
+
 	theRoom.pics = [];
 	removeAllRoomPics();
-	
+
 	room.pictures.find(function(pict) {
 		var newImg = document.createElement('img');
 		newImg.onload = function() {
@@ -129,8 +129,8 @@ function loadRoom(room) {
 		theRoom.pics[pict.id] = pict;
 		newImg.src = passUrl(pict.name);
 	});
-	
-	
+
+
 	refresh(true);
 }
 
@@ -194,7 +194,7 @@ bgVideo.onloadedmetadata = function () {
     this.height = this.videoHeight;
 	setEnviornment(this.videoWidth,this.videoHeight,'');
     this.style.display = 'block';
-    
+
 };
 
 function setBackGroundVideo(url) {
@@ -244,19 +244,24 @@ function setEnviornmentSize(w,h) {
     tempCanvas.height = bgEnv.height;
     var tempContext = tempCanvas.getContext("2d");
     tempContext.drawImage(bgEnv, 0, 0);
-    
-	bgEnv.width = w;
-	bgEnv.height = h;
-	
-	scale2Fit();
-	
+
+		bgEnv.width = w;
+		bgEnv.height = h;
+
+		bgCtx.lineJoin = 'round';
+		bgCtx.lineCap = 'round';
+		bgCtx.imageSmoothingEnabled = false;
+		//bgCtx.imageSmoothingQuality = 'high';
+		
+		scale2Fit();
+
     bgCtx.drawImage(tempContext.canvas, 0, 0);
 
-	backGround.style.width = w+'px';
+		backGround.style.width = w+'px';
     backGround.style.height = h+'px';
-	overLayer.style.width = w+'px';
+		overLayer.style.width = w+'px';
     overLayer.style.height = h+'px';
-    
+
   											 // 45 is toolbar height
     document.body.style.height = bgEnv.height + 45 + document.getElementById('chatbox').offsetHeight + 'px';
     setBodyWidth();
@@ -266,7 +271,7 @@ function setEnviornmentSize(w,h) {
 
 
 function serverDown(msg) {
-	
+
 	mediaUrl = "";
 	allProps = {}; /* might need to delete image events */
 	theRoom.lastUserLogOnTime = 0;
@@ -421,11 +426,11 @@ function drawingEnd() {
 		size:prefs.draw.size,
 		points:drawPoints
 	};
-	
+
 	sendDraw(draw);
 	window.removeEventListener('mousemove',drawing);
 	window.removeEventListener('mouseup',drawingEnd);
-	
+
 	drawPoints = [];
 }
 function drawing(event) {
@@ -440,12 +445,12 @@ function drawing(event) {
 		drawPoints.push(x);
 		drawPoints.push(y);
 	}
-	
+
 	reDraw();
 }
 
 function doubleClick(event) {
-	
+
 }
 
 function drawErase() {
@@ -482,14 +487,14 @@ function mouseDown(event) {
 	} else {
 		var lpIndex = null;
 		var pid = null;
-	
+
 		var mUser = mouseOverUser(x,y);
 		if (!event.shiftKey && mUser != theUser && mUser != null) {
 			enterWhisperMode(mUser.id,mUser.name);
 		} else {
 			if (event.shiftKey) pid = mouseOverSelfProp(x,y);
 			if (pid == null) lpIndex = mouseOverLooseProp(x,y);
-	
+
 			if (pid != null) {
 				var aProp = allProps[pid];
 				makeDragProp(-1, pid, x, y, x-aProp.x-theUser.x+22, y-aProp.y-theUser.y+22);
@@ -497,20 +502,20 @@ function mouseDown(event) {
 				var lProp = theRoom.looseProps[lpIndex];
 				makeDragProp(lpIndex, lProp.id, x, y, x-lProp.x, y-lProp.y);
 			} else if (mUser == null || mUser == theUser) { /* if not clicking another user */
-		
+
 				var areaInfo = clickSpotInfo(x,y);
-			
+
 				if (areaInfo.dontMove !== true) {
 					setpos(x,y);
-/* 
+/*
 					if (event.button == 2) {
 						window.addEventListener('mousemove',dragSlide);
 						window.addEventListener('mouseup',dragSlideEnd);
-						return true;	
+						return true;
 					}
  */
 				}
-			
+
 				if (areaInfo.spot != null) {
 					var dest = areaInfo.spot.dest;
 					switch(areaInfo.spot.type) {
@@ -531,7 +536,7 @@ function mouseDown(event) {
 								window.status = (d.state == 0?'lockdoor ':'unlockdoor ')+dest;
 							break;
 					}
-				}				
+				}
 			}
 		}
 	}
@@ -613,7 +618,7 @@ function sendUserPropChange() {
 
 function mouseMove(event) {
 	var isDrawing = document.getElementById('drawcheckbox').checked;
-	
+
 	if (isDrawing) {
 		switch(prefs.draw.type) {
 			case 1: bgEnv.style.cursor = 'url(img/bucket.cur) 16 13,crosshair'; break;
@@ -623,12 +628,12 @@ function mouseMove(event) {
 		return true;
 	}
 	if (theUser == null) return false;
-	
+
 	var x = (event.layerX/viewScale).fastRound();
 	var y = ((event.layerY+(45*webFrame.getZoomFactor() - 45))/viewScale).fastRound();
 
 	if (grabbedProp == null) {
-	
+
 		if (!event.shiftKey) { /* shift toggles between user and props */
 			var mUser = mouseOverUser(x,y);
 			if (mouseHoverUser != mUser) {
@@ -641,7 +646,7 @@ function mouseMove(event) {
 		} else {
 			mouseExitUser();
 		}
-	
+
 		if (event.shiftKey) { /* for efficiency sake, check shiftkey before bothering to scan */
 			var pid = mouseOverSelfProp(x,y);
 			if (mouseSelfProp != pid) {
@@ -666,7 +671,7 @@ function mouseMove(event) {
 	} else {
 		mouseExitLooseProp();
 		mouseExitSelfProp();
-	
+
 		if (theUser.x-22 < x && theUser.x+22 > x && theUser.y-22 < y && theUser.y+22 > y) {
 			addSelfProp(grabbedProp.id);
 			grabbedProp.mx = -999; /* temp vanishing */
@@ -674,13 +679,13 @@ function mouseMove(event) {
 		} else {
 			if (event.altKey == false && (theUser.propsChanged == true || grabbedProp.index < 0))
 				removeSelfProp(grabbedProp.id);
-		
+
 			grabbedProp.mx = (x-grabbedProp.offsetX);
 			grabbedProp.my = (y-grabbedProp.offsetY);
 		}
 		reDraw();
 	}
-		
+
 	if (grabbedProp != null && event.altKey) {
 		setEnvCursor('copy');
 	} else if (mouseLooseProp != null || mouseSelfProp != null || grabbedProp != null) {
@@ -772,7 +777,7 @@ function mouseExitUser() {
 					target.light -= 0.09;
 					reDraw();
 				}
-			
+
 			},20);
 		}
 		mouseHoverUser = null;
@@ -803,7 +808,7 @@ function mouseExitLooseProp() {
 					target.light -= 0.09;
 					reDraw();
 				}
-			
+
 			},20);
 		}
 		mouseLooseProp = null;
@@ -984,10 +989,10 @@ function uploadProp(url,pid) {
 function propImageUploadCallBack(response) { // add error handling!
 	/* logmsg('response: '+response); */
 }
- 
+
 function downloadPropInfoCallBack(response) { // need to handle possible http error and retry props (store array of requested)
 	var propsInfo = JSON.parse(response);
-	
+
 	for (var i = 0; i < propsInfo.props.length; i++) {
 		var prop = propsInfo.props[i];
 		var aProp = allProps[prop.id];
@@ -1002,7 +1007,7 @@ function downloadPropInfoCallBack(response) { // need to handle possible http er
 			}
 		}
 	}
-	
+
 	if (retryProps.length > 0) {
 		setTimeout(function() {
 			loadProps(retryProps.dedup());
@@ -1013,9 +1018,9 @@ function downloadPropInfoCallBack(response) { // need to handle possible http er
 
 function clearFailedProps() {
 	// loop allProps and clear props that haven't loaded; when the user logs onto a new server
-	
+
 }
-			
+
 function loadProps(pids,fromSelf,callback) {
 	if (pids && pids.length > 0) {
 		var toLoad = {props:[]};
@@ -1081,7 +1086,7 @@ function drawBubble(bub) {
 		bgCtx.shadowOffsetY = 1;
 		bgCtx.shadowBlur = 3;
 	}
-	
+
 	if (bub.user) {
 		var grd;
 		if (bub.right) {
@@ -1093,7 +1098,7 @@ function drawBubble(bub) {
 		grd.addColorStop(0, getHsl(bub.color,73));
 		grd.addColorStop(0.5, getHsl(bub.color,79));
 		grd.addColorStop(1, getHsl(bub.color,73));
-		
+
 
 		bgCtx.fillStyle = grd;
 	} else {
@@ -1103,7 +1108,7 @@ function drawBubble(bub) {
 	if (bub.shout) {
 		bub.makeShoutBubble(bgCtx);
 	/* } else if (bub.thought) { */
-	
+
 	} else {
 		bub.makeRegularBubble(bgCtx, bubbleConsts.radius);
 	}
@@ -1116,7 +1121,7 @@ function drawSpot(spot,above) {
 	if (above == Boolean(spotConsts.PicturesAboveAll & spot.flags || spotConsts.PicturesAboveProps & spot.flags || spotConsts.PicturesAboveNameTags & spot.flags)) {
 		if ((spotConsts.ShowFrame & spot.flags) || (spotConsts.Shadow & spot.flags)) {
 			makeHotSpot(spot); /* the spots polygon frame */
-		
+
 			if (spotConsts.Shadow & spot.flags) {
 				bgCtx.fillStyle = 'black';
 				bgCtx.fill();
@@ -1162,7 +1167,7 @@ function drawLooseProp(lProp) {
 	if (aProp && aProp.complete()) {
 		var gAlpha = 1;
 		if (aProp.ghost) gAlpha = gAlpha/2;
-		
+
 		if (grabbedProp && theRoom.looseProps[grabbedProp.index] == lProp) {
 			bgCtx.globalAlpha = gAlpha/2;
 			bgCtx.drawImage(aProp.img,grabbedProp.mx,grabbedProp.my);
@@ -1185,7 +1190,7 @@ function drawName(user) {
 	var loc = user.nametagLoc();
 	if (loc) {
 		var overUser = (mouseHoverUser != theUser && mouseHoverUser == user);
-	
+
 		if (overUser && whisperUserID == user.id) {
 			bgCtx.shadowColor = 'IndianRed';
 			bgCtx.shadowBlur = 6;
@@ -1194,16 +1199,16 @@ function drawName(user) {
 			bgCtx.shadowBlur = 6;
 		}
 
-	
+
 		if (whisperUserID != null && whisperUserID != user.id && user != theUser) bgCtx.globalAlpha = 0.5;
-	
+
 		if (user.scale != 1) {
 			var size = 1/user.scale;
 			bgCtx.scale(size,size);
 			loc = user.nametagLoc(true);
 		}
-		
-		
+
+
 		bgCtx.drawImage(user.nametag, loc.x, loc.y);
 		if (bgCtx.shadowBlur > 0) {
 			bgCtx.shadowColor = 'transparent';
@@ -1216,7 +1221,7 @@ function drawName(user) {
 
 function drawAvatar(user) {
 	var overUser = (mouseHoverUser != theUser && mouseHoverUser == user);
-	
+
 	if (overUser && whisperUserID == user.id) {
 		bgCtx.shadowColor = 'IndianRed';
 		bgCtx.shadowBlur = 6;
@@ -1224,16 +1229,16 @@ function drawAvatar(user) {
 		bgCtx.shadowColor = 'rgba(152,251,152,'+user.light+')';
 		bgCtx.shadowBlur = 6;
 	}
-	
+
 	if (user.scale != 1) {
 		var size = 1/user.scale;
 		bgCtx.scale(size,size);
 	}
-	
+
 	if ((whisperUserID != null && whisperUserID != user.id && user != theUser)) bgCtx.globalAlpha = 0.5;
 	if (user.showHead !== false) drawSmiley(user);
-	
-	
+
+
 	for (var i = 0; i < user.props.length; i++) {
 		var aProp = allProps[user.props[i]];
 		if (aProp && (!aProp.animated || user.animatePropID === undefined || user.animatePropID == aProp.id)) drawUserProp(user,aProp);
@@ -1293,10 +1298,10 @@ function roomDraw(draw) {
 	} else {
 		theRoom.draws.push(draw);
 	}
-	
+
 	reDraw();
-	
-	
+
+
 }
 
 function drawDraws(draw,foreground) {
@@ -1329,12 +1334,12 @@ function preDrawDrawing() {
 		bgCtx.lineWidth = prefs.draw.size;
 		bgCtx.fillStyle = prefs.draw.fill;
 		bgCtx.strokeStyle = prefs.draw.color;
-		
+
 		bgCtx.beginPath();
-		
+
 		var offset = 0;
 		if (prefs.draw.type == 0) offset = Math.floor(prefs.draw.size/2);
-		
+
 		bgCtx.moveTo(drawPoints[0]+offset, drawPoints[1]+offset);
 
 		for (var item = 2; item < l-1; item += 2)
@@ -1353,14 +1358,9 @@ function preDrawDrawing() {
 function refresh(all) {
 	if (drawTimer) {clearTimeout(drawTimer);drawTimer = null;}
 
-	//bgCtx.clearRect(0,0,bgEnv.width,bgEnv.height);
-	bgEnv.width = bgEnv.width;
-	bgCtx.lineJoin = 'round';
-	bgCtx.lineCap = 'round';
+	bgCtx.clearRect(0,0,bgEnv.width,bgEnv.height);
+	//bgEnv.width = bgEnv.width;
 
-	bgCtx.imageSmoothingEnabled = false;
-	//bgCtx.imageSmoothingQuality = 'high';
-	
 	var i;
 
 	for (i = 0; i < theRoom.spots.length; i++) {drawSpot(theRoom.spots[i],false);}
@@ -1376,11 +1376,11 @@ function refresh(all) {
 	for (i = 0; i < theRoom.draws.length; i++) {drawDraws(theRoom.draws[i],true);}
 	if (prefs.draw.front) preDrawDrawing();
 	for (i = 0; i < chatBubs.length; i++) {drawBubble(chatBubs[i]);}
-	
+
 	if (bgCtx.shadowBlur > 0) {	//intelligently and efficiently restore state machine.
 		bgCtx.shadowColor = 'transparent';
 		bgCtx.globalAlpha = 1;
-		bgCtx.shadowBlur = 0; 
+		bgCtx.shadowBlur = 0;
 		bgCtx.shadowOffsetY = 0;
 	}
 }
