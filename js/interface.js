@@ -30,7 +30,7 @@ var roomList = null,
 			item.onfocus=function(){this.blur()};
 		}
 	}
-	
+
 	var preventFileDrop = function(e) {
 		if (e.target != bgEnv) {
 			e.preventDefault();
@@ -53,6 +53,10 @@ function chatBoxKeyPress(event) {
 					case 'op':
 					case 'susr':
 						sendOperatorRequest(chatCmd[2]);
+							break;
+					case 'clean':
+						sendDrawClear(3);
+						break;
 					default:
 						break;
 				}
@@ -99,11 +103,11 @@ function PropEditor(tile) {
 	var pecanvas = document.getElementById('propeditorcanvas');
 	this.canvasCtx = pecanvas.getContext('2d');
 	this.canvasCtx.imageSmoothingEnabled = false;
-	
+
 	this.propCtx = document.createElement('canvas');
 	this.propCtx = this.propCtx.getContext('2d');
-	
-	
+
+
 	this.editor.addEventListener('mousedown',function(event) {
 		if (event.target == pedit.editor) {
 			var coords = pedit.editor.style.transform.getNbrs();
@@ -130,7 +134,7 @@ function PropEditor(tile) {
 		delete pedit.dragY;
 		pedit.editor.style.transition = 'opacity 0.2s,transform 0.2s';
 	});
-	
+
 	this.canvasCtx.canvas.addEventListener('mousemove',function(event) {
 		pedit.canvasCtx.canvas.style.cursor = 'zoom-' + (event.altKey?'out':'in');
 	});
@@ -149,7 +153,7 @@ PropEditor.prototype.loadProp = function(id) {
 // 	var pedit = this;
 // 	this.pid = id;
 // 	this.prp = propBagList[id];
-// 	
+//
 // 	var img = document.createElement('img');
 // 	img.onload = function() {
 // 		pedit.propCtx.canvas.width = this.naturalWidth;
@@ -209,7 +213,7 @@ propBag.onscroll = function() {
 genericSmiley.src = 'img/user.png';
 genericSmiley.onload = function(){updateDrawPreview();};
 
-/* 
+/*
 document.getElementById('toolbar').onmousedown = function(event) {
 	if (event.target.id != 'drawsize' && event.target.className != 'palaceinfo' && event.clientY < 45) event.preventDefault();
 };
@@ -230,7 +234,7 @@ function scale2Fit() {
 	var style = getComputedStyle(document.getElementById('chatbox'));
 	var chatBoxHeight = parseInt(style.getPropertyValue('height')) + 5;
 	var logWidth = logField.offsetWidth;
-	
+
 	if (!prefs.general.viewScales && (prefs.general.viewScaleAll || (bgEnv.width > window.innerWidth-logWidth || bgEnv.height > window.innerHeight-45-chatBoxHeight))) {
 		viewScaleTimer = setTimeout(function(){
 			document.body.scrollTop = 0;
@@ -306,24 +310,24 @@ function refreshPropBagView(refresh) {
 	var visibleColumns = (bagWidth / tileSize).fastRound();
 	if (visibleColumns < 1) visibleColumns = 1;
 	var visibleRows = ((window.innerHeight - 45) / tileSize).fastRound(); // 45 is main toolbar height
-	
+
 	var propBagRetainer = document.getElementById('propbagretainer'); // adjust retainer size to set the scrollbar
 	propBagRetainer.style.height = ((propBagList.length/visibleColumns).fastRound()*tileSize).fastRound() + 'px';
-	
+
 	var count = visibleRows * visibleColumns;
 	var max = propBagList.length;
 	var scroll = (propBag.scrollTop/tileSize).fastRound();
-	
+
 	var inView = {};
 	scroll -= 2; // -2 for a little extra loaded up top
-	if (scroll < 0) scroll = 0; 
+	if (scroll < 0) scroll = 0;
 	for (var y = scroll; y < visibleRows+scroll+4; y++) { // +4 for a little extra loaded down below
 		for (var x = 0; x < visibleColumns; x++) {
 			var propIndex = y*visibleColumns+x;
 			if (max > propIndex) inView[propBagList[propIndex]] = {x:x*tileSize,y:y*tileSize};
 		}
-	} 
-	
+	}
+
 	var cachedTiles = {}; // prevent excessive database calls
 	var children = propBag.children;
 	for (var i = children.length - 1; i >= 0; i--) {
@@ -342,7 +346,7 @@ function refreshPropBagView(refresh) {
 			if (id == Number(children[i].dataset.pid)) return children[i];
 		}
 	};
-	
+
 	for (var key in inView) {
 		var e = inView[key];
 		var pid = Number(key);
@@ -375,7 +379,7 @@ function dropBG(event) {
 		var x = (event.layerX/viewScale).fastRound();
 		var y = (event.layerY/viewScale).fastRound();
 		var overSelf = (theUser && theUser.x-22 < x && theUser.x+22 > x && theUser.y-22 < y && theUser.y+22 > y);
-		
+
 		loadProps([dragPropID],true,function() { //callback to drop the prop once it is loaded from the users bag
 			var prop = allProps[dragPropID];
 			if (prop) {
@@ -414,19 +418,19 @@ function clickedProp(target) {
 	}
 }
 function mouseDownPropBag(event) {
-	
+
 	var newTarget = clickedProp(event.target);
 	if (event.target.nodeName != 'IMG') event.preventDefault();
 	if (newTarget && (newTarget.className == '' || event.shiftKey || event.metaKey)) {
 		var newPid = Number(newTarget.dataset.pid);
 		if (newPid != null) {
-		
+
 			var lastPid;
 			if (!event.metaKey) {
 				if (event.shiftKey) lastPid = selectedBagProps[0];
 				selectedBagProps = [];
-			}	
-			
+			}
+
 			if (lastPid == null) {
 				selectedBagProps = [newPid];
 			} else {
@@ -494,7 +498,7 @@ function wearSelectedProps() {
 			donprop(selectedBagProps[0]);
 		}
 	}
-		
+
 // 	var childs = propBag.children;
 // 	for (var i = childs.length - 1; i >= 0; i--) {
 // 		var c = childs[i];
@@ -503,7 +507,7 @@ function wearSelectedProps() {
 // 			setTimeout(function(){c.firstChild.style.filter = 'none';},150);
 // 		}
 // 	}
-	
+
 }
 function setPropButtons() {
 	var isSelected = (selectedBagProps.length > 0);
@@ -518,25 +522,25 @@ function dblClickPropBag(event) {
 	if (clickedProp(event.target).dataset.pid) wearSelectedProps();
 }
 
-/*	
+/*
 function colorSelectHSL(event) {
- 
+
 	var s,l,sx,ly;
-	
+
 	s = event.layerX/2;
 	sx = (((event.layerX/2)));
 	ly = 100-(event.layerY/2);
 	l = 50-(sx+ly)/2;
-	
-	
+
+
 	var rgb = event.target.style.backgroundColor.getNbrs();
 	var hsl = rgbToHsl(rgb[0],rgb[1],rgb[2]);
 	hsl = 'hsl('+(hsl[0]*360)+','+s+'%,'+l+'%)';
 	logmsg(hsl);
-	
+
 	document.getElementById('colorselector').style.backgroundColor = hsl;
- 
- 
+
+
 }
 */
 
@@ -572,7 +576,7 @@ function dragRGBEnd() {
 function colorSelectRGB(event,caret) {
 	var pickerControl = document.getElementById('colorpicker'),
 		color, x, y;
-	
+
 	if (event) {
 		event.preventDefault();
 		if (event.type == 'mousedown') {
@@ -585,7 +589,7 @@ function colorSelectRGB(event,caret) {
 		if (y > 199) y = 199;
 		if (x < 0) x = 0;
 		if (x > 199) x = 199;
-		
+
 		color = pickerControl.getContext('2d').getImageData(x, y, 1, 1).data;
 		setPickerCaret(x,y);
 	} else if (caret) {
@@ -623,7 +627,7 @@ function dragRainbowEnd(event) {
 
 function colorSelectRainbow(event) {
 	var hue,y,crainbow;
-	
+
 	event.preventDefault();
 	if (event.type == 'mousedown') {
 		window.addEventListener('mousemove',dragRainbow);
@@ -646,7 +650,7 @@ function fillColorPicker(hue) {
 	var shCxt = document.getElementById('colorpicker').getContext('2d'),
 		w = shCxt.canvas.width,
 		h = shCxt.canvas.height;
-	
+
 	shCxt.clearRect(0,0,w,h);
 	var whi = shCxt.createLinearGradient(0,0,w,0);
 	whi.addColorStop(0,'white');
@@ -670,14 +674,14 @@ function setColorPicker(selectorsColor) {
 	} else {
 		hue = rgbToHsl(rgb[0],rgb[1],rgb[2])[0];
 	}
-	
+
 	var value;
 	if (rgb[3] != undefined) {
 		value = Math.round(rgb[3]*100);
 	} else {
 		value = 100;
 	}
-	
+
 	document.getElementById('opacityslider').value = value;
 	setRainbowCaret(200-hue*200);
 	fillColorPicker(hue);
@@ -689,7 +693,7 @@ function setColorPicker(selectorsColor) {
 function openDrawColor(event,func) {
 
 	var cp = event.currentTarget;
-	
+
 	if (currentColorControl == cp) {
 		closeColorSelector(event.pageX-event.layerX,event.pageY-event.layerY);
 	} else {
@@ -705,7 +709,7 @@ function openDrawColor(event,func) {
 		cselector.style.top = y+'px';
 		cselector.style.left = x+'px';
 		toggleToolBarControl(cselector.id,true);
-		
+
 		setTimeout( function() { /* hack to get transition to still function after changing display property */
 			cselector.firstElementChild.style.display = 'block';
 			cselector.style.top = y+20+'px';
@@ -773,31 +777,31 @@ function updateDrawPreview() {
 	var h = drawCxt.canvas.height;
 	var sw = genericSmiley.naturalWidth/2/2;
 	var sh = genericSmiley.naturalHeight/2/2;
-	
+
 	drawCxt.canvas.onclick = function(){prefs.draw.front = !prefs.draw.front;updateDrawPreview();};
-	
+
 	drawCxt.clearRect(0,0,w,h);
 	drawCxt.lineWidth = prefs.draw.size;
 	drawCxt.lineJoin = 'round';
 	drawCxt.lineCap = 'round';
 	drawCxt.fillStyle = prefs.draw.fill;
 	drawCxt.strokeStyle = prefs.draw.color;
-	
+
 	if (prefs.draw.front == true) drawCxt.drawImage(genericSmiley,0,0,42,42,w/2-sw,h/2-sh,21,21);
-	
+
 	if (prefs.draw.type == 0 || prefs.draw.type == 1) {
 		drawCxt.beginPath();
 		drawCxt.moveTo(12,h-12);
 		drawCxt.lineTo(w/2,12);
 		drawCxt.lineTo(w-12,h-12);
-		
+
 		if (prefs.draw.type == 1) {
 			drawCxt.closePath();
 			drawCxt.fill();
 		}
 		drawCxt.stroke();
 	}
-	
+
 	if (prefs.draw.front == false) drawCxt.drawImage(genericSmiley,0,0,42,42,w/2-sw,h/2-sh,21,21);
 
 }
@@ -852,21 +856,21 @@ function keyUp(keyboard) {
 
 function keyDown(keyboard) {
 	if (document.activeElement.nodeName == 'BODY' && !keyboard.metaKey && !keyboard.ctrlKey) {
-		
+
 		var m = keyboard.altKey?1:4;
 		var x = 0;
 		var y = 0;
-		
+
 		if (keyboard.keyCode > 36 && keyboard.keyCode < 41) {
 			keysDown[keyboard.keyCode] = true;
 			keyboard.preventDefault();
 		}
-		
+
 		if (keysDown[37]) x = -m; //left
 		if (keysDown[38]) y = -m; //up
 		if (keysDown[39]) x = m; //right
 		if (keysDown[40]) y = m; //down
-		
+
 		move(x,y);
 	}
 }
@@ -948,33 +952,33 @@ function loadDirectoryList(directList) {
 	directoryList = directList;
 	if (typeof directList == 'string')
 		directoryList = JSON.parse(directoryList);
-		
+
 	var listbox = document.getElementById('navlistbox'),
-		navframe = document.getElementById('navframe'),	
+		navframe = document.getElementById('navframe'),
 		scount = directoryList.directory.length,
 		serverInfo, li, s, s2, cl;
-	
+
 	if (navframe.dataset.ctrlname == 'servers') {
 		clearListBox(listbox);
 		var word = document.getElementById('navsearch').value.toLowerCase();
-		
+
 		for (var i = 0; i < scount; i++) {
 			serverInfo = directoryList.directory[i];
 			if (word == '' || serverInfo.name.toLowerCase().indexOf(word) > -1) {
 				li = document.createElement("li");
 				li.dataset.address = serverInfo.address;
-				
+
 				li.className = 'sListItem';// '+serverInfo.language+' '+serverInfo.category.replace(/\s/g, '');
 				li.title = serverInfo.description;
 				s = document.createElement('div');
 				s.className = 'listName';
 				s.style.backgroundImage = 'url('+serverInfo.picture+')';
 				s.appendChild(document.createTextNode(serverInfo.name));
-			
+
 				s2 = document.createElement('span');
 				s2.className = 'listPop';
 				s2.appendChild(document.createTextNode(serverInfo.population));
-			
+
 				li.appendChild(s);
 				li.appendChild(s2);
 				listbox.appendChild(li);
@@ -988,12 +992,12 @@ function loadRoomList(rlist) {
 		navframe = document.getElementById('navframe'),
 		rcount = rlist.length,
 		li, s, s2, roomInfo;
-	
+
 	roomList = rlist;
 	if (navframe.dataset.ctrlname == 'rooms') {
 		clearListBox(listbox);
 		var word = document.getElementById('navsearch').value.toLowerCase();
-		
+
 		for (var i = 0; i < rcount; i++) {
 			roomInfo = rlist[i];
 			if (word == '' || roomInfo.name.toLowerCase().indexOf(word) > -1) {
@@ -1004,15 +1008,15 @@ function loadRoomList(rlist) {
 				if (roomInfo.flags & 0x20) cl.add('hidden');
 				if (roomInfo.flags & 8) cl.add('locked');
 				if (roomInfo.flags & 2) cl.add('lockable');
-			
+
 				s = document.createElement('div');
 				s.className = 'listName';
 				s.appendChild(document.createTextNode(roomInfo.name));
-			
+
 				s2 = document.createElement('span');
 				s2.className = 'listPop';
 				s2.appendChild(document.createTextNode(roomInfo.population));
-			
+
 				li.appendChild(s);
 				li.appendChild(s2);
 				listbox.appendChild(li);
@@ -1031,33 +1035,33 @@ function loadUserList(ulist) {
 	if (navframe.dataset.ctrlname == 'users') {
 		clearListBox(listbox);
 		var word = document.getElementById('navsearch').value.toLowerCase();
-		
+
 		for (var i = 0; i < ucount; i++) {
 			userInfo = ulist[i];
 			if (word == '' || userInfo.name.toLowerCase().indexOf(word) > -1) {
 				li = document.createElement("li");
-				
+
 				cl = li.classList;
 				cl.add('uListItem');
-			
+
 				if (userInfo.flags & 0x1000) cl.add('propgag');
 				if (userInfo.flags & 0x0100) cl.add('pinned');
 				if (userInfo.flags & 0x0080) cl.add('gagged');
 				if (userInfo.flags & 2) cl.add('owner');
 				if (userInfo.flags & 1) cl.add('operator');
 				if (userInfo.userid == whisperUserID) cl.add('whisperingTo');
-			
+
 				s = document.createElement('div');
 				s.className = 'listName';
 				s.dataset.userid = userInfo.userid;
 				s.appendChild(document.createTextNode(userInfo.name));
-			
+
 				s2 = document.createElement('div');
 				cl = s2.classList;
 				cl.add('roomName','rListItem');
-				
+
 				roomInfo = roomList.find(function(room){return userInfo.roomid == room.id;});
-				
+
 				if (roomInfo) {
 					s2.dataset.roomid = userInfo.roomid; /* only if room is visible to the user */
 					if (roomInfo.flags & 0x20) cl.add('hidden');
@@ -1067,7 +1071,7 @@ function loadUserList(ulist) {
 				} else {
 					cl.add('hidden','special');
 				}
-			
+
 				li.appendChild(s);
 				li.appendChild(s2);
 				listbox.appendChild(li);
@@ -1082,7 +1086,7 @@ function selectNavElement(event) {
 	var type = lb.parentNode.dataset.ctrlname;
 	var t = event.target;
 	if (t.nodeName != 'LI' && type != 'users') t = t.parentNode;
-	
+
 	if (t.dataset.userid) {
 		enterWhisperMode(t.dataset.userid,t.innerText);
 		toggleNavListbox(type);

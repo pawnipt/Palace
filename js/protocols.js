@@ -60,7 +60,7 @@ function parseRoom(p) {
 				spots:[],
 				pictures:[],
 				draws:[]};
-	
+
 
 	var nxt = p.readInt16LE(46)+52;
 	var count = p.readInt16LE(44);
@@ -71,7 +71,7 @@ function parseRoom(p) {
 
 	nxt = p.readInt16LE(32)+52
 	count = p.readInt16LE(30);
-	
+
 	for (var i = 0; i < count; i++) { //hotspots aka doors
 		var flags = p.readInt32LE(nxt+4);
 		var spot = {flags:flags,layer:(flags & 0x00000004 || flags & 0x00000040 || flags & 0x00000001)?1:0,
@@ -87,7 +87,7 @@ function parseRoom(p) {
   			spot.points.push(p.readInt16LE(ptsOffset));
   			ptsOffset += 4;
   		}
-  		
+
   		var nbrStates = p.readInt16LE(nxt+38);
   		var stateRecOfst = p.readInt16LE(nxt+40)+52;
 		for (var j = 0; j < nbrStates; j++) {
@@ -96,20 +96,20 @@ function parseRoom(p) {
 									y:p.readInt16LE(stateRecOfst+4)});
 			stateRecOfst += 8;
 		}
-		
+
 		room.spots.push(spot);
 		nxt += 48;
 	}
-	
+
 	var nbrPics = p.readInt16LE(34);
 	var picOffset = p.readInt16LE(36)+52;
 	for (var i = 0; i < nbrPics; i++) {
 		room.pictures.push({name:roomPstring(p,picOffset+6),id:p.readInt16LE(picOffset+4),trans:p.readInt16LE(picOffset+8)});
 		picOffset += 12;
 	}
-	
+
 	nxt = p.readInt16LE(40)+52;
-	
+
 	room.draws = [];
 	var nbrDraws = p.readInt16LE(38);
 	for (var i = 0; i < nbrDraws; i++) {
@@ -117,7 +117,7 @@ function parseRoom(p) {
 		room.draws.push(parseDraw( p.slice(pos,p.readInt16LE(nxt+6)+pos) , p.readInt16LE(nxt+4)));
 		nxt=p.readInt16LE(nxt)+52;
 	}
-  
+
 	loadRoom(room);
 }
 
@@ -129,11 +129,11 @@ function parseUser(p) {
 				color:p.readInt16LE(96),
 				face:p.readInt16LE(94),
 				props:[]};
-		
+
 	var nbrProps = p.readInt16LE(102);
 	for (var j = 0; j < nbrProps; j++)
 		user.props.push(p.readInt32LE(12+(j*8)));
-		
+
 	addRoomUser(user);
 }
 
@@ -149,15 +149,15 @@ function parseUsers(p) {
 					color:p.readInt16LE(uOffset+84),
 					face:p.readInt16LE(uOffset+82),
 					props:[]};
-		
+
 		var nbrProps = p.readInt16LE(90+uOffset);
 		for (var j = 0; j < nbrProps; j++)
 			user.props.push(p.readInt32LE(8+uOffset+(j*8)));
-			
+
 		users.push(user);
 		uOffset += 124;
 	}
-	
+
 	loadRoomUsers(users);
 }
 
@@ -199,28 +199,28 @@ function parseUserList(b) {
 }
 
 function parseDraw(cmdData,type) {
-	
+
 	var nbrPoints,i,differential,pensize,r1,g1,b1,r2,g2,b2;
 	var a1 = -1;
 	var a2 = -1;
 	var fillAlpha = 255;
 	var penAlpha = 255;
 	var jdraw = {type:type};
-	
+
 	if ((type & drawType.CLEAN) == 0 && (type & drawType.UNDO) == 0) {
-		    
-		    
+
+
 		var shape = (type & drawType.SHAPE) != 0;
 		pensize = cmdData.readInt16LE(0);
 		differential = Math.trunc(pensize/2);
 		nbrPoints = cmdData.readInt16LE(2);
-    
+
 		if (cmdData.length == (nbrPoints*4)+22) {
 			r1 = cmdData.readUInt8(cmdData.length-7);
 			g1 = cmdData.readUInt8(cmdData.length-6);
 			b1 = cmdData.readUInt8(cmdData.length-5);
 			a1 = cmdData.readUInt8(cmdData.length-8);
-      
+
 			r2 = cmdData.readUInt8(cmdData.length-3);
 			g2 = cmdData.readUInt8(cmdData.length-2);
 			b2 = cmdData.readUInt8(cmdData.length-1);
@@ -234,37 +234,37 @@ function parseDraw(cmdData,type) {
 			b2 = b2;
 			if (shape) pensize = 0; //old style fill
 		}
-		
+
 		if ((type & drawType.TEXT) != 0) { //text
 			pensize = cmdData.readInt16LE(0);
-      
+
 			jdraw.bold = (cmdData.readUInt8(18) & 1) != 0;
 			jdraw.underline = (cmdData.readUInt8(18) & 2) != 0;
 			jdraw.italic = (cmdData.readUInt8(18) & 4) != 0;
-			
+
 			var font = cmdData.pString(19);
 			var aLen = font.length;
 			jdraw.font = font;
 			var msg = cmdData.cString(20+aLen); //must define utf8!
 			jdraw.msg = msg;
-      
+
 			if (aLen+msg.length+29 == cmdData.length) {
 				// might be executing color building twice, check for this later
 				r1 = cmdData.readUInt8(cmdData.length-7);
 				g1 = cmdData.readUInt8(cmdData.length-6);
 				b1 = cmdData.readUInt8(cmdData.length-5);
 				a1 = cmdData.readUInt8(cmdData.length-8);
-        
+
 				r2 = cmdData.readUInt8(cmdData.length-3);
 				g2 = cmdData.readUInt8(cmdData.length-2);
 				b2 = cmdData.readUInt8(cmdData.length-1);
 				a2 = cmdData.readUInt8(cmdData.length-4);
 				pensize=cmdData.readInt16LE(0);
 			}
-      
+
 			jdraw.x = cmdData.readInt16LE(10);
 			jdraw.y = cmdData.readInt16LE(12);
-  
+
 		} else if ((type & drawType.OVAL) != 0) { //oval
 			var w = cmdData.readInt16LE(14);
 			var h = cmdData.readInt16LE(16);
@@ -273,7 +273,7 @@ function parseDraw(cmdData,type) {
 			jdraw.x = cmdData.readInt16LE(10) - Math.trunc(w/2);
 			jdraw.y = cmdData.readInt16LE(12) - Math.trunc(h/2);
 		} else {
-  
+
 			i = ((nbrPoints+1)*4)+9;
 
 			var x = 0,y = 0,difference = 0;
@@ -291,7 +291,7 @@ function parseDraw(cmdData,type) {
 		}
 	}
 	jdraw.pensize = pensize;
-	
+
 	if (a1 > -1) {
 		jdraw.pencolor = "rgba("+r1+","+g1+","+b1+","+(a1/255)+")";
 		jdraw.fillcolor = "rgba("+r2+","+g2+","+b2+","+(a2/255)+")";
@@ -313,7 +313,7 @@ function packetReceived(type,packet) {
 		case TCPmsgConsts.HTTPSERVER:
 			mediaUrl = packet.cString(12); // should make sure it ends with a forward slash!
 			break;
-			
+
 		case TCPmsgConsts.SPOTMOVE:
 			spotMove(packet.readInt16LE(12),packet.readInt16LE(14),packet.readInt16LE(18),packet.readInt16LE(16))
 			break;
@@ -333,7 +333,7 @@ function packetReceived(type,packet) {
 		case TCPmsgConsts.ROOMDESC:
 			parseRoom(packet);
 			break;
-		
+
 		case TCPmsgConsts.NAVERROR:
 			logmsg(navigationError(packet.readInt32LE(8)));
   			break;
@@ -343,7 +343,7 @@ function packetReceived(type,packet) {
 		case TCPmsgConsts.LISTOFALLUSERS:
 			parseUserList(packet);
 			break;
-			
+
 		case TCPmsgConsts.PROPDEL:
 			loosePropDelete(packet.readInt32LE(12));
 			break;
@@ -360,7 +360,7 @@ function packetReceived(type,packet) {
 		case TCPmsgConsts.SERVERINFO:
 			serverInfo(packet.readInt32LE(12),packet.pString(16));
 			break;
-			
+
 		case TCPmsgConsts.USERFACE:
 			userFaceChange(packet.readInt32LE(8),packet.readInt16LE(12));
 			break;
@@ -447,7 +447,7 @@ function navigationError(type) { //maybe change this to css eventually
 function sendDraw(draw) {
 
 	var drawCmd = 0,i,x = 0,y = 0,x1,y1;
-  
+
 	if (draw.type) drawCmd = 0x0100;
 	if (draw.front) drawCmd = drawCmd ^ 0x8000;
 	var n = draw.points.length;
@@ -458,23 +458,23 @@ function sendDraw(draw) {
 	packet.writeInt32LE((n*2)+28,4); //packetlength
 	//packet.long(8)=0 'userID
 	//link
-	//packet.writeInt16LE(12)=0 
+	//packet.writeInt16LE(12)=0
 	//packet.writeInt16LE(14)=0
 	//drawCmd
 
 	packet.writeInt16LE(drawCmd,16,true); //flag...... not sure if applying correct value
 	//cmdLength
-	
+
 	packet.writeInt16LE((n*2)+18,18);
 	packet.writeInt16LE(draw.size,22); //pensize
 
 	packet.writeInt16LE((n/2)-1,24); //nbrPts
-	
+
 	var red = Number(draw.color[0]);
 	var green = Number(draw.color[1]);
 	var blue = Number(draw.color[2]);
 	var alpha = (Number(draw.color[3]) * 255).fastRound();
-	
+
 	packet.writeUInt8(red,26);
 	packet.writeUInt8(red,27);
 	packet.writeUInt8(green,28);
@@ -496,7 +496,7 @@ function sendDraw(draw) {
 	packet.writeUInt8(red,packet.length-7);
 	packet.writeUInt8(green,packet.length-6);
 	packet.writeUInt8(blue,packet.length-5);
-	
+
 	red = Number(draw.fill[0]);
 	green = Number(draw.fill[1]);
 	blue = Number(draw.fill[2]);
@@ -506,7 +506,7 @@ function sendDraw(draw) {
 	packet.writeUInt8(red,packet.length-3);
 	packet.writeUInt8(green,packet.length-2);
 	packet.writeUInt8(blue,packet.length-1);
-	
+
 	client.write(packet);
 }
 
@@ -588,7 +588,15 @@ function sendPropDress() {
 	packet.writeInt32LE(length,12);
 	for (var i = 0; i < length; i++)
 		packet.writeInt32LE(theUser.props[i],16+i*8);
-	
+
+	client.write(packet);
+}
+
+function sendPropDelete(idx) {
+	var packet = Buffer.alloc(16);
+	packet.writeInt32LE(TCPmsgConsts.PROPDEL,0);
+	packet.writeInt32LE(4,4);
+	packet.writeInt32LE(idx,12);
 	client.write(packet);
 }
 
@@ -648,27 +656,27 @@ function sendRegistration() {
 
 	reg.writeInt32LE(regi.key,12);
 	reg.writeInt32LE(regi.crc,16);
-	
+
 	var name = windows1252.encode(getGeneralPref('userName'));
 	reg.writeInt8(name.length,20);
 	reg.write(name,21,'binary'); //should truncate to 31 bytes max
 
 	if (/^win/.test(process.platform)) { //add linux/unix identifier.
-		reg.writeUInt32LE(0x80000004,84); //must validate since value is 
+		reg.writeUInt32LE(0x80000004,84); //must validate since value is
 	} else {
 		reg.writeUInt32LE(0x80000002,84);
 	}
 
 	reg.writeInt32LE(regi.puidCrc,88);
 	reg.writeInt32LE(regi.puid,92);
-	
+
 	reg.writeInt32LE(0x00011940,96);
 	reg.writeInt32LE(0x00011940,100);
 	reg.writeInt32LE(0x00011940,104);
 	//reg.writeInt16LE(0,108); //optional room ID to land in (if server allows it)
-	
+
 	reg.write('PC5000',110,6);
-	
+
 	reg.writeInt32LE(0x00000041,120);
 	if (retryRegistration) {
 		reg.writeInt32LE(0x00000111,124); //original value required by a security pserver plugin
@@ -677,7 +685,7 @@ function sendRegistration() {
 	}
 	reg.writeInt32LE(0x00000001,128);
 	reg.writeInt32LE(0x00000001,132);
-	
+
 	client.write(reg);
 }
 
@@ -686,7 +694,7 @@ function PalaceRegistration(seed,p) {
 	this.CRC_MAGIC = 0xa95ade76;
 	this.MAGIC_LONG = 0x9602c9bf;
 	this.OBFUSCATE_LONG = 0xD7AA3702;
-	
+
 	this.key = this.computeLicenseCRC(seed);
 	this.crc = ( ( seed ^ this.MAGIC_LONG ) ^ this.key );
 
@@ -694,7 +702,7 @@ function PalaceRegistration(seed,p) {
 	this.puidCrc = (p ^ this.puid);
 }
 PalaceRegistration.prototype.computeLicenseCRC = function(v) {
-	
+
 	var CRCMask = [-337536108,1980030580,-470165935,1615844882,-393642964,-1379661536,
 	938270647,860457453,674546491,-1949106667,-873463385,-1114195498,828255456,
 	1326872708,-1534479946,-1524860318,1415718454,197138172,1759391010,1016934476,
@@ -732,11 +740,11 @@ PalaceRegistration.prototype.computeLicenseCRC = function(v) {
 	-946988609,-772892506,1723759930,2032022575,1758177968,-1145752227,-1915055999,
 	-601409828,1462982061,-1006637979,-377552272,-962435608,-640380590,1270045659,
 	-1580745754,363030938,-425845067,2094900240,1216743903,-778667821,0];
-	
+
 	var crc = this.CRC_MAGIC;
 	var p = Buffer.alloc(4);
 	p.writeIntBE(v,0,4);
-	
+
 	for (var i = 0; i < 4; i++) {
 		if ((crc & 0x80000000) == 0) {
 			crc = (crc << 1) ^ CRCMask[p.readUInt8(i)];
@@ -756,7 +764,7 @@ function PalaceCrypt() {
 	this.gSeed = 1;
 	var saveSeed = this.gSeed;
 	this.MySRand(666666);
-	
+
 	this.gEncryptTable = new Array(512);
 	for (var i = 0; i < 512; i++)
 		this.gEncryptTable[i] = (this.MyRandom(256) & 0xff);
@@ -781,7 +789,7 @@ PalaceCrypt.prototype.Encrypt = function(b) {
 };
 PalaceCrypt.prototype.Decrypt = function(b) {
 	if (b == null || b.length == 0) return '';
-	
+
 	var rc = 0;
 	var tmp = 0;
 	var lastChar = 0;
@@ -798,7 +806,7 @@ PalaceCrypt.prototype.LongRandom = function() {
 	var hi = (this.gSeed / this.R_Q) & 0xffffffff;
 	var lo = (this.gSeed % this.R_Q) & 0xffffffff;
 	var test = (this.R_A * lo - this.R_R * hi) & 0xffffffff;
-	
+
 	if (test > 0) {
 		this.gSeed = test;
 	} else {
