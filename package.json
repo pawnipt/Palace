@@ -6,6 +6,7 @@
   "scripts": {
     "start": "electron .",
     "rebuild": "$(npm bin)/electron-rebuild",
+    "rebuild-win32": ".\\node_modules\\.bin\\electron-rebuild.cmd",
     "build": "electron-packager . Palace --overwrite --ignore=\"(\\.gitignore|.*/test|node_modules/@paulcbetts/cld/(deps|build))\" --prune --out=release-builds"
   },
   "author": "Jameson Heesen",
