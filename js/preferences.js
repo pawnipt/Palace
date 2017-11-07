@@ -4,16 +4,16 @@ var prefs = {general:{},control:{},draw:{type:0,size:2,front:true,color:"rgba(25
 var db = null;
 function initializePropBagDB() {
 	var DBOpenRequest = indexedDB.open("propBag",4);
-	
+
 	DBOpenRequest.onerror = function(event) {
 		logmsg('Error loading Prop Bag.');
 	};
-	
+
 	DBOpenRequest.onsuccess = function(event) {
 		// store the result of opening the database in the db variable.
 		// This is used a lot below.
 		db = DBOpenRequest.result;
-		
+
 		var store = db.transaction("props").objectStore("props");
 		var request = store.get('propList');
 		request.onsuccess = function() {
@@ -37,7 +37,7 @@ function addPropToDB(prop) {
 	if (propBagList.indexOf(prop.id) < 0 && (prop.img.length > 0 || (prop.img && prop.img.naturalWidth > 0))) { //does prop exist in the bag already?
 		var tx = db.transaction("props", "readwrite")
 		var store = tx.objectStore("props");
-	
+
 		store.add({id: prop.id, name: prop.name, prop: {
 					x: prop.x,
 					y: prop.y,
@@ -49,10 +49,10 @@ function addPropToDB(prop) {
 					bounce: prop.bounce,
 					img: getImageData(prop.img)
 		}});
-		
+
 		propBagList.unshift(prop.id);
 		store.put({id: 'propList', list: propBagList});
-	
+
 		tx.onerror = function() {
 			logmsg('Error adding prop to DB: '+tx.error);
 		};
@@ -87,6 +87,7 @@ function getBagProp(id,img) {
 	var store = db.transaction("props","readonly").objectStore("props");
 	var result = store.get(id);
 	result.onsuccess = function(event) {
+		if (result.result.prop.ghost) img.className = 'bagprop ghost';
 		img.src = result.result.prop.img;
 	};
 }
@@ -119,10 +120,10 @@ function createPropID() {
 }
 
 function createNewProps(list) {
-	
+
 	for (var i = 0, files = new Array(list.length); i < list.length; i++)
 		files[i] = list[i]; // moving the list to an actual array so pop works , lol
-	
+
 	var imp = function() {
 		if (files.length > 0) {
 			var file = files.pop();
@@ -143,7 +144,7 @@ function createNewProps(list) {
 	imp();
 
 
-	
+
 }
 
 function createNewProp(img) {

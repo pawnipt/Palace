@@ -357,17 +357,17 @@ function refreshPropBagView(refresh) {
   				pc = cachedTiles[key];
   			} else {
   				pc = document.createElement('div');
-				pc.dataset.pid = pid;
-				var img = document.createElement('img');
-				img.className = 'bagprop';
-				getBagProp(pid,img);
-				pc.appendChild(img);
+					pc.dataset.pid = pid;
+					var img = document.createElement('img');
+					img.className = 'bagprop';
+					getBagProp(pid,img);
+					pc.appendChild(img);
   			}
   			pc.style.width = tileSize+'px';
-			pc.style.height = tileSize+'px';
-			pc.style.left = e.x + 'px';
-			pc.style.top = e.y + 'px';
-			propBag.appendChild(pc);
+				pc.style.height = tileSize+'px';
+				pc.style.left = e.x + 'px';
+				pc.style.top = e.y + 'px';
+				propBag.appendChild(pc);
 		}
 		pc.className = selectedBagProps.indexOf(pid) > -1?'selectedbagprop':'';
 	}
