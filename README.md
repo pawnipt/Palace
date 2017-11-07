@@ -1,7 +1,7 @@
 # Palace
 Visual chat app built with electron@beta
 
-**Releases v1.0.1**
+**Release v1.0.1**
 
 External links for now:
 
