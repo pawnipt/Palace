@@ -17,6 +17,20 @@ const systemAudio = {signon:createAudio('SignOn'),signoff:createAudio('SignOff')
 const electron = require('electron');
 const webFrame = electron.webFrame;
 
+// const {remote} = require('electron');
+// const {Menu, MenuItem} = remote;
+
+// const menu = new Menu(); // create propMenu, userMenu then determine which to use in contextmenu event setting menu items appropriately
+// menu.append(new MenuItem({label: 'MenuItem1', click() { logmsg(Object.getOwnPropertyNames(bgEnv)) }}));
+// menu.append(new MenuItem({type: 'separator'}));
+// menu.append(new MenuItem({label: 'MenuItem1', click() {  }}));
+// //menu.append(new MenuItem({label: 'MenuItem2', type: 'checkbox', checked: true}));
+//
+// bgEnv.addEventListener('contextmenu', (e) => {
+// 	e.preventDefault();
+// 	menu.popup(remote.getCurrentWindow(),{x:e.x,y:e.y,async:true});
+// }, false);
+
 
 (function () {
 	//slice up and preload Smiley Set

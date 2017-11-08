@@ -21,11 +21,13 @@ const ContextMenuBuilder = electronSpellchecker.ContextMenuBuilder;
 window.spellCheckHandler = new SpellCheckHandler();
 window.spellCheckHandler.attachToInput();
 window.spellCheckHandler.switchLanguage('en-US'); // Start off as "US English, America" ...maybe use navigator.language
-let contextMenuBuilder = new ContextMenuBuilder(window.spellCheckHandler);
+let contextMenuBuilder = new ContextMenuBuilder(window.spellCheckHandler,null,true);
 // Add context menu listener
 let contextMenuListener = new ContextMenuListener((info) => {
 	contextMenuBuilder.showPopupMenu(info);
 });
+
+
 
 
 (function () { // setup
@@ -256,7 +258,6 @@ let contextMenuListener = new ContextMenuListener((info) => {
 		range.selectNodeContents(this);
 		selection.removeAllRanges();
 		selection.addRange(range);
-
 	};
 	serverConnectField.onblur = function() {
 		this.innerText = theRoom.servername;

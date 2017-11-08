@@ -138,10 +138,10 @@ class PalaceSocket {
 				PalaceSocket.parseUsers(packet);
 				break;
 			case TCPmsgConsts.XWHISPER:
-				PalaceUser.userChat({id:packet.readInt32LE(8),chatstr:crypt.Decrypt(packet.slice(14,14+packet.readInt16LE(12)-3)),whisper:true});
+				PalaceUser.userChat({id:packet.readInt32LE(8),chatstr:palaceCrypt.Decrypt(packet.slice(14,14+packet.readInt16LE(12)-3)),whisper:true});
 				break;
 			case TCPmsgConsts.XTALK:
-				PalaceUser.userChat({id:packet.readInt32LE(8),chatstr:crypt.Decrypt(packet.slice(14,14+packet.readInt16LE(12)-3)),whisper:false});
+				PalaceUser.userChat({id:packet.readInt32LE(8),chatstr:palaceCrypt.Decrypt(packet.slice(14,14+packet.readInt16LE(12)-3)),whisper:false});
 				break;
 			case TCPmsgConsts.TALK:
 				PalaceUser.userChat({id:packet.readInt32LE(8),chatstr:packet.cString(12),whisper:false});
@@ -528,7 +528,7 @@ class PalaceSocket {
 		var packet = Buffer.alloc(13+leng);
 		packet.writeInt32LE(TCPmsgConsts.SUPERUSER,0);
 		packet.writeInt32LE(leng+1,4);
-		var data = crypt.Encrypt(Buffer.from(password));
+		var data = palaceCrypt.Encrypt(Buffer.from(password));
 		packet.writeInt8(data.length,12);
 		data.copy(packet,13);
 		this.soc.write(packet);
@@ -548,7 +548,7 @@ class PalaceSocket {
 		packet.writeInt32LE(leng+7,4);
 		packet.writeInt32LE(whisperID,12);
 		packet.writeInt16LE(leng+3,16);
-		crypt.Encrypt(Buffer.from(msg,'binary')).copy(packet,18);
+		palaceCrypt.Encrypt(Buffer.from(msg,'binary')).copy(packet,18);
 		this.soc.write(packet);
 	}
 
@@ -559,7 +559,7 @@ class PalaceSocket {
 		packet.writeInt32LE(TCPmsgConsts.XTALK,0);
 		packet.writeInt32LE(leng+3,4);
 		packet.writeInt16LE(leng+3,12);
-		crypt.Encrypt(Buffer.from(msg,'binary')).copy(packet,14);
+		palaceCrypt.Encrypt(Buffer.from(msg,'binary')).copy(packet,14);
 		this.soc.write(packet);
 	}
 
