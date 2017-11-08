@@ -3,64 +3,65 @@
 <head>
 <link href="css/style.css" rel="stylesheet" type="text/css"/>
 </head>
-<body onkeypress="keyPress(event)" onkeydown="keyDown(event)" onkeyup="keyUp(event)" onresize="bodyResized(event)">
-	<audio id="soundplayer" onerror="tryMp3(this)" autoplay></audio>
+<body>
+	<audio id="soundplayer" autoplay></audio>
 	<div id="colorselector" data-state=0>
 		<div>
-			<input id="opacityslider" class="colorsctrl" type="range" max="100" min="0" value="100" oninput="colorSelectRGB()">
-			<canvas id="colorpicker" class="colorsctrl" onmousedown="colorSelectRGB(event)" width="200" height="200"></canvas>
-			<div id="colorrainbow" class="colorsctrl" onmousedown="colorSelectRainbow(event)"></div>
+			<input id="opacityslider" class="colorsctrl" type="range" max="100" min="0" value="100">
+			<canvas id="colorpicker" class="colorsctrl" width="200" height="200"></canvas>
+			<div id="colorrainbow" class="colorsctrl"></div>
 			<div id="pickercaret" class="colorsctrl"></div>
 			<div id="rainbowcaret" class="colorsctrl"></div>
 		</div>
 	</div>
 	<div id="toolbar">
-		<button id="users" class="tbitem tbbutton" onclick="toggleNavListbox(this.id)" disabled></button>
-		<button id="rooms" class="tbitem tbbutton" onclick="toggleNavListbox(this.id)" disabled></button>
-		<button id="servers" class="tbitem tbbutton" onclick="toggleNavListbox(this.id)"></button>
+		<button id="users" class="tbitem tbbutton" disabled></button>
+		<button id="rooms" class="tbitem tbbutton" disabled></button>
+		<button id="servers" class="tbitem tbbutton"></button>
 		<div class="tbitem tbseperator"></div>
 		<input id="drawcheckbox" type="checkbox" class="tbcheckbox">
-		<label id="drawing" class="tbitem tbbutton tbtoggle" for="drawcheckbox" onclick="toggleToolBarControl('drawcontrols')"></label>
+		<label id="drawing" class="tbitem tbbutton tbtoggle" for="drawcheckbox"></label>
 		<div id="drawcontrols" data-state=0 class="tbitem tbcontroller">
-			<input id="drawsize" class="tbcontrol" type="range" max="32" min="1" value=2 oninput="drawSizeChange(this)">
-			<div id="drawtype" class="tbcontrol tbbutton" onclick="switchDrawType()"></div>
-			<div id="drawerase" class="tbcontrol tbbutton" onclick="drawErase()" ondblclick="drawEraseDblClick()"></div>
+			<input id="drawsize" class="tbcontrol" type="range" max="32" min="1" value=2>
+			<div id="drawtype" class="tbcontrol tbbutton"></div>
+			<div id="drawerase" class="tbcontrol tbbutton"></div>
 			<div id="drawcheckers">
-				<div id="drawcolor" class="tbcontrol colorcontrol" onclick="openDrawColor(event,setDrawColor)"></div>
-				<div id="drawfill" class="tbcontrol colorcontrol" onclick="openDrawColor(event,setDrawFill)"></div>
+				<div id="drawcolor" class="tbcontrol colorcontrol"></div>
+				<div id="drawfill" class="tbcontrol colorcontrol"></div>
 			</div>
 			<canvas id="drawpreview" class="tbcontrol" width="66" height="36"></canvas>
 		</div>
-		
+
 		<div id="palaceinfo">
-			<div id="palaceserver" class="palaceinfo" onkeydown="onPalaceAddressKey(event)" onfocus="onPalaceAddressFocus(this)" value="" onblur="onPalaceAddressBlur(this)" tabindex="-1" contenteditable>
+			<div id="palaceserver" class="palaceinfo" value="" tabindex="-1" contenteditable>
 			</div>
 			<div id="palaceroom" class="palaceinfo"></div>
-			<div id="muteaudio" class="tbitem tbbutton" onclick="muteVideoBG()"></div>
+			<div id="muteaudio" class="tbitem tbbutton"></div>
 		</div>
-		
+
 		<input id="prefscheckbox" type="checkbox" class="tbcheckbox">
-		<label id="preferences" class="tbitem tbbutton tbtoggle tbright" for="prefscheckbox" onclick="toggleToolBarControl('prefs')"></label>
-		
+		<label id="preferences" class="tbitem tbbutton tbtoggle tbright" for="prefscheckbox"></label>
+
 		<div class="tbitem tbseperator tbright"></div>
-		
+
 		<input id="chatlogcheckbox" type="checkbox" class="tbcheckbox" checked>
-		<label id="chatlog" class="tbitem tbbutton tbtoggle tbright" for="chatlogcheckbox" onclick="toggleToolBarControl('log')"></label>
+		<label id="chatlog" class="tbitem tbbutton tbtoggle tbright" for="chatlogcheckbox"></label>
 		<input id="propbagcheckbox" type="checkbox" class="tbcheckbox">
-		<label id="propbag" class="tbitem tbbutton tbtoggle tbright" for="propbagcheckbox" onclick="toggleToolBarControl('props');toggleToolBarControl('propcontrols')"></label>
+		<label id="propbag" class="tbitem tbbutton tbtoggle tbright" for="propbagcheckbox"></label>
 		<div id="propcontrols" data-state=0 class="tbitem tbcontroller tbright">
-			<button id="editprop" class="tbcontrol tbbutton" onclick="editSelectedProp()" disabled></button>
-			<button id="removeprops" class="tbcontrol tbbutton" onclick="setprops([])" disabled></button>
-			<div id="newprops" class="tbcontrol tbbutton" onclick="newPropsFileDialog()"></div>
-			<button id="deleteprops" class="tbcontrol tbbutton" onclick="deleteSelectedProps()" disabled></button>
+			<button id="editprop" class="tbcontrol tbbutton" disabled></button>
+			<button id="removeprops" class="tbcontrol tbbutton" disabled></button>
+			<div id="newprops" class="tbcontrol tbbutton"></div>
+			<button id="deleteprops" class="tbcontrol tbbutton" disabled></button>
 		</div>
-		<button id="saveprop" class="tbitem tbbutton tbright" onclick="saveWornProps(this)" disabled></button>
-		<div id="log" class="sidepanel" data-state=1 onmousedown="mouseDownChatLog(event)"></div>
-		<div id="props" class="sidepanel" data-state=0 ondblclick="dblClickPropBag(event)" onmousedown="mouseDownPropBag(event)" ondragstart="dragStartBagProp(event)" ondragend="dragEndBagProp(event)">
+		<button id="saveprop" class="tbitem tbbutton tbright" disabled></button>
+
+		<div id="log" class="sidepanel" data-state=1></div>
+		<div id="props" class="sidepanel" data-state=0>
 			<p id="propbagretainer"></p>
 		</div>
-		
-		<div id="propeditor" data-state=0>
+
+		<!-- <div id="propeditor" data-state=0>
 			<input type="radio" name="tool" class="propeditorradio" id="propeditorzoomchk" checked><label id="propeditorzoom" class="propeditorctrl tbbutton" for="propeditorzoomchk"></label>
 			<input type="radio" name="tool" class="propeditorradio" id="propeditorpencilchk"><label id="propeditorpencil" class="propeditorctrl tbbutton" for="propeditorpencilchk"></label>
 			<input type="radio" name="tool" class="propeditorradio" id="propeditoreraserchk"><label id="propeditoreraser" class="propeditorctrl tbbutton" for="propeditoreraserchk"></label>
@@ -74,37 +75,44 @@
 			<label id="propeditorbounce" class="propeditoropt" for="propeditorbouncechk"></label><input type="checkbox" class="propeditoropt" id="propeditorbouncechk">
 			<button id="savepropedit" onclick="savePropEditor()"></button>
 			<button id="cancelpropedit" onclick="closePropEditor()"></button>
-		</div>
-		
+		</div> -->
+
 		<div id="navframe" class="navframe">
-			<input type="text" id="navsearch" oninput="navSearch()" value="" autocomplete="off" spellcheck="false">
-			<ul id="navlistbox" onclick="selectNavElement(event)"></ul>
+			<input type="text" id="navsearch" value="" autocomplete="off" spellcheck="false">
+			<ul id="navlistbox"></ul>
 		</div>
-		
+
 		<div id="prefs" data-state=0>
-			<label id="prefuname" class="preflabel" for="prefusername">:</label><input type="text" class="prefinput" id="prefusername" onchange="setUsername(this)">
-			<label id="prefhpalace" class="preflabel" for="prefhomepalace">:</label><input type="text" class="prefinput" id="prefhomepalace" onchange="setHome(this)">
-			<label id="prefpbagsize" class="preflabel" for="prefpropbagsize">:</label><input type="range" class="prefinput" id="prefpropbagsize" type="range" max="220" min="44" value=91 oninput="changePropBagSize(this)">
-			<label id="prefvscales" class="preflabel" for="prefpropbagsize">:</label><input type="checkbox" class="prefinput" id="prefviewfitscale" onchange="setViewScales(this)">
-			<label id="prefvscaleall" class="preflabel" for="prefviewscaleall">:</label><input type="checkbox" class="prefinput" id="prefviewscaleall" onchange="setViewScaleAll(this)">
-			<label id="prefdsounds" class="preflabel" for="prefdisablesounds">:</label><input type="checkbox" class="prefinput" id="prefdisablesounds" onchange="setSoundsState(this)">
+			<label id="prefuname" class="preflabel" for="prefusername">:</label>
+			<input id="prefusername" type="text" class="prefinput">
+			<label id="prefhpalace" class="preflabel" for="prefhomepalace">:</label>
+			<input id="prefhomepalace" type="text" class="prefinput">
+			<label id="prefpbagsize" class="preflabel" for="prefpropbagsize">:</label>
+			<input id="prefpropbagsize" type="range" class="prefinput" type="range" max="220" min="44" value=91>
+			<label id="prefvscales" class="preflabel" for="prefpropbagsize">:</label>
+			<input id="prefviewfitscale" type="checkbox" class="prefinput">
+			<label id="prefvscaleall" class="preflabel" for="prefviewscaleall">:</label>
+			<input id="prefviewscaleall" type="checkbox" class="prefinput">
+			<label id="prefdsounds" class="preflabel" for="prefdisablesounds">:</label>
+			<input id="prefdisablesounds" type="checkbox" class="prefinput">
 		</div>
 	</div>
 	<div id="container">
 		<video id="bgVideo" autoplay loop></video>
 		<div id="background"></div>
-		<canvas id="mainlayer" oncontextmenu="return false" ondrop="dropBG(event)" ondragover="allowDrop(event)" ondblclick="doubleClick(event)" onmousemove="mouseMove(event)" onmouseleave="mouseExit(event)" onmouseup="mouseUp(event)" onmousedown="mouseDown(event)"></canvas>
+		<canvas id="mainlayer"></canvas>
 	</div>
-	<input type="text" id="chatbox" placeholder="Chat..." onkeypress="chatBoxKeyPress(event)" autofocus>
+	<input type="text" id="chatbox" placeholder="Chat..." autofocus>
 </body>
+<script src="js/constants.js"></script>
 <script src="js/windows-1252.js"></script>
 <script src="js/utility.js"></script>
 <script src="js/interface.js"></script>
 <script src="js/script.js"></script>
+<script src="js/props.js"></script>
 <script src="js/bubbles.js"></script>
 <script src="js/users.js"></script>
 <script src="js/preferences.js"></script>
 <script src="js/core.js"></script>
-<script src="js/constants.js"></script>
 <script src="js/protocols.js"></script>
 </html>

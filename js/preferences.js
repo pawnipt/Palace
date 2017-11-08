@@ -63,19 +63,7 @@ function addPropToDB(prop) {
 	}
 }
 
-function deleteSelectedProps() {
-	var tx = db.transaction("props", "readwrite");
-	var store = tx.objectStore("props");
-	selectedBagProps.forEach(function(pid) {
-		var index = propBagList.indexOf(pid);
-		if (index > -1) {
-			propBagList.splice(index,1);
-			store.delete(pid);
-		}
-	});
-	store.put({id: 'propList', list: propBagList});
-	refreshPropBagView(true);
-}
+
 
 
 function saveProp(id,flush) {
@@ -102,7 +90,7 @@ function cacheBagProp(id,toUpload,callback) {
 		if (toUpload) {
 			var p = {props:[
 					{format:'png',name:aProp.name,size:{w:aProp.w,h:aProp.h},
-					offsets:{x:aProp.x,y:aProp.y},flags:aProp.encodePropFlags(),
+					offsets:{x:aProp.x,y:aProp.y},flags:aProp.encodePropFlags,
 					id:aProp.id,crc:0}
 				]};
 			httpPostAsync(mediaUrl + 'webservice/props/new/',propUploadCallBack,JSON.stringify(p));
@@ -179,49 +167,6 @@ document.onpaste = function(e){
     }
 }
 
-function newPropsFileDialog(btn) {
-	var f = document.createElement('input');
-	f.style.display = 'none';
-	f.setAttribute('multiple', 'multiple');
-	f.type = 'file';
-	f.name = 'file';
-	document.body.appendChild(f);
-	f.onchange = function(event) {
-		createNewProps(event.target.files);
-	};
-	f.click();
-	document.body.removeChild(f);
-}
-
-
-
-
-
-
-
-
-function setUsername(input) {
-	sendUserName(input.value);
-	setGeneralPref('userName',input.value);
-}
-
-function setHome(input) {
-	setGeneralPref('home',input.value);
-}
-
-function setViewScales(input) {
-	setGeneralPref('viewScales',input.checked);
-	scale2Fit();
-}
-
-function setSoundsState(input) {
-	setGeneralPref('disableSounds',input.checked);
-}
-
-function setViewScaleAll(input) {
-	setGeneralPref('viewScaleAll',input.checked);
-	scale2Fit();
-}
 
 function setControlPrefs(id,obj) {
 	prefs.control[id] = obj;
@@ -251,9 +196,9 @@ window.onunload = function(e) {
 		document.getElementById('drawfill').style.backgroundColor = prefs.draw.fill;
 		document.getElementById('drawsize').value = prefs.draw.size;
 		a = getGeneralPref('propBagWidth');
-		if (a != undefined) propBag.style.width = restrictSidePanelSize(a)+'px';
+		if (a != undefined) propBag.style.width = a+'px';
 		a = getGeneralPref('chatLogWidth');
-		if (a != undefined) logField.style.width = restrictSidePanelSize(a)+'px';
+		if (a != undefined) logField.style.width = a+'px';
 		a = getGeneralPref('propBagTileSize');
 		if (a != undefined) document.getElementById('prefpropbagsize').value = a;
 		a = getGeneralPref('viewScales');

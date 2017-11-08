@@ -1,27 +1,27 @@
 function donprop(pid) {
 	if (addSelfProp(pid)) {
-		sendUserPropChange();
+		userPropChange();
 		loadProps([pid],true);
 	}
 }
 
 function removeprop(pid) {
 	if (removeSelfProp(pid)) {
-		sendUserPropChange();
+		userPropChange();
 		loadProps(theUser.props,true);
 	}
 }
 
 function localmsg(msg) {
-	userChat({chatstr:String(msg)});
+	PalaceUser.userChat({chatstr:String(msg)});
 }
 
 function setprops(pids) {
-	if (theUser && changeUserProps(theUser,pids,true)) sendUserPropChange();
+	if (theUser && theUser.changeUserProps(pids,true)) userPropChange();
 }
 
 function gotoroom(id) {
-	sendRoomNav(id);
+	palaceTCP.sendRoomNav(id);
 }
 
 function setpos(x,y) {
@@ -29,8 +29,8 @@ function setpos(x,y) {
 	if (y < 22) y = 22;
 	if (x > bgEnv.width-22) x = bgEnv.width-22;
 	if (y > bgEnv.height-22) y = bgEnv.height-22;
-	sendUserLocation(x,y);
-	userMove(theUserID,x,y);
+	palaceTCP.sendUserLocation(x,y);
+	PalaceUser.userMove(theUserID,x,y);
 }
 
 function move(x,y) {
@@ -40,8 +40,8 @@ function move(x,y) {
 function gotourl(url) {
 	//window.status = 'setname '+getGeneralPref('userName'); ??
 	var blah = url.trim().replace('palace://','').split(':'); //should use forgiving regex
-	retryRegistration = null;
-	initConnToServer(blah[0],blah[1]);
+	palaceTCP.retryRegistration = false;
+	palaceTCP.connect(blah[0],blah[1]);
 }
 
 function datetime() {

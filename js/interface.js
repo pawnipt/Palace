@@ -11,11 +11,26 @@ var roomList = null,
 	scanViewProps = [],
 	dragPropID = null,
 	currentColorControl = null,
-	keysDown = [],
-	PropEdit = null;
+	keysDown = [];
 
 
-(function () {
+const electronSpellchecker = require('electron-spellchecker');
+const SpellCheckHandler = electronSpellchecker.SpellCheckHandler;
+const ContextMenuListener = electronSpellchecker.ContextMenuListener;
+const ContextMenuBuilder = electronSpellchecker.ContextMenuBuilder;
+window.spellCheckHandler = new SpellCheckHandler();
+window.spellCheckHandler.attachToInput();
+window.spellCheckHandler.switchLanguage('en-US'); // Start off as "US English, America" ...maybe use navigator.language
+let contextMenuBuilder = new ContextMenuBuilder(window.spellCheckHandler);
+// Add context menu listener
+let contextMenuListener = new ContextMenuListener((info) => {
+	contextMenuBuilder.showPopupMenu(info);
+});
+
+
+(function () { // setup
+
+	// certain elements shouldn't accept focus!
 	var items = document.getElementsByTagName('button');
 	for (var i = 0; i < items.length; i++) {
 		var item = items[i];
@@ -31,200 +46,393 @@ var roomList = null,
 		}
 	}
 
-	var preventFileDrop = function(e) {
-		if (e.target != bgEnv) {
-			e.preventDefault();
-			e.dataTransfer.effectAllowed = 'none';
-			e.dataTransfer.dropEffect = 'none';
+	var preventFileDrop = function(event) {
+		if (event.target != bgEnv) {
+			event.preventDefault();
+			event.dataTransfer.effectAllowed = 'none';
+			event.dataTransfer.dropEffect = 'none';
 		}
 	};
 	window.addEventListener("dragover",preventFileDrop);
 	window.addEventListener("drop",preventFileDrop);
 
-})();
 
-function chatBoxKeyPress(event) {
-	if (event.keyCode == 13) {
-		var chat = event.target.value;
-		if (chat.length > 0) {
-			var chatCmd = chat.match(/^~([^ ]+)\s{0,1}(.*)$/);
-			if (chatCmd && chatCmd.length > 2) {
-				switch(chatCmd[1]) { // eventually add more client side commands
-					case 'op':
-					case 'susr':
-						sendOperatorRequest(chatCmd[2]);
-						break;
-					case 'clean':
-						sendDrawClear(3);
-						sendPropDelete(-1);
-						break;
-					default:
-						break;
-				}
-			} else if (chat.charAt(0) == '/') {
-				eval(chat.substring(1));
-			} else {
-				if (whisperUserID) {
-					sendWhisper(event.target.value,whisperUserID);
+	// don't really need to call on the chatbox element much so I'm just using getElementById..
+	document.getElementById('chatbox').onkeypress = function(event) {
+		if (event.keyCode == 13) {
+			var chat = event.target.value;
+			if (chat.length > 0) {
+				var chatCmd = chat.match(/^~([^ ]+)\s{0,1}(.*)$/);
+				if (chatCmd && chatCmd.length > 2) {
+					switch(chatCmd[1]) { // eventually add more client side commands
+						case 'op':
+						case 'susr':
+							palaceTCP.sendOperatorRequest(chatCmd[2]);
+							break;
+						case 'clean':
+							palaceTCP.sendDrawClear(3);
+							palaceTCP.sendPropDelete(-1);
+							break;
+						default:
+							break;
+					}
+				} else if (chat.charAt(0) == '/') {
+					eval(chat.substring(1));
 				} else {
-					sendXtlk(event.target.value);
+					if (whisperUserID) {
+						palaceTCP.sendWhisper(event.target.value,whisperUserID);
+					} else {
+						palaceTCP.sendXtlk(event.target.value);
+					}
 				}
+				event.target.value = '';
 			}
-			event.target.value = '';
 		}
-	}
-}
-
-function editSelectedProp() {
-	// var tile = selectedBagProps[0];
-// 	if (!PropEdit) PropEdit = new PropEditor(tile);
-// 	PropEdit.loadProp(tile.dataset.pid);
-// 	if (PropEdit.editor.dataset.state == 0) {
-// 		//PropEdit.editor.style.left = propBag.offsetLeft+'px';
-// 		toggleToolBarControl(PropEdit.editor.id);
-// 		setTimeout(function(){
-// 			PropEdit.editor.style.opacity = '1';
-// 			PropEdit.editor.style.transform = PropEdit.trans;
-// 		},0);
-// 	}
-}
-
-function closePropEditor() {
-	PropEdit.editor.style.transform = 'scale(0,0)';
-	PropEdit.editor.style.opacity = '0';
-	toggleToolBarControl(PropEdit.editor.id);
-}
-
-function PropEditor(tile) {
-	var id = tile.dataset.pid;
-	var pedit = this;
-	this.scale = 2;
-	this.trans = 'none';
-	this.editor = document.getElementById('propeditor');
-	var pecanvas = document.getElementById('propeditorcanvas');
-	this.canvasCtx = pecanvas.getContext('2d');
-	this.canvasCtx.imageSmoothingEnabled = false;
-
-	this.propCtx = document.createElement('canvas');
-	this.propCtx = this.propCtx.getContext('2d');
+	};
 
 
-	this.editor.addEventListener('mousedown',function(event) {
-		if (event.target == pedit.editor) {
-			var coords = pedit.editor.style.transform.getNbrs();
+	window.addEventListener('mousemove',function(event) { // need to redesign this function...
+		var restrictSidePanelSize = function(w) {
+			if (w > window.innerWidth/1.5) w = (window.innerWidth/1.5).fastRound();
+			if (w < 50) w = 50;
+			return w;
+		};
+
+		if (resizingPropBag || (propBag.offsetLeft <= event.x && event.x < propBag.offsetLeft+2)) {
+			propBag.style.cursor = 'ew-resize';
+		} else {
+			propBag.style.cursor = 'auto';
+		}
+		if (resizingChatLog || (logField.offsetLeft <= event.x && event.x < logField.offsetLeft+2)) {
+			logField.style.cursor = 'ew-resize';
+		} else {
+			logField.style.cursor = 'auto';
+		}
+		if (resizingChatLog) {
+			event.preventDefault();
+			var w = restrictSidePanelSize(resizingChatLog.x-event.x+resizingChatLog.w);
+			logField.style.width = w+'px';
+			setBodyWidth();
+			setGeneralPref('chatLogWidth',w);
+			scale2Fit();
+		} else if (resizingPropBag) {
+			event.preventDefault();
+			var w = restrictSidePanelSize(resizingPropBag.x-event.x+resizingPropBag.w);
+			propBag.style.width = w+'px';
+			setBodyWidth();
+			setGeneralPref('propBagWidth',w);
+			refreshPropBagView();
+		}
+	});
+
+
+	propBag.onscroll = function() {
+		refreshPropBagView();
+	};
+	propBag.ondragstart = function(event) {
+		var dragged = event.target;
+		dragPropID = Number(getBagPropID(dragged));
+		var img = dragged.cloneNode(false);
+		event.dataTransfer.setDragImage(img,img.width/2,img.height/2);
+	};
+	propBag.clickedProp = function(target) { // adding function to element! lol
+		if (target.nodeName == 'DIV' || target.nodeName == 'IMG') {
+			if (target.nodeName == 'IMG') return target.parentNode;
+			return target;
+		}
+	};
+	propBag.ondblclick = function(event) {
+		if (propBag.clickedProp(event.target).dataset.pid) wearSelectedProps();
+	};
+	propBag.onmousedown = function(event) {
+		var newTarget = propBag.clickedProp(event.target);
+		if (event.target.nodeName != 'IMG') event.preventDefault();
+		if (newTarget && (newTarget.className == '' || event.shiftKey || event.metaKey)) {
+			var newPid = Number(newTarget.dataset.pid);
+			if (newPid != null) {
+
+				var lastPid;
+				if (!event.metaKey) {
+					if (event.shiftKey) lastPid = selectedBagProps[0];
+					selectedBagProps = [];
+				}
+
+				if (lastPid == null) {
+					selectedBagProps = [newPid];
+				} else {
+					var lastIdx = propBagList.indexOf(lastPid);
+					var newIdx = propBagList.indexOf(newPid);
+					var max = Math.max(newIdx,lastIdx);
+					var min = Math.min(newIdx,lastIdx);
+					selectedBagProps = propBagList.slice(min,max+1);
+					if (newIdx < lastIdx) {
+						selectedBagProps.reverse();
+					}
+				}
+				refreshPropBagView(true);
+				setPropButtons();
+			}
+		} else if (event.layerX-window.pageXOffset < 2) {
+			event.preventDefault();
+			window.addEventListener('mouseup',resizePropBagEnd);
+			var style = getComputedStyle(propBag);
+			var width = parseInt(style.getPropertyValue('width'));
+			resizingPropBag = {x:event.x,w:width};
+		}
+	};
+	document.getElementById('deleteprops').onclick = function() {
+		var tx = db.transaction("props", "readwrite"); // maybe move database code to preferences file with the rest of it.
+		var store = tx.objectStore("props");
+		selectedBagProps.forEach(function(pid) {
+			var index = propBagList.indexOf(pid);
+			if (index > -1) {
+				propBagList.splice(index,1);
+				store.delete(pid);
+			}
+		});
+		store.put({id: 'propList', list: propBagList});
+		refreshPropBagView(true);
+		setPropButtons();
+	};
+	document.getElementById('saveprop').onclick = function() {
+		for (var i = theUser.props.length; --i >= 0;) saveProp(theUser.props[i]);
+		this.disabled = true;
+	};
+
+
+	document.body.onresize = function(event) {
+		if (logField.dataset.state == 1) logField.scrollTop = logField.scrollHeight - logField.clientHeight;
+		if (propBag.dataset.state == 1) refreshPropBagView();
+		scale2Fit();
+	};
+
+	document.body.onkeypress = function(keyboard) {
+		var chr = String.fromCharCode(keyboard.keyCode);
+		if (document.activeElement.nodeName == 'BODY' && !keyboard.metaKey && !keyboard.ctrlKey && okayChar.test(chr)) {
+			//keyboard.preventDefault();
+			//window.status = 'focuschat ' + chr;
+			document.getElementById('chatbox').focus();
+		}
+	};
+	document.body.onkeyup = function(keyboard) {
+		if (keyboard.keyCode > 36 && keyboard.keyCode < 41) keysDown[keyboard.keyCode] = false;
+	};
+	document.body.onkeydown = function(keyboard) {
+		if (document.activeElement.nodeName == 'BODY' && !keyboard.metaKey && !keyboard.ctrlKey) {
+
+			var m = keyboard.altKey?1:4;
 			var x = 0;
 			var y = 0;
-			if (coords) {
-				x = coords[0];
-				y = coords[1];
+
+			if (keyboard.keyCode > 36 && keyboard.keyCode < 41) {
+				keysDown[keyboard.keyCode] = true;
+				keyboard.preventDefault();
 			}
-			pedit.dragX = event.clientX - x;
-			pedit.dragY = event.clientY - y;
-			pedit.editor.style.transition = 'none';
+
+			if (keysDown[37]) x = -m; //left
+			if (keysDown[38]) y = -m; //up
+			if (keysDown[39]) x = m; //right
+			if (keysDown[40]) y = m; //down
+
+			move(x,y);
+		}
+	};
+
+
+	document.getElementById('muteaudio').onclick = function() {
+		bgVideo.muted = !bgVideo.muted;
+		var muteaudio = document.getElementById('muteaudio');
+		muteaudio.style.backgroundImage = 'url(img/audio' + (bgVideo.muted?'off':'on') + '.png)';
+	};
+
+
+	// setup the little connect bar functionality (should add a go button to indicte that there is a connect action)
+	var serverConnectField = document.getElementById('palaceserver');
+	serverConnectField.onfocus = function() {
+		this.contentEditable = true;
+		if (theRoom.address) this.innerText = theRoom.address.replace(':9998','');
+		setTimeout(function(){this.setSelectionRange(0, this.value.length);},0);
+	};
+	serverConnectField.onblur = function() {
+		this.innerText = theRoom.servername;
+		this.contentEditable = false;
+	};
+	serverConnectField.onkeydown = function(event) {
+		if (event.keyCode == 13) {
+			gotourl(event.currentTarget.innerText);
+			theRoom.servername = '';
+			event.currentTarget.blur();
+			return true;
+		}
+	};
+
+
+	var toggleNav = function() {
+		toggleNavListbox(this.id);
+	};
+	document.getElementById('users').onclick = toggleNav; // for loop a list maybe later
+	document.getElementById('rooms').onclick = toggleNav;
+	document.getElementById('servers').onclick = toggleNav;
+
+	document.getElementById('navsearch').oninput = function() { // triggered navigation search filter
+		switch (document.getElementById('navframe').dataset.ctrlname) {
+			case 'users':
+				loadUserList(userList);
+				break;
+			case 'rooms':
+				loadRoomList(roomList);
+				break;
+			case 'servers':
+				loadDirectoryList(directoryList);
+				break;
+		}
+	};
+
+	document.getElementById('navlistbox').onclick = function(event) {
+		var lb = document.getElementById('navlistbox');
+		var type = lb.parentNode.dataset.ctrlname;
+		var t = event.target;
+		if (t.nodeName != 'LI' && type != 'users') t = t.parentNode;
+
+		if (t.dataset.userid) {
+			enterWhisperMode(t.dataset.userid,t.innerText);
+			toggleNavListbox(type);
+		} else if (t.dataset.roomid) {
+			gotoroom(t.dataset.roomid);
+			toggleNavListbox(type);
+		} else if (t.dataset.address) {
+			gotourl(t.dataset.address);
+			toggleNavListbox(type);
+		}
+	};
+
+
+	document.getElementById('log').onmousedown = function(event) { // trigger for log resizing
+		if (event.layerX-window.pageXOffset < 2) {
 			event.preventDefault();
+			window.addEventListener('mouseup',resizeChatLogEnd);
+			var style = getComputedStyle(logField);
+			var width = parseInt(style.getPropertyValue('width'));
+			resizingChatLog = {x:event.x,w:width};
 		}
-	});
-	window.addEventListener('mousemove',function(event) {
-		if (pedit.dragX != undefined) {
-			pedit.trans = 'translate(' + (event.clientX - pedit.dragX) + 'px,' + (event.clientY - pedit.dragY) + 'px)';
-			pedit.editor.style.transform = pedit.trans;
-		}
-	});
-	window.addEventListener('mouseup',function(event) {
-		delete pedit.dragX;
-		delete pedit.dragY;
-		pedit.editor.style.transition = 'opacity 0.2s,transform 0.2s';
-	});
+	};
 
-	this.canvasCtx.canvas.addEventListener('mousemove',function(event) {
-		pedit.canvasCtx.canvas.style.cursor = 'zoom-' + (event.altKey?'out':'in');
-	});
-	this.canvasCtx.canvas.addEventListener('mousedown',function(event) {
-		if (event.altKey || event.button == 2) {
-			pedit.scale--;
-		} else {
-			pedit.scale++;
-		}
-		if (pedit.scale < 1) pedit.scale = 1;
-		if (pedit.scale > 8) pedit.scale = 8;
-		pecanvas.style.transform = 'scale('+pedit.scale+','+pedit.scale+')';
-	});
-}
-PropEditor.prototype.loadProp = function(id) {
-// 	var pedit = this;
-// 	this.pid = id;
-// 	this.prp = propBagList[id];
-//
-// 	var img = document.createElement('img');
-// 	img.onload = function() {
-// 		pedit.propCtx.canvas.width = this.naturalWidth;
-// 		pedit.propCtx.canvas.height = this.naturalHeight;
-// 		pedit.propCtx.drawImage(this,0,0);
-// 		pedit.reDraw();
-// 	}
-// 	img.src = propsPath+id+'.png';
-};
-PropEditor.prototype.reDraw = function() {
-	this.canvasCtx.clearRect(0,0,this.canvasCtx.canvas.width,this.canvasCtx.canvas.height);
-	this.canvasCtx.drawImage(this.propCtx.canvas,this.prp.x+this.canvasCtx.canvas.width/2-22,this.prp.y+this.canvasCtx.canvas.height/2-22);
-};
+	document.getElementById('preferences').onclick = function() { // button to open/closoe log (should rename the id)
+		toggleToolBarControl('prefs'); // toggle preferences
+	};
+	document.getElementById('chatlog').onclick = function() { // button to open/closoe log (should rename the id)
+		toggleToolBarControl('log'); // toggle log
+	};
+	document.getElementById('propbag').onclick = function() { // button to open/close prop bag (should rename the id)
+		toggleToolBarControl('props'); //toggle prop bag
+		toggleToolBarControl('propcontrols'); // toggle prop bag controls
+	};
+
+	document.getElementById('newprops').onclick = function() { // hax (import image files as new props)
+		var f = document.createElement('input');
+		f.style.display = 'none';
+		f.setAttribute('multiple', 'multiple');
+		f.type = 'file';
+		f.name = 'file';
+		document.body.appendChild(f);
+		f.onchange = function(event) {
+			createNewProps(event.target.files);
+		};
+		f.click();
+		document.body.removeChild(f);
+	};
+	document.getElementById('removeprops').onclick = function(){setprops([])}; // get naked button
+	document.getElementById('editprop').onclick = function() { // edit selected bag prop
+		// var tile = selectedBagProps[0];
+		// 	if (!PropEdit) PropEdit = new PropEditor(tile);
+		// 	PropEdit.loadProp(tile.dataset.pid);
+		// 	if (PropEdit.editor.dataset.state == 0) {
+		// 		//PropEdit.editor.style.left = propBag.offsetLeft+'px';
+		// 		toggleToolBarControl(PropEdit.editor.id);
+		// 		setTimeout(function(){
+		// 			PropEdit.editor.style.opacity = '1';
+		// 			PropEdit.editor.style.transform = PropEdit.trans;
+		// 		},0);
+		// 	}
+	};
 
 
+	// setup draw controls
+	document.getElementById('drawsize').oninput = function() { // draw size change
+		prefs.draw.size = this.value;
+		updateDrawPreview();
+	};
+	document.getElementById('drawtype').onclick = function() { // toggle draw type
+		prefs.draw.type = Number(!prefs.draw.type);
+		setDrawType();
+		updateDrawPreview();
+	};
+	var drawEraser = document.getElementById('drawerase');
+	drawEraser.ondblclick = function() { //or clearing room of all draws
+		palaceTCP.sendDrawClear(3);
+	};
+	drawEraser.onclick = function() { // for clearing the last draw
+		palaceTCP.sendDrawClear(4);
+	};
+	document.getElementById('drawcolor').onclick = function(event) { // to change draw pen color
+		openDrawColor(event,function(color) { // pop open color selector with callback
+			prefs.draw.color = color;
+			updateDrawPreview();
+		});
+	};
+	document.getElementById('drawfill').onclick = function(event) { // to change draw fill color
+		openDrawColor(event,function(color) { // pop open color selector with callback
+			prefs.draw.fill = color;
+			updateDrawPreview();
+		});
+	};
+	document.getElementById('drawing').onclick = function() { // button for toggling drawing controls (should rename id)
+		toggleToolBarControl('drawcontrols');
+	};
 
-window.addEventListener('mousemove',mouseMoveWindow);
-function mouseMoveWindow(event) {
-	if (resizingPropBag || (propBag.offsetLeft <= event.x && event.x < propBag.offsetLeft+2)) {
-		propBag.style.cursor = 'ew-resize';
-	} else {
-		propBag.style.cursor = 'auto';
-	}
-	if (resizingChatLog || (logField.offsetLeft <= event.x && event.x < logField.offsetLeft+2)) {
-		logField.style.cursor = 'ew-resize';
-	} else {
-		logField.style.cursor = 'auto';
-	}
-	if (resizingChatLog) {
-		event.preventDefault();
-		var w = restrictSidePanelSize(resizingChatLog.x-event.x+resizingChatLog.w);
-		logField.style.width = w+'px';
-		setBodyWidth();
-		setGeneralPref('chatLogWidth',w);
+
+	// setup color picker events
+	document.getElementById('opacityslider').oninput = function() {
+		colorSelectRGB();
+	};
+	document.getElementById('colorpicker').onmousedown = function(event) {
+		colorSelectRGB(event);
+	};
+	document.getElementById('colorrainbow').onmousedown = function(event) {
+		colorSelectRainbow(event);
+	};
+
+	// setup preferences
+	document.getElementById('prefusername').onchange = function() { // set username
+		palaceTCP.sendUserName(this.value);
+		setGeneralPref('userName',this.value);
+	};
+	document.getElementById('prefhomepalace').onchange = function() {
+		setGeneralPref('home',this.value);
+	};
+	document.getElementById('prefpropbagsize').oninput = function() { // change prop bag tile size :D
+		setGeneralPref('propBagTileSize',this.value);
+		refreshPropBagView(true);
+	};
+	document.getElementById('prefviewfitscale').onchange = function() {
+		setGeneralPref('viewScales',this.checked);
 		scale2Fit();
-	}
-	if (resizingPropBag) {
-		event.preventDefault();
-		var w = restrictSidePanelSize(resizingPropBag.x-event.x+resizingPropBag.w);
-		propBag.style.width = w+'px';
-		setBodyWidth();
-		setGeneralPref('propBagWidth',w);
-		refreshPropBagView();
-	}
-}
+	};
+	document.getElementById('prefviewscaleall').onchange = function() {
+		setGeneralPref('viewScaleAll',this.checked);
+		scale2Fit();
+	};
+	document.getElementById('prefdisablesounds').onchange = function() {
+		setGeneralPref('disableSounds',this.checked);
+	};
 
-function restrictSidePanelSize(w) {
-	if (w > window.innerWidth/1.5) w = (window.innerWidth/1.5).fastRound();
-	if (w < 50) w = 50;
-	return w;
-}
 
-propBag.onscroll = function() {
-	refreshPropBagView();
-}
+
+})();
+
 
 genericSmiley.src = 'img/user.png';
 genericSmiley.onload = function(){updateDrawPreview();};
-
-/*
-document.getElementById('toolbar').onmousedown = function(event) {
-	if (event.target.id != 'drawsize' && event.target.className != 'palaceinfo' && event.clientY < 45) event.preventDefault();
-};
- */ // fixes text selection of other elements when clicking the toolbar
-
-function bodyResized(event) {
-	if (logField.dataset.state == 1) logField.scrollTop = logField.scrollHeight - logField.clientHeight;
-	if (propBag.dataset.state == 1) refreshPropBagView();
-	scale2Fit();
-}
 
 
 function scale2Fit() {
@@ -262,31 +470,7 @@ function setBodyWidth() {
 	document.body.style.width = bgEnv.width + space + 'px';
 }
 
-function muteVideoBG() {
-	bgVideo.muted = !bgVideo.muted;
-	var muteaudio = document.getElementById('muteaudio');
-	muteaudio.style.backgroundImage = 'url(img/audio' + (bgVideo.muted?'off':'on') + '.png)';
-}
 
-function onPalaceAddressFocus(p) {
-	p.contentEditable = true;
-	if (theRoom.address) p.innerText = theRoom.address.replace(':9998','');
-	//setTimeout(function(){p.setSelectionRange(0, p.value.length);},100);
-}
-
-function onPalaceAddressBlur(p) {
-	p.innerText = theRoom.servername;
-	p.contentEditable = false;
-}
-
-function onPalaceAddressKey(event) {
-	if (event.keyCode == 13) {
-		gotourl(event.currentTarget.innerText);
-		theRoom.servername = '';
-		event.currentTarget.blur();
-		return true;
-	}
-}
 
 function enablePropButtons() {
 	var saved = true;
@@ -295,19 +479,9 @@ function enablePropButtons() {
 	document.getElementById('removeprops').disabled = (theUser.props.length == 0);
 }
 
-function saveWornProps(button) {
-	for (var i = theUser.props.length; --i >= 0;) saveProp(theUser.props[i]);
-	button.disabled = true;
-}
-
-function changePropBagSize(input) {
-	setGeneralPref('propBagTileSize',input.value);
-	refreshPropBagView(true);
-}
-
 function refreshPropBagView(refresh) {
 	var bagWidth = propBag.clientWidth;
-	var tileSize = getGeneralPref('propBagTileSize');
+	var tileSize = prefs.general.propBagTileSize;
 	var visibleColumns = (bagWidth / tileSize).fastRound();
 	if (visibleColumns < 1) visibleColumns = 1;
 	var visibleRows = ((window.innerHeight - 45) / tileSize).fastRound(); // 45 is main toolbar height
@@ -357,114 +531,23 @@ function refreshPropBagView(refresh) {
   				pc = cachedTiles[key];
   			} else {
   				pc = document.createElement('div');
-					pc.dataset.pid = pid;
-					var img = document.createElement('img');
-					img.className = 'bagprop';
-					getBagProp(pid,img);
-					pc.appendChild(img);
+				pc.dataset.pid = pid;
+				var img = document.createElement('img');
+				img.className = 'bagprop';
+				getBagProp(pid,img);
+				pc.appendChild(img);
   			}
   			pc.style.width = tileSize+'px';
-				pc.style.height = tileSize+'px';
-				pc.style.left = e.x + 'px';
-				pc.style.top = e.y + 'px';
-				propBag.appendChild(pc);
+			pc.style.height = tileSize+'px';
+			pc.style.left = e.x + 'px';
+			pc.style.top = e.y + 'px';
+			propBag.appendChild(pc);
 		}
 		pc.className = selectedBagProps.indexOf(pid) > -1?'selectedbagprop':'';
 	}
 }
 
 
-function dropBG(event) {
-	event.preventDefault();
-	if (theUser && dragPropID) {
-		var x = (event.layerX/viewScale).fastRound();
-		var y = (event.layerY/viewScale).fastRound();
-		var overSelf = (theUser && theUser.x-22 < x && theUser.x+22 > x && theUser.y-22 < y && theUser.y+22 > y);
-
-		loadProps([dragPropID],true,function() { //callback to drop the prop once it is loaded from the users bag
-			var prop = allProps[dragPropID];
-			if (prop) {
-				if (!overSelf) {
-					sendPropDrop(x-prop.w/2,y-prop.h/2,dragPropID);
-				} else {
-					addSelfProp(dragPropID);
-					sendUserPropChange(); //normally the mouse up even for the canvas would handle this but we're now async
-				}
-			}
-		});
-	}
-}
-
-
-function dragStartBagProp(event) {
-	var dragged = event.target;
-	dragPropID = Number(getBagPropID(dragged));
-	var img = dragged.cloneNode(false);
-	event.dataTransfer.setDragImage(img,img.width/2,img.height/2);
-}
-
-
-function allowDrop(event) {
-    event.preventDefault();
-}
-
-function dragEndBagProp(event) {
-	//dragPropID = null;
-}
-
-function clickedProp(target) {
-	if (target.nodeName == 'DIV' || target.nodeName == 'IMG') {
-		if (target.nodeName == 'IMG') return target.parentNode;
-		return target;
-	}
-}
-function mouseDownPropBag(event) {
-
-	var newTarget = clickedProp(event.target);
-	if (event.target.nodeName != 'IMG') event.preventDefault();
-	if (newTarget && (newTarget.className == '' || event.shiftKey || event.metaKey)) {
-		var newPid = Number(newTarget.dataset.pid);
-		if (newPid != null) {
-
-			var lastPid;
-			if (!event.metaKey) {
-				if (event.shiftKey) lastPid = selectedBagProps[0];
-				selectedBagProps = [];
-			}
-
-			if (lastPid == null) {
-				selectedBagProps = [newPid];
-			} else {
-				var lastIdx = propBagList.indexOf(lastPid);
-				var newIdx = propBagList.indexOf(newPid);
-				var max = Math.max(newIdx,lastIdx);
-				var min = Math.min(newIdx,lastIdx);
-				selectedBagProps = propBagList.slice(min,max+1);
-				if (newIdx < lastIdx) {
-					selectedBagProps.reverse();
-				}
-			}
-			refreshPropBagView(true);
-			setPropButtons();
-		}
-	} else if (event.layerX-window.pageXOffset < 2) {
-		event.preventDefault();
-		window.addEventListener('mouseup',resizePropBagEnd);
-		var style = getComputedStyle(propBag);
-		var width = parseInt(style.getPropertyValue('width'));
-		resizingPropBag = {x:event.x,w:width};
-	}
-}
-
-function mouseDownChatLog(event) {
-	if (event.layerX-window.pageXOffset < 2) {
-		event.preventDefault();
-		window.addEventListener('mouseup',resizeChatLogEnd);
-		var style = getComputedStyle(logField);
-		var width = parseInt(style.getPropertyValue('width'));
-		resizingChatLog = {x:event.x,w:width};
-	}
-}
 
 function resizeChatLogEnd(event) {
 	resizingChatLog = null;
@@ -519,9 +602,7 @@ function setPropButtons() {
 
 
 
-function dblClickPropBag(event) {
-	if (clickedProp(event.target).dataset.pid) wearSelectedProps();
-}
+
 
 /*
 function colorSelectHSL(event) {
@@ -584,6 +665,7 @@ function colorSelectRGB(event,caret) {
 			window.addEventListener('mousemove',dragRGB);
 			window.addEventListener('mouseup',dragRGBEnd);
 		}
+
 		y = event.y-pickerControl.parentNode.offsetTop-pickerControl.parentNode.parentNode.offsetTop;
 		x = event.x-pickerControl.parentNode.offsetLeft-pickerControl.parentNode.parentNode.offsetLeft;
 		if (y < 0) y = 0;
@@ -602,6 +684,7 @@ function colorSelectRGB(event,caret) {
 			var style = window.getComputedStyle(document.getElementById('pickercaret'));
 			x = Number(style.getPropertyValue('left').getNbrs()[0])+2;
 			y = Number(style.getPropertyValue('top').getNbrs()[0])+2;
+
 		}
 		if (!Number.isFinite(x)) x = 199; // fix some bug that made it non-finite!
 		if (!Number.isFinite(y)) y = 0;
@@ -735,16 +818,6 @@ function closeColorSelector(x,y,fade) {
 	currentColorControl = null;
 }
 
-function setDrawFill(color) {
-	prefs.draw.fill = color;
-	updateDrawPreview();
-}
-
-function setDrawColor(color) {
-	prefs.draw.color = color;
-	updateDrawPreview();
-}
-
 function getComputedBgColor(element) {
 	return window.getComputedStyle(element).getPropertyValue('background-color');
 }
@@ -753,12 +826,7 @@ function colorSelectOpacity(event) {
 	colorSelectRGB(null);
 }
 
-function switchDrawType() {
-	prefs.draw.type++;
-	if (prefs.draw.type > 1) prefs.draw.type = 0;
-	setDrawType();
-	updateDrawPreview();
-}
+
 
 function setDrawType() {
 	var dt = document.getElementById('drawtype');
@@ -807,10 +875,7 @@ function updateDrawPreview() {
 
 }
 
-function drawSizeChange(control) {
-	prefs.draw.size = control.value;
-	updateDrawPreview();
-}
+
 
 
 function transitionalDisplayNone(event) {
@@ -840,42 +905,6 @@ function toggleToolBarControl(name,show) {
 	if (name == 'props' && control.dataset.state == 1) refreshPropBagView();
 }
 
-
-function keyPress(keyboard) {
-	var chr = String.fromCharCode(keyboard.keyCode);
-	if (document.activeElement.nodeName == 'BODY' && !keyboard.metaKey && !keyboard.ctrlKey && okayChar.test(chr)) {
-		//keyboard.preventDefault();
-		//window.status = 'focuschat ' + chr;
-		document.getElementById('chatbox').focus();
-	}
-}
-
-
-function keyUp(keyboard) {
-	if (keyboard.keyCode > 36 && keyboard.keyCode < 41) keysDown[keyboard.keyCode] = false;
-}
-
-function keyDown(keyboard) {
-	if (document.activeElement.nodeName == 'BODY' && !keyboard.metaKey && !keyboard.ctrlKey) {
-
-		var m = keyboard.altKey?1:4;
-		var x = 0;
-		var y = 0;
-
-		if (keyboard.keyCode > 36 && keyboard.keyCode < 41) {
-			keysDown[keyboard.keyCode] = true;
-			keyboard.preventDefault();
-		}
-
-		if (keysDown[37]) x = -m; //left
-		if (keysDown[38]) y = -m; //up
-		if (keysDown[39]) x = m; //right
-		if (keysDown[40]) y = m; //down
-
-		move(x,y);
-	}
-}
-
 function closeNavListbox() {
 	document.getElementById('navsearch').value = '';
 	var navframe = document.getElementById('navframe');
@@ -901,13 +930,13 @@ function toggleNavListbox(cname) {
 		navframe.dataset.ctrlname = cname;
 		if (cname == 'users') {
 			navframe.className = 'navframeusers'; //4 default
-			sendRoomListRequest();
+			palaceTCP.sendRoomListRequest();
 			if (roomList && userList) {
 				loadUserList(userList);
 			} else {
 				clearListBox(listbox);
 			}
-			sendUserListRequest();
+			palaceTCP.sendUserListRequest();
 		} else if (cname == 'rooms') {
 			navframe.className = 'navframerooms'; // 44
 			if (roomList) {
@@ -915,7 +944,7 @@ function toggleNavListbox(cname) {
 			} else {
 				clearListBox(listbox);
 			}
-			sendRoomListRequest();
+			palaceTCP.sendRoomListRequest();
 		} else if (cname == 'servers') {
 			navframe.className = 'navframeservers'; // 85
 			if (directoryList) {
@@ -932,20 +961,6 @@ function toggleNavListbox(cname) {
 
 function requestDirectory() {
 	httpGetAsync('http://pchat.org/webservice/directory/get/',loadDirectoryList);
-}
-
-function navSearch() {
-	switch (document.getElementById('navframe').dataset.ctrlname) {
-		case 'users':
-			loadUserList(userList);
-			break;
-		case 'rooms':
-			loadRoomList(roomList);
-			break;
-		case 'servers':
-			loadDirectoryList(directoryList);
-			break;
-	}
 }
 
 function loadDirectoryList(directList) {
@@ -1082,20 +1097,89 @@ function loadUserList(ulist) {
 }
 
 
-function selectNavElement(event) {
-	var lb = document.getElementById('navlistbox');
-	var type = lb.parentNode.dataset.ctrlname;
-	var t = event.target;
-	if (t.nodeName != 'LI' && type != 'users') t = t.parentNode;
 
-	if (t.dataset.userid) {
-		enterWhisperMode(t.dataset.userid,t.innerText);
-		toggleNavListbox(type);
-	} else if (t.dataset.roomid) {
-		gotoroom(t.dataset.roomid);
-		toggleNavListbox(type);
-	} else if (t.dataset.address) {
-		gotourl(t.dataset.address);
-		toggleNavListbox(type);
-	}
-}
+
+
+
+
+
+
+// function closePropEditor() {
+// 	PropEdit.editor.style.transform = 'scale(0,0)';
+// 	PropEdit.editor.style.opacity = '0';
+// 	toggleToolBarControl(PropEdit.editor.id);
+// }
+//
+// function PropEditor(tile) {
+// 	var id = tile.dataset.pid;
+// 	var pedit = this;
+// 	this.scale = 2;
+// 	this.trans = 'none';
+// 	this.editor = document.getElementById('propeditor');
+// 	var pecanvas = document.getElementById('propeditorcanvas');
+// 	this.canvasCtx = pecanvas.getContext('2d');
+// 	this.canvasCtx.imageSmoothingEnabled = false;
+//
+// 	this.propCtx = document.createElement('canvas');
+// 	this.propCtx = this.propCtx.getContext('2d');
+//
+//
+// 	this.editor.addEventListener('mousedown',function(event) {
+// 		if (event.target == pedit.editor) {
+// 			var coords = pedit.editor.style.transform.getNbrs();
+// 			var x = 0;
+// 			var y = 0;
+// 			if (coords) {
+// 				x = coords[0];
+// 				y = coords[1];
+// 			}
+// 			pedit.dragX = event.clientX - x;
+// 			pedit.dragY = event.clientY - y;
+// 			pedit.editor.style.transition = 'none';
+// 			event.preventDefault();
+// 		}
+// 	});
+// 	window.addEventListener('mousemove',function(event) {
+// 		if (pedit.dragX != undefined) {
+// 			pedit.trans = 'translate(' + (event.clientX - pedit.dragX) + 'px,' + (event.clientY - pedit.dragY) + 'px)';
+// 			pedit.editor.style.transform = pedit.trans;
+// 		}
+// 	});
+// 	window.addEventListener('mouseup',function(event) {
+// 		delete pedit.dragX;
+// 		delete pedit.dragY;
+// 		pedit.editor.style.transition = 'opacity 0.2s,transform 0.2s';
+// 	});
+//
+// 	this.canvasCtx.canvas.addEventListener('mousemove',function(event) {
+// 		pedit.canvasCtx.canvas.style.cursor = 'zoom-' + (event.altKey?'out':'in');
+// 	});
+// 	this.canvasCtx.canvas.addEventListener('mousedown',function(event) {
+// 		if (event.altKey || event.button == 2) {
+// 			pedit.scale--;
+// 		} else {
+// 			pedit.scale++;
+// 		}
+// 		if (pedit.scale < 1) pedit.scale = 1;
+// 		if (pedit.scale > 8) pedit.scale = 8;
+// 		pecanvas.style.transform = 'scale('+pedit.scale+','+pedit.scale+')';
+// 	});
+// }
+// PropEditor.prototype.loadProp = function(id) {
+// // 	var pedit = this;
+// // 	this.pid = id;
+// // 	this.prp = propBagList[id];
+// //
+// // 	var img = document.createElement('img');
+// // 	img.onload = function() {
+// // 		pedit.propCtx.canvas.width = this.naturalWidth;
+// // 		pedit.propCtx.canvas.height = this.naturalHeight;
+// // 		pedit.propCtx.drawImage(this,0,0);
+// // 		pedit.reDraw();
+// // 	}
+// // 	img.src = propsPath+id+'.png';
+// };
+// PropEditor.prototype.reDraw = function() {
+// 	this.canvasCtx.clearRect(0,0,this.canvasCtx.canvas.width,this.canvasCtx.canvas.height);
+// 	this.canvasCtx.drawImage(this.propCtx.canvas,this.prp.x+this.canvasCtx.canvas.width/2-22,this.prp.y+this.canvasCtx.canvas.height/2-22);
+// };
