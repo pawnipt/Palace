@@ -196,17 +196,17 @@ window.onunload = function(e) {
 		document.getElementById('drawfill').style.backgroundColor = prefs.draw.fill;
 		document.getElementById('drawsize').value = prefs.draw.size;
 		a = getGeneralPref('propBagWidth');
-		if (a != undefined) propBag.style.width = a+'px';
+		if (a) propBag.style.width = a+'px';
 		a = getGeneralPref('chatLogWidth');
-		if (a != undefined) logField.style.width = a+'px';
+		if (a) logField.style.width = a+'px';
 		a = getGeneralPref('propBagTileSize');
-		if (a != undefined) document.getElementById('prefpropbagsize').value = a;
+		if (a) document.getElementById('prefpropbagsize').value = a;
 		a = getGeneralPref('viewScales');
-		if (a != undefined) document.getElementById('prefviewfitscale').checked = a;
+		if (a) document.getElementById('prefviewfitscale').checked = a;
 		a = getGeneralPref('viewScaleAll');
-		if (a != undefined) document.getElementById('prefviewscaleall').checked = a;
+		if (a) document.getElementById('prefviewscaleall').checked = a;
 		a = getGeneralPref('disableSounds');
-		if (a != undefined) document.getElementById('prefdisablesounds').checked = a;
+		if (a) document.getElementById('prefdisablesounds').checked = a;
 		setDrawType();
 	} else { //default
 		prefs.registration = {regi:getRandomInt(100,2147483647),puid:getRandomInt(1,2147483647)};
@@ -217,6 +217,5 @@ window.onunload = function(e) {
 		//setGeneralPref('propBagWidth',200);
 	}
 	document.getElementById('prefusername').value = getGeneralPref('userName');
-	window.status = 'setname '+getGeneralPref('userName');
 	document.getElementById('prefhomepalace').value = getGeneralPref('home');
 })();

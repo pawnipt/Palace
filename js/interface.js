@@ -251,7 +251,12 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	serverConnectField.onfocus = function() {
 		this.contentEditable = true;
 		if (theRoom.address) this.innerText = theRoom.address.replace(':9998','');
-		setTimeout(function(){this.setSelectionRange(0, this.value.length);},0);
+		var selection = window.getSelection();
+		var range = document.createRange();
+		range.selectNodeContents(this);
+		selection.removeAllRanges();
+		selection.addRange(range);
+
 	};
 	serverConnectField.onblur = function() {
 		this.innerText = theRoom.servername;

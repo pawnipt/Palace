@@ -648,8 +648,8 @@ class PalaceSocket {
 		reg.writeInt32LE(TCPmsgConsts.LOGON,0);
 		reg.writeInt32LE(128,4); //fixed packet length
 
-		reg.writeInt32LE(regi.key,12);
-		reg.writeInt32LE(regi.crc,16);
+		reg.writeInt32LE(palaceRegi.key,12);
+		reg.writeInt32LE(palaceRegi.crc,16);
 
 		var name = windows1252.encode(prefs.general.userName);
 		reg.writeInt8(name.length,20);
@@ -661,8 +661,8 @@ class PalaceSocket {
 			reg.writeUInt32LE(0x80000002,84);
 		}
 
-		reg.writeInt32LE(regi.puidCrc,88);
-		reg.writeInt32LE(regi.puid,92);
+		reg.writeInt32LE(palaceRegi.puidCrc,88);
+		reg.writeInt32LE(palaceRegi.puid,92);
 
 		reg.writeInt32LE(0x00011940,96);
 		reg.writeInt32LE(0x00011940,100);
