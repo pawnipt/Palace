@@ -214,6 +214,7 @@ window.onunload = function(e) {
 		setGeneralPref('home','ee.fastpalaces.com:9991'); //avatarpalace.net:9998
 		setGeneralPref('userName','Palace User');
 		setGeneralPref('propBagTileSize',91);
+		setGeneralPref('viewScaleAll',true);
 		//setGeneralPref('propBagWidth',200);
 	}
 	document.getElementById('prefusername').value = getGeneralPref('userName');

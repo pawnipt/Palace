@@ -2,6 +2,10 @@ var smileys = {},
 	mediaUrl = "",
 	grabbedProp = null,
 	directoryList = null,
+	whisperUserID = null,
+	mouseHoverUser = null,
+	mouseLooseProp = null,
+	mouseSelfProp = null,
 	drawPoints = [], // temp coordinates buffer for when the user draws in the room.
 	theRoom = {users:[],looseProps:[],serverUserCount:0,lastUserLogOnID:0,lastUserLogOnTime:0}; // still gotta make a class for PalaceRoom!
 
@@ -15,21 +19,50 @@ const bgCtx = bgEnv.getContext("2d");
 const systemAudio = {signon:createAudio('SignOn'),signoff:createAudio('SignOff'),whisper:createAudio('Whispered'),doorclose:createAudio('DoorClose'),dooropen:createAudio('DoorOpen')};
 
 const electron = require('electron');
-const webFrame = electron.webFrame;
+const webFrame = electron.webFrame; // need this to getZoomFactor for proper mouse coordinates later
 
-// const {remote} = require('electron');
-// const {Menu, MenuItem} = remote;
 
-// const menu = new Menu(); // create propMenu, userMenu then determine which to use in contextmenu event setting menu items appropriately
-// menu.append(new MenuItem({label: 'MenuItem1', click() { logmsg(Object.getOwnPropertyNames(bgEnv)) }}));
-// menu.append(new MenuItem({type: 'separator'}));
-// menu.append(new MenuItem({label: 'MenuItem1', click() {  }}));
-// //menu.append(new MenuItem({label: 'MenuItem2', type: 'checkbox', checked: true}));
-//
-// bgEnv.addEventListener('contextmenu', (e) => {
-// 	e.preventDefault();
-// 	menu.popup(remote.getCurrentWindow(),{x:e.x,y:e.y,async:true});
-// }, false);
+const {remote} = require('electron');
+const {Menu, MenuItem} = remote;
+
+const loosePropMenu = new Menu();
+loosePropMenu.append(new MenuItem({label: 'Save Prop', click(item) { saveProp(item.menu.pid); }}));
+loosePropMenu.append(new MenuItem({type: 'separator'}));
+loosePropMenu.append(new MenuItem({label: 'Remove Prop', click(item) { palaceTCP.sendPropDelete(item.menu.lpindex) }}));
+
+const userMenu = new Menu();
+userMenu.append(new MenuItem({label: 'Whisper ',type: 'checkbox', click(item) {
+	var user = getUser(item.menu.userId);
+	if (user) enterWhisperMode(user.id,user.name);
+}}));
+userMenu.append(new MenuItem({type: 'separator'}));
+userMenu.append(new MenuItem({label: 'Offer avatar', click(item) { palaceTCP.sendWhisper("'offer",item.menu.userId); }}));
+userMenu.append(new MenuItem({label: 'Accept avatar', click(item) { palaceTCP.sendXtlk("'accept"); }}));
+userMenu.append(new MenuItem({type: 'separator'}));
+userMenu.append(new MenuItem({label: 'Prop mute',type: 'checkbox', click(item) {
+	var user = getUser(item.menu.userId);
+	if (user) {
+		user.propMuted = !user.propMuted;
+		reDraw();
+	}
+}}));
+
+bgEnv.addEventListener('contextmenu', (e) => {
+	e.preventDefault();
+	if (mouseHoverUser && mouseHoverUser != theUser) {
+		userMenu.userId = mouseHoverUser.id;
+		userMenu.items[0].checked = Boolean(whisperUserID);
+		userMenu.items[5].checked = Boolean(mouseHoverUser.propMuted);
+		userMenu.items[2].enabled = theUser.props.length > 0;
+		userMenu.popup(remote.getCurrentWindow(),{x:e.x,y:e.y,async:true});
+	} else if (mouseLooseProp != null) {
+		var lp = theRoom.looseProps[mouseLooseProp];
+		loosePropMenu.items[0].enabled = (propBagList.indexOf(lp.id) < 0);
+		loosePropMenu.pid = lp.id;
+		loosePropMenu.lpindex = mouseLooseProp;
+		loosePropMenu.popup(remote.getCurrentWindow(),{x:e.x,y:e.y,async:true});
+	}
+}, false);
 
 
 (function () {
@@ -199,70 +232,72 @@ bgEnv.onmouseup = function(event) {
 };
 bgEnv.onmousedown = function(event) {
 	document.getElementById('chatbox').blur();
-	event.preventDefault();
-	var isDrawing = document.getElementById('drawcheckbox').checked;
-	var x = (event.layerX/viewScale).fastRound();
-	var y = ((event.layerY + ((45*webFrame.getZoomFactor()) - 45)) /viewScale).fastRound(); // get excess toolbar height if windows is scaling
-	if (isDrawing) {
-		var offset = 0;
-		if (prefs.draw.type == 0) offset = Math.floor(prefs.draw.size/2);
-		drawPoints = [x-offset,y-offset];
-		window.addEventListener('mousemove',drawing);
-		window.addEventListener('mouseup',drawingEnd);
-	} else {
-		var lpIndex = null;
-		var pid = null;
-
-		var mUser = mouseOverUser(x,y);
-		if (!event.shiftKey && mUser != theUser && mUser != null) {
-			enterWhisperMode(mUser.id,mUser.name);
+	if (event.button == 0) {
+		event.preventDefault();
+		var isDrawing = document.getElementById('drawcheckbox').checked;
+		var x = (event.layerX/viewScale).fastRound();
+		var y = ((event.layerY + ((45*webFrame.getZoomFactor()) - 45)) /viewScale).fastRound(); // get excess toolbar height if windows is scaling
+		if (isDrawing) {
+			var offset = 0;
+			if (prefs.draw.type == 0) offset = Math.floor(prefs.draw.size/2);
+			drawPoints = [x-offset,y-offset];
+			window.addEventListener('mousemove',drawing);
+			window.addEventListener('mouseup',drawingEnd);
 		} else {
-			if (event.shiftKey) pid = mouseOverSelfProp(x,y);
-			if (pid == null) lpIndex = mouseOverLooseProp(x,y);
+			var lpIndex = null;
+			var pid = null;
 
-			if (pid != null) {
-				var aProp = allProps[pid];
-				makeDragProp(-1, pid, x, y, x-aProp.x-theUser.x+22, y-aProp.y-theUser.y+22);
-			} else if (lpIndex != null) {
-				var lProp = theRoom.looseProps[lpIndex];
-				makeDragProp(lpIndex, lProp.id, x, y, x-lProp.x, y-lProp.y);
-			} else if (mUser == null || mUser == theUser) { /* if not clicking another user */
+			var mUser = mouseOverUser(x,y);
+			if (!event.shiftKey && mUser != theUser && mUser != null) {
+				enterWhisperMode(mUser.id,mUser.name);
+			} else {
+				if (event.shiftKey) pid = mouseOverSelfProp(x,y);
+				if (pid == null) lpIndex = mouseOverLooseProp(x,y);
 
-				var clickSpotInfo = function(x,y) {
-					var ai = {};
-					var spot;
-					for (var i = theRoom.spots.length; --i >= 0;) {
-						spot = theRoom.spots[i];
-						makeHotSpot(spot);
-						if (bgCtx.isPointInPath(x,y)) {
-							if (ai.spot == null) ai.spot = spot;
-							if (spotConsts.DontMoveHere & spot.flags) ai.dontMove = true;
-						}
-					}
-					return ai;
-				};
+				if (pid != null) {
+					var aProp = allProps[pid];
+					makeDragProp(-1, pid, x, y, x-aProp.x-theUser.x+22, y-aProp.y-theUser.y+22);
+				} else if (lpIndex != null) {
+					var lProp = theRoom.looseProps[lpIndex];
+					makeDragProp(lpIndex, lProp.id, x, y, x-lProp.x, y-lProp.y);
+				} else if (mUser == null || mUser == theUser) { /* if not clicking another user */
 
-				var areaInfo = clickSpotInfo(x,y);
-				if (areaInfo.dontMove !== true) setpos(x,y);
-				if (areaInfo.spot != null) {
-					var dest = areaInfo.spot.dest;
-					switch(areaInfo.spot.type) {
-						case spotConsts.types.passage:
-							if (dest > 0) gotoroom(dest);
-							break;
-						case spotConsts.types.shutable:
-						case spotConsts.types.lockable:
-							if (areaInfo.spot.state == 0) {
-								gotoroom(dest);
-							} else {
-								logspecial('logmsgdoorlocked');
+					var clickSpotInfo = function(x,y) {
+						var ai = {};
+						var spot;
+						for (var i = theRoom.spots.length; --i >= 0;) {
+							spot = theRoom.spots[i];
+							makeHotSpot(spot);
+							if (bgCtx.isPointInPath(x,y)) {
+								if (ai.spot == null) ai.spot = spot;
+								if (spotConsts.DontMoveHere & spot.flags) ai.dontMove = true;
 							}
-							break;
-						case spotConsts.types.deadBolt:
-							var d = getSpot(dest);
-							if (d != null)
-								window.status = (d.state == 0?'lockdoor ':'unlockdoor ')+dest;
-							break;
+						}
+						return ai;
+					};
+
+					var areaInfo = clickSpotInfo(x,y);
+					if (areaInfo.dontMove !== true) setpos(x,y);
+					if (areaInfo.spot != null) {
+						var dest = areaInfo.spot.dest;
+						switch(areaInfo.spot.type) {
+							case spotConsts.types.passage:
+								if (dest > 0) gotoroom(dest);
+								break;
+							case spotConsts.types.shutable:
+							case spotConsts.types.lockable:
+								if (areaInfo.spot.state == 0) {
+									gotoroom(dest);
+								} else {
+									logspecial('logmsgdoorlocked');
+								}
+								break;
+							case spotConsts.types.deadBolt:
+								var d = getSpot(dest);
+								if (d != null)
+									window.status = (d.state == 0?'lockdoor ':'unlockdoor ')+dest;
+								break;
+						}
 					}
 				}
 			}
@@ -574,7 +609,7 @@ function removeSelfProp(pid) {
 	}
 }
 
-whisperUserID = null;
+
 function enterWhisperMode(userid,name) {
 	var cancel = (whisperUserID == userid);
 	if (whisperUserID != null || cancel) exitWhisperMode(); /* whisper toggle */
@@ -593,8 +628,10 @@ function enterWhisperMode(userid,name) {
 function exitWhisperMode() {
 	document.getElementById('chatbox').placeholder = 'Chat...';
 	var user = getUser(whisperUserID);
-	if (user && mouseHoverUser != user) user.light = 0;
-	if (user) user.poke();
+	if (user) {
+		user.light = 0;
+		user.poke();
+	}
 	whisperUserID = null;
 	refresh(true);
 }
@@ -676,7 +713,7 @@ function mouseOverSelfProp(x,y) {
 			var px = (theUser.x + aProp.x)-22;
 			var py = (theUser.y + aProp.y)-22;
 			if (aProp && (!aProp.animated || theUser.animatePropID === undefined || theUser.animatePropID == aProp.id) && aProp.isComplete && px < x && (px+aProp.w) > x && py < y && (py+aProp.h) > y) {
-				if (mouseOverProp(aProp,x,y,px,py)) return aProp.id; /* should pass object instead of id */
+				if (mouseOverProp(aProp,x,y,px,py)) return aProp.id; /* maybe pass object instead of id */
 			}
 		}
 	}
@@ -687,8 +724,8 @@ function mouseOverLooseProp(x,y) {
 		for (var i = theRoom.looseProps.length; --i >= 0;) {
 			var lProp = theRoom.looseProps[i];
 			var aProp = allProps[lProp.id];
-			if (aProp && lProp && aProp.isComplete && lProp.x < x && (lProp.x+aProp.w) > x && lProp.y < y && (lProp.y+aProp.h) > y) {
-				if (mouseOverProp(aProp,x,y,lProp.x,lProp.y)) return i; /* should pass object instead of index */
+			if (aProp && aProp.isComplete && lProp.x < x && (lProp.x+aProp.w) > x && lProp.y < y && (lProp.y+aProp.h) > y) {
+				if (mouseOverProp(aProp,x,y,lProp.x,lProp.y)) return i; /* maybe pass object instead of index */
 			}
 		}
 	}
@@ -696,7 +733,7 @@ function mouseOverLooseProp(x,y) {
 
 
 
-mouseHoverUser = null;
+
 function mouseEnterUser(user) {
 	mouseExitSelfProp();
 	mouseExitLooseProp();
@@ -727,7 +764,7 @@ function mouseExitUser() {
 	}
 }
 
-mouseLooseProp = null;
+
 function mouseEnterLooseProp(lpIndex) {
 	if (mouseHoverUser == null && mouseSelfProp == null) {
 		mouseExitLooseProp();
@@ -758,7 +795,6 @@ function mouseExitLooseProp() {
 	}
 }
 
-mouseSelfProp = null;
 function mouseEnterSelfProp(pid) {
 	mouseExitLooseProp();
 	if (mouseHoverUser == null) {
@@ -1060,12 +1096,13 @@ function drawAvatar(user) {
 	}
 
 	if ((whisperUserID != null && whisperUserID != user.id && user != theUser)) bgCtx.globalAlpha = 0.5;
-	if (user.showHead !== false) drawSmiley(user);
+	if (user.showHead !== false || user.propMuted) drawSmiley(user);
 
-
-	for (var i = 0; i < user.props.length; i++) {
-		var aProp = allProps[user.props[i]];
-		if (aProp && (!aProp.animated || user.animatePropID === undefined || user.animatePropID == aProp.id)) drawUserProp(user,aProp);
+	if (!user.propMuted) {
+		for (var i = 0; i < user.props.length; i++) {
+			var aProp = allProps[user.props[i]];
+			if (aProp && (!aProp.animated || user.animatePropID === undefined || user.animatePropID == aProp.id)) drawUserProp(user,aProp);
+		}
 	}
 	if (bgCtx.shadowBlur > 0) {
 		bgCtx.shadowColor = 'transparent';
