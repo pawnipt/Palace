@@ -15,7 +15,7 @@ You will then want to git clone Palace's source
 git clone https://github.com/pawnipt/Palace.git
 ```
 
-Then you must install the dependancies described in package.json with the command line
+Then you must install the dependancies described in package.json with the command line (make sure you are in the new Palace folder)
 ```
 npm install
 ```
