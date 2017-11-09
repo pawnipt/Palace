@@ -10,40 +10,18 @@ Visual chat app built with electron@beta
 
 First you will want to install [Git](https://git-scm.com/downloads) and also [Node](https://nodejs.org/en/)
 
-You will then want to clone Palace's source to your working directory:
+You will then want to git clone Palace's source
 ```
 git clone https://github.com/pawnipt/Palace.git
 ```
 
-Then you must install electron@beta with the command line
+Then you must install the dependancies described in package.json with the command line
 ```
-npm install electron@beta --save-dev
-```
-There are also a few dependencies
-```
-npm install electron-packager --save-dev
-```
-```
-npm install electron-rebuild --save-dev
-```
-```
-npm install electron-spellchecker
+npm install
 ```
 If you're on Windows installing spellchecker may require that windows-build-tools is installed
 ```
 npm install --global windows-build-tools
-```
-
-
-After installing any node module you will want to run the rebuild script defined in package.json
-
-Mac:
-```
-npm run rebuild
-```
-Windows:
-```
-npm run rebuild-win32
 ```
 
 ### Finally
