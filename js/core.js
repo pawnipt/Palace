@@ -49,18 +49,27 @@ userMenu.append(new MenuItem({label: 'Prop mute',type: 'checkbox', click(item) {
 
 bgEnv.addEventListener('contextmenu', (e) => {
 	e.preventDefault();
-	if (mouseHoverUser && mouseHoverUser != theUser) {
-		userMenu.userId = mouseHoverUser.id;
+
+	var x = (event.layerX/viewScale).fastRound();
+	var y = ((event.layerY + ((45*webFrame.getZoomFactor()) - 45)) /viewScale).fastRound(); // get excess toolbar height if windows is scaling
+
+	var user = mouseOverUser(x,y);
+
+	if (user && user != theUser) {
+		userMenu.userId = user.id;
 		userMenu.items[0].checked = Boolean(whisperUserID);
-		userMenu.items[5].checked = Boolean(mouseHoverUser.propMuted);
+		userMenu.items[5].checked = Boolean(user.propMuted);
 		userMenu.items[2].enabled = theUser.props.length > 0;
 		userMenu.popup(remote.getCurrentWindow(),{x:e.x,y:e.y,async:true});
-	} else if (mouseLooseProp != null) {
-		var lp = theRoom.looseProps[mouseLooseProp];
-		loosePropMenu.items[0].enabled = (propBagList.indexOf(lp.id) < 0);
-		loosePropMenu.pid = lp.id;
-		loosePropMenu.lpindex = mouseLooseProp;
-		loosePropMenu.popup(remote.getCurrentWindow(),{x:e.x,y:e.y,async:true});
+	} else {
+		var lpIndex = mouseOverLooseProp(x,y);
+		if (lpIndex != null) {
+			var lp = theRoom.looseProps[lpIndex];
+			loosePropMenu.items[0].enabled = (propBagList.indexOf(lp.id) < 0);
+			loosePropMenu.pid = lp.id;
+			loosePropMenu.lpindex = lpIndex;
+			loosePropMenu.popup(remote.getCurrentWindow(),{x:e.x,y:e.y,async:true});
+		}
 	}
 }, false);
 
@@ -351,7 +360,7 @@ theRoom.setEnviornment = function(w,h,bg) {
 	toggleLoadingBG();
 	theRoom.setEnviornmentSize(w,h);
 	backGround.style.backgroundImage = bg;
-    resetDisplayedBubbles();
+    Bubble.resetDisplayedBubbles();
     refresh(true);
 };
 
@@ -398,7 +407,7 @@ function passUrl(s) {
 }
 
 function loadRoom(room) {
-	deleteAllBubbles();
+	Bubble.deleteAllBubbles();
 
 	document.getElementById('palaceroom').innerText = room.name;
 
@@ -502,7 +511,7 @@ function serverDown(msg) { // still gotta implement this in the protocol lol
 	theRoom.lastLoadedBG = '';
 	theRoom.removeAllRoomPics();
 	stopAllUserAnimations();
-	deleteAllBubbles();
+	Bubble.deleteAllBubbles();
 	theRoom.users = [];
 	theUser = null;
 	theUserID = null;

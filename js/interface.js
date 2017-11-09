@@ -511,6 +511,7 @@ function refreshPropBagView(refresh) {
 
 	var cachedTiles = {}; // prevent excessive database calls
 	var children = propBag.children;
+
 	for (var i = children.length - 1; i >= 0; i--) {
 		var pid = children[i].dataset.pid;
 		var preTile = inView[pid];
@@ -522,7 +523,6 @@ function refreshPropBagView(refresh) {
 	}
 
 	var alreadyInDom = function(id) {
-		var children = propBag.children;
 		for (var i = children.length - 1; i >= 0; i--) {
 			if (id == Number(children[i].dataset.pid)) return children[i];
 		}

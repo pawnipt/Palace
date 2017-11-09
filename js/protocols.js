@@ -1,4 +1,5 @@
 var net = require('net');
+var textDecode = null, textEncode = null;
 
 class PalaceSocket {
 	constructor() {
@@ -6,6 +7,8 @@ class PalaceSocket {
 	}
 
 	connect(ip,port) {
+		textDecode = new TextDecoder('windows-1252'); // default encoding
+		textEncode = new TextEncoderr('windows-1252', { NONSTANDARD_allowLegacyEncoding: true }); // palace default! :\
 		if (!port) port = '9998';
 		if (this.soc) {
 			this.soc.socInstance = null; // kill circular reference..
@@ -155,6 +158,13 @@ class PalaceSocket {
 			case TCPmsgConsts.DRAW:
 				roomDraw(PalaceSocket.parseDraw(packet.slice(22,packet.length),packet.readUInt16LE(16)));
 				break;
+			case TCPmsgConsts.BLOWTHRU:
+				if (packet.readInt32LE(8) == 0x4f434e45) { // pserver plugin that sets encoding for the server
+					var encoding = packet.toString('binary',12,packet.readInt32LE(4) + 12);
+					textDecode = new TextDecoder(encoding);
+					textEncode = new TextEncoderr(encoding, { NONSTANDARD_allowLegacyEncoding: true });
+				}
+				break;
 			case TCPmsgConsts.ASSETQUERY:
 			case TCPmsgConsts.ALTLOGONREPLY:
 			case TCPmsgConsts.ROOMDESCEND:
@@ -172,7 +182,7 @@ class PalaceSocket {
 	static parseRoom(p) {
 		var roomPstring = function(b,offset) {
 			var o = b.readInt16LE(offset)+52;
-			return windows1252.decode(b.toString('binary',o+1,o+1+b.readInt8(o)));
+			return textDecode.decode(b.slice(o+1,o+1+b.readInt8(o)).toArrayBuffer());
 		};
 
 		var room = {id:p.readInt16LE(20),
@@ -299,7 +309,7 @@ class PalaceSocket {
 		var add = 12;
 		for (var i = 0; i < count; i++) {
 			var nameLen = b.readInt8(add+8);
-			list.push({name:windows1252.decode(b.toString('binary',add+9,add+9+nameLen)),
+			list.push({name:textDecode.decode(b.slice(add+9,add+9+nameLen).toArrayBuffer()),
 							id:b.readInt32LE(add),
 							flags:b.readInt16LE(add+4),
 							population:b.readInt16LE(add+6)});
@@ -314,7 +324,7 @@ class PalaceSocket {
 		var add = 12;
 		for (var i = 0; i < count; i++) {
 			var nameLen = b.readInt8(add+8);
-			list.push({name:windows1252.decode(b.toString('binary',add+9,add+9+nameLen)),
+			list.push({name:textDecode.decode(b.slice(add+9,add+9+nameLen).toArrayBuffer()),
 							userid:b.readInt32LE(add),
 							flags:b.readInt16LE(add+4),
 							roomid:b.readInt16LE(add+6)});
@@ -523,12 +533,12 @@ class PalaceSocket {
 	}
 
 	sendOperatorRequest(password) {
-		password = windows1252.encode(password);
+		password = Buffer.from(textEncode.encode(password));
 		var leng = password.length;
 		var packet = Buffer.alloc(13+leng);
 		packet.writeInt32LE(TCPmsgConsts.SUPERUSER,0);
 		packet.writeInt32LE(leng+1,4);
-		var data = palaceCrypt.Encrypt(Buffer.from(password));
+		var data = palaceCrypt.Encrypt(password);
 		packet.writeInt8(data.length,12);
 		data.copy(packet,13);
 		this.soc.write(packet);
@@ -541,25 +551,25 @@ class PalaceSocket {
 	}
 
 	sendWhisper(msg,whisperID) {
-		msg = windows1252.encode(msg);
+		msg = Buffer.from(textEncode.encode(msg));
 		var leng = msg.length;
 		var packet = Buffer.alloc(19+leng);
 		packet.writeInt32LE(TCPmsgConsts.XWHISPER,0);
 		packet.writeInt32LE(leng+7,4);
 		packet.writeInt32LE(whisperID,12);
 		packet.writeInt16LE(leng+3,16);
-		palaceCrypt.Encrypt(Buffer.from(msg,'binary')).copy(packet,18);
+		palaceCrypt.Encrypt(msg).copy(packet,18);
 		this.soc.write(packet);
 	}
 
 	sendXtlk(msg) {
-		msg = windows1252.encode(msg);
+		msg = Buffer.from(textEncode.encode(msg));
 		var leng = msg.length;
 		var packet = Buffer.alloc(15+leng);
 		packet.writeInt32LE(TCPmsgConsts.XTALK,0);
 		packet.writeInt32LE(leng+3,4);
 		packet.writeInt16LE(leng+3,12);
-		palaceCrypt.Encrypt(Buffer.from(msg,'binary')).copy(packet,14);
+		palaceCrypt.Encrypt(msg).copy(packet,14);
 		this.soc.write(packet);
 	}
 
@@ -634,12 +644,12 @@ class PalaceSocket {
 	}
 
 	sendUserName(name) {
-		name = windows1252.encode(name);
+		name = Buffer.from(textEncode.encode(name));
 		var packet = Buffer.alloc(name.length+13);
 		packet.writeInt32LE(TCPmsgConsts.USERNAME,0);
 		packet.writeInt32LE(name.length+1,4);
 		packet.writeInt8(name.length,12);
-		packet.write(name,13,'binary');
+		name.copy(packet,13);
 		this.soc.write(packet);
 	}
 
@@ -651,9 +661,9 @@ class PalaceSocket {
 		reg.writeInt32LE(palaceRegi.key,12);
 		reg.writeInt32LE(palaceRegi.crc,16);
 
-		var name = windows1252.encode(prefs.general.userName);
+		var name = Buffer.from(textEncode.encode(prefs.general.userName));
 		reg.writeInt8(name.length,20);
-		reg.write(name,21,'binary'); //should truncate to 31 bytes max
+		name.copy(reg,21);//should truncate to 31 bytes max
 
 		if (/^win/.test(process.platform)) { //add linux/unix identifier.
 			reg.writeUInt32LE(0x80000004,84); //must validate since value is
@@ -797,7 +807,7 @@ class PalaceCrypt {
 			lastChar = tmp^this.gEncryptTable[rc+1];
 			rc += 2;
 		}
-		return windows1252.decode(b.toString('binary'));
+		return textDecode.decode(b.toArrayBuffer());
 	}
 
 	get LongRandom() {

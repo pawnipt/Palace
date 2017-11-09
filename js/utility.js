@@ -1,21 +1,24 @@
 const shell = require('electron').shell;
 
-function getHsl(color,lightness) {
-	return 'hsl('+(22.5*color)+',50%,'+lightness+'%)';
-}
+Buffer.prototype.toArrayBuffer = function() {
+	return this.buffer.slice(this.byteOffset, this.byteOffset + this.byteLength);
+};
 Buffer.prototype.pString = function(offset) {
-	return windows1252.decode(this.toString('binary',offset+1,offset+1+this.readUInt8(offset)));
-};	
+	return textDecode.decode(this.slice(offset+1,offset+1+this.readUInt8(offset)).toArrayBuffer());
+};
 Buffer.prototype.cString = function(offset) {
-	return windows1252.decode(this.toString('binary',offset,this.indexOf(0,offset)));
+	return textDecode.decode(this.slice(offset,this.indexOf(0,offset)).toArrayBuffer());
 };
 Array.prototype.dedup = function() {
 	return this.filter(
-				function(e,i,a) {
-					return a.indexOf(e) == i;
-				}
-			);
+		function(e,i,a) {
+			return a.indexOf(e) == i;
+		}
+	);
 };
+function getHsl(color,lightness) {
+	return 'hsl('+(22.5*color)+',50%,'+lightness+'%)';
+}
 function getRandomInt(min, max) {
   min = Math.ceil(min);
   max = Math.floor(max);
@@ -24,7 +27,7 @@ function getRandomInt(min, max) {
 function getRandomIntInclusive(min, max) {
   min = Math.ceil(min);
   max = Math.floor(max);
-  return Math.floor(Math.random() * (max - min + 1)) + min; //The maximum is inclusive and the minimum is inclusive 
+  return Math.floor(Math.random() * (max - min + 1)) + min; //The maximum is inclusive and the minimum is inclusive
 }
 String.prototype.getNbrs = function() {
 	return this.match(/([.0-9]+)/g);
@@ -95,7 +98,7 @@ function toHex(str) {
 		var s = str.charCodeAt(i).toString(16);
 		if (s.length < 1) localmsg('length wrong '+s.length);
 		if (s.length % 2) s = "0" + s;
-		
+
 		hex += ''+s;
 	}
 	return hex;
@@ -125,7 +128,7 @@ function makeHyperLinks(str) { /* fix this, oddly; numbers fail! */
 				}
 			}
 		}
-	} else {	
+	} else {
 		s.textContent = str;
 	}
 	return s;
@@ -227,7 +230,7 @@ function getTextHeight(font) {
 function parseURL(url) {
 	var parser = document.createElement('a');
 	parser.href = url; //"http://example.com:3000/pathname/?search=test#hash";
-/* 
+/*
 	parser.protocol; // => "http:"
 	parser.host;     // => "example.com:3000"
 	parser.hostname; // => "example.com"

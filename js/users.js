@@ -287,7 +287,7 @@ class PalaceUser {
 		var namespan = document.createElement('div');
 		namespan.className = 'userlogname';
 
-		var bubInfo = bubbleAI(chat.chatstr);
+		var bubInfo = Bubble.processChatType(chat.chatstr);
 
 		if (bubInfo.type > -1 && bubInfo.start < chat.chatstr.length) new Bubble(user,chat,bubInfo);
 
