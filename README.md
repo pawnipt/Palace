@@ -8,14 +8,11 @@ Visual chat app built with electron@beta
 
 ## Building
 
-First you will want to install [Git](https://git-scm.com/downloads) and also [Node](https://nodejs.org/en/)
+First you will want to install [Node](https://nodejs.org/en/)
 
-You will then want to git clone Palace's source
-```
-git clone https://github.com/pawnipt/Palace.git
-```
+You will then want to download or `git clone` Palace's source
 
-Then you must install the dependancies described in package.json with the command line (make sure you are in the new Palace folder)
+Navigate to the Palace folder in your terminal and type the following command to install all of the projects dependancies
 ```
 npm install
 ```
