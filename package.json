@@ -12,7 +12,6 @@
   "author": "Jameson Heesen",
   "license": "MIT",
   "devDependencies": {
-    "asar": "^0.14.0",
     "electron": "^1.8.2-beta.2",
     "electron-packager": "^9.1.0",
     "electron-rebuild": "^1.6.0"
