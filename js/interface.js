@@ -161,39 +161,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	};
 
 
-	window.addEventListener('mousemove',function(event) { // need to redesign this function...
-		var restrictSidePanelSize = function(w) {
-			if (w > window.innerWidth/1.5) w = (window.innerWidth/1.5).fastRound();
-			if (w < 50) w = 50;
-			return w;
-		};
 
-		if (resizingPropBag || (propBag.offsetLeft <= event.x && event.x < propBag.offsetLeft+2)) {
-			propBag.style.cursor = 'ew-resize';
-		} else {
-			propBag.style.cursor = 'auto';
-		}
-		if (resizingChatLog || (logField.offsetLeft <= event.x && event.x < logField.offsetLeft+2)) {
-			logField.style.cursor = 'ew-resize';
-		} else {
-			logField.style.cursor = 'auto';
-		}
-		if (resizingChatLog) {
-			event.preventDefault();
-			var w = restrictSidePanelSize(resizingChatLog.x-event.x+resizingChatLog.w);
-			logField.style.width = w+'px';
-			setBodyWidth();
-			setGeneralPref('chatLogWidth',w);
-			scale2Fit();
-		} else if (resizingPropBag) {
-			event.preventDefault();
-			var w = restrictSidePanelSize(resizingPropBag.x-event.x+resizingPropBag.w);
-			propBag.style.width = w+'px';
-			setBodyWidth();
-			setGeneralPref('propBagWidth',w);
-			refreshPropBagView();
-		}
-	});
 
 
 	propBag.onscroll = function() {
@@ -241,12 +209,10 @@ let contextMenuListener = new ContextMenuListener((info) => {
 				refreshPropBagView(true);
 				setPropButtons();
 			}
-		} else if (event.layerX-window.pageXOffset < 2) {
+		} else if (event.x-propBag.offsetLeft < 2) {
 			event.preventDefault();
 			window.addEventListener('mouseup',resizePropBagEnd);
-			var style = getComputedStyle(propBag);
-			var width = parseInt(style.getPropertyValue('width'));
-			resizingPropBag = {x:event.x,w:width};
+			resizingPropBag = {x:event.x,w:propBag.offsetWidth};
 		}
 	};
 	document.getElementById('deleteprops').onclick = function() {
@@ -379,14 +345,45 @@ let contextMenuListener = new ContextMenuListener((info) => {
 		}
 	};
 
+	window.addEventListener('mousemove',function(event) { // need to redesign this function...
+		var restrictSidePanelSize = function(w) {
+			if (w > window.innerWidth/1.5) w = (window.innerWidth/1.5).fastRound();
+			if (w < 50) w = 50;
+			return w;
+		};
+
+		if (resizingPropBag || (propBag.offsetLeft <= event.x && event.x < propBag.offsetLeft+2)) {
+			propBag.style.cursor = 'ew-resize';
+		} else {
+			propBag.style.cursor = 'auto';
+		}
+		if (resizingChatLog || (logField.offsetLeft <= event.x && event.x < logField.offsetLeft+2)) {
+			logField.style.cursor = 'ew-resize';
+		} else {
+			logField.style.cursor = 'auto';
+		}
+		if (resizingChatLog) {
+			event.preventDefault();
+			var w = restrictSidePanelSize(resizingChatLog.x-event.x+resizingChatLog.w);
+			logField.style.width = w+'px';
+			setBodyWidth();
+			setGeneralPref('chatLogWidth',w);
+			scale2Fit();
+		} else if (resizingPropBag) {
+			event.preventDefault();
+			var w = restrictSidePanelSize(resizingPropBag.x-event.x+resizingPropBag.w);
+			propBag.style.width = w+'px';
+			setBodyWidth();
+			setGeneralPref('propBagWidth',w);
+			refreshPropBagView();
+		}
+	});
 
 	document.getElementById('log').onmousedown = function(event) { // trigger for log resizing
-		if (event.layerX-window.pageXOffset < 2) {
+		if (event.x-logField.offsetLeft < 2) {
 			event.preventDefault();
 			window.addEventListener('mouseup',resizeChatLogEnd);
-			var style = getComputedStyle(logField);
-			var width = parseInt(style.getPropertyValue('width'));
-			resizingChatLog = {x:event.x,w:width};
+			resizingChatLog = {x:event.x,w:logField.offsetWidth};
 		}
 	};
 
