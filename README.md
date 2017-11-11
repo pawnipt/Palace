@@ -23,7 +23,7 @@ npm install --global windows-build-tools
 
 ### Finally
 ```
-npm run start
+npm start
 ```
 or
 ```
