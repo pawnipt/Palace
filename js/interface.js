@@ -1,14 +1,16 @@
-var roomList = null,
+var smileys = {},
+	roomList = null,
 	userList = null,
 	logField = document.getElementById('log'),
 	genericSmiley = new Image(),
 	selectedBagProps = [],
 	propBag = document.getElementById('props'),
+	propBagRetainer = document.getElementById('propbagretainer'), // adjust retainer size to set the scrollbar
 	resizingPropBag = null,
 	resizingChatLog = null,
+	directoryList = null,
 	viewScale = 1,
 	viewScaleTimer = null,
-	scanViewProps = [],
 	dragPropID = null,
 	currentColorControl = null,
 	keysDown = [];
@@ -29,6 +31,70 @@ let contextMenuListener = new ContextMenuListener((info) => {
 
 
 
+(function () {
+	//slice up and preload Smiley Set, used for canvas drawing and also the smiley picker
+    var buff = document.createElement('canvas');
+	buff.height = 44;
+	buff.width = 44;
+	buff = buff.getContext('2d');
+	var smile = document.createElement('img'); //maybe just store the images as canvases? im not sure which is more efficient given the substantial amount of times they are redrawn to the canvas
+	smile.onload = function() {
+		for (var x = 0; x < 13; x++) {
+			for (var y = 0; y < 16; y++) {
+				buff.clearRect(0,0,44,44);
+				buff.drawImage(this,x*45,y*45,44,44,0,0,44,44);
+				smileys[x+','+y] = document.createElement('img');
+				smileys[x+','+y].src = buff.canvas.toDataURL();
+			}
+		}
+
+		var smileycolorpicker = document.getElementById('smileycolorpicker');
+	//	background: linear-gradient(to right, red,yellow,green,blue,violet);
+
+		var s = '';
+		for (var i = 0; i < 15; i++) s += getHsl(i,50)+',';
+		smileycolorpicker.style.background = 'linear-gradient(to right,'+s.substring(0,s.length-1)+')';
+		var mouseDown = false;
+		smileycolorpicker.onmousemove = function(event) {
+			var color = (event.layerX/(this.clientWidth/15)).fastRound();
+			if (mouseDown && color > -1 && color < 16 && PalaceUser.userColorChange(theUserID,color)) {
+				palaceTCP.sendFaceColor(color);
+			}
+		};
+		smileycolorpicker.onmousedown = function(event) {
+			event.preventDefault();
+			mouseDown = true;
+			smileycolorpicker.onmousemove(event);
+		};
+		smileycolorpicker.onmouseup = function(event) {
+			mouseDown = false;
+		};
+		smileycolorpicker.onmouseleave = smileycolorpicker.onmouseup;
+		var smileypicker = document.getElementById('smileypicker');
+		for (var i = 0; i < 13; i++) {
+			var img = smileys[i+',0'];
+			img.className = 'smileyface';
+			img.draggable = false;
+			img.onclick = function() {
+				var faces = this.parentNode.getElementsByTagName('img');
+				for (var e = 0; e < faces.length; e++) {
+					if (faces[e] == this && PalaceUser.userFaceChange(theUserID,e)) {
+						palaceTCP.sendFace(e);
+					}
+				}
+			}
+			smileypicker.appendChild(img);
+		}
+
+		var smileyfaces = document.getElementById('smileyfaces');
+		smileyfaces.style.backgroundImage = 'url('+smileys['5,0'].src+')'
+		smileyfaces.onclick = function(event) {
+			toggleToolBarControl('smileypicker');
+		};
+		this.onload = null;
+	};
+	smile.src = 'img/smileys.png';
+})();
 
 (function () { // setup
 
@@ -47,6 +113,8 @@ let contextMenuListener = new ContextMenuListener((info) => {
 			item.onfocus=function(){this.blur()};
 		}
 	}
+
+
 
 	var preventFileDrop = function(event) {
 		if (event.target != bgEnv) {
@@ -132,9 +200,8 @@ let contextMenuListener = new ContextMenuListener((info) => {
 		refreshPropBagView();
 	};
 	propBag.ondragstart = function(event) {
-		var dragged = event.target;
-		dragPropID = Number(getBagPropID(dragged));
-		var img = dragged.cloneNode(false);
+		dragPropID = Number(event.target.parentNode.dataset.pid);
+		var img = event.target.cloneNode(false);
 		event.dataTransfer.setDragImage(img,img.width/2,img.height/2);
 	};
 	propBag.clickedProp = function(target) { // adding function to element! lol
@@ -485,27 +552,27 @@ function enablePropButtons() {
 	document.getElementById('removeprops').disabled = (theUser.props.length == 0);
 }
 
+
 function refreshPropBagView(refresh) {
-	var bagWidth = propBag.clientWidth;
-	var tileSize = prefs.general.propBagTileSize;
-	var visibleColumns = (bagWidth / tileSize).fastRound();
-	if (visibleColumns < 1) visibleColumns = 1;
-	var visibleRows = ((window.innerHeight - 45) / tileSize).fastRound(); // 45 is main toolbar height
 
-	var propBagRetainer = document.getElementById('propbagretainer'); // adjust retainer size to set the scrollbar
+	var bagWidth = propBag.clientWidth,
+		tileSize = prefs.general.propBagTileSize,
+		visibleColumns = (bagWidth / tileSize).fastRound(),
+		visibleRows = ((window.innerHeight - 45) / tileSize).fastRound(), // 45 is main toolbar height
+		count = visibleRows * visibleColumns,
+		max = propBagList.length,
+		scroll = (propBag.scrollTop/tileSize).fastRound(),
+		toView = {};
+
 	propBagRetainer.style.height = ((propBagList.length/visibleColumns).fastRound()*tileSize).fastRound() + 'px';
-
-	var count = visibleRows * visibleColumns;
-	var max = propBagList.length;
-	var scroll = (propBag.scrollTop/tileSize).fastRound();
-
-	var inView = {};
+	if (visibleColumns < 1) visibleColumns = 1;
 	scroll -= 2; // -2 for a little extra loaded up top
 	if (scroll < 0) scroll = 0;
+
 	for (var y = scroll; y < visibleRows+scroll+4; y++) { // +4 for a little extra loaded down below
 		for (var x = 0; x < visibleColumns; x++) {
 			var propIndex = y*visibleColumns+x;
-			if (max > propIndex) inView[propBagList[propIndex]] = {x:x*tileSize,y:y*tileSize};
+			if (max > propIndex) toView[propBagList[propIndex]] = {x:x*tileSize,y:y*tileSize};
 		}
 	}
 
@@ -514,7 +581,7 @@ function refreshPropBagView(refresh) {
 
 	for (var i = children.length - 1; i >= 0; i--) {
 		var pid = children[i].dataset.pid;
-		var preTile = inView[pid];
+		var preTile = toView[pid];
 		var tile = children[i];
 		if (tile != propBagRetainer && (refresh || !preTile || preTile.x != parseInt(tile.style.left) || preTile.y != parseInt(tile.style.top))) {
 			cachedTiles[pid] = children[i];
@@ -528,8 +595,8 @@ function refreshPropBagView(refresh) {
 		}
 	};
 
-	for (var key in inView) {
-		var e = inView[key];
+	for (var key in toView) {
+		var e = toView[key];
 		var pid = Number(key);
 		var pc = alreadyInDom(pid);
 		if (!pc) {
@@ -566,14 +633,6 @@ function resizePropBagEnd(event) {
 }
 
 
-function upPropBag(event) {
-	//lastBagPropsSelected.find(function(d){d.firstChild.draggable = true});
-}
-
-function getBagPropID(img) {
-	return Number(img.parentNode.dataset.pid);
-}
-
 function wearSelectedProps() {
 	if (selectedBagProps.length > 9) {
 		//beep maybe
@@ -588,16 +647,6 @@ function wearSelectedProps() {
 			donprop(selectedBagProps[0]);
 		}
 	}
-
-// 	var childs = propBag.children;
-// 	for (var i = childs.length - 1; i >= 0; i--) {
-// 		var c = childs[i];
-// 		if (selectedBagProps.indexOf(Number(c.dataset.pid)) > -1) {
-// 			c.firstChild.style.filter = 'blur(2px)';
-// 			setTimeout(function(){c.firstChild.style.filter = 'none';},150);
-// 		}
-// 	}
-
 }
 function setPropButtons() {
 	var isSelected = (selectedBagProps.length > 0);
@@ -609,36 +658,10 @@ function setPropButtons() {
 
 
 
-
-/*
-function colorSelectHSL(event) {
-
-	var s,l,sx,ly;
-
-	s = event.layerX/2;
-	sx = (((event.layerX/2)));
-	ly = 100-(event.layerY/2);
-	l = 50-(sx+ly)/2;
-
-
-	var rgb = event.target.style.backgroundColor.getNbrs();
-	var hsl = rgbToHsl(rgb[0],rgb[1],rgb[2]);
-	hsl = 'hsl('+(hsl[0]*360)+','+s+'%,'+l+'%)';
-	logmsg(hsl);
-
-	document.getElementById('colorselector').style.backgroundColor = hsl;
-
-
-}
-*/
-
+ // color picker code, kinda ugly..
 function dragRGB(event) {
 	colorSelectRGB(event);
-	/* var cselector = document.getElementById('colorselector'); */
-	/* should calculate padding instead of hard coded numbers */
-	/* setPickerCaret(event.x-cselector.offsetLeft-8,event.y-cselector.offsetTop-8); */
 }
-
 function setPickerCaret(x,y) {
 	var caret = document.getElementById('pickercaret');
 	if (y < 0) y = 0;
@@ -648,19 +671,16 @@ function setPickerCaret(x,y) {
 	caret.style.left = x-2+'px';
 	caret.style.top = y-2+'px';
 }
-
 function setRainbowCaret(y) {
 	var caret = document.getElementById('rainbowcaret');
 	if (y < 0) y = 0;
 	if (y > 199) y = 199;
 	caret.style.top = y-1+'px';
 }
-
 function dragRGBEnd() {
 	window.removeEventListener('mousemove',dragRGB);
 	window.removeEventListener('mouseup',dragRGBEnd);
 }
-
 function colorSelectRGB(event,caret) {
 	var pickerControl = document.getElementById('colorpicker'),
 		color, x, y;
@@ -705,16 +725,13 @@ function colorSelectRGB(event,caret) {
 	currentColorControl.doColorChange(color);
 	if (x) setControlPrefs(currentColorControl.id,{x:x,y:y});
 }
-
 function dragRainbow(event) {
 	colorSelectRainbow(event);
 }
-
 function dragRainbowEnd(event) {
 	window.removeEventListener('mousemove',dragRainbow);
 	window.removeEventListener('mouseup',dragRainbowEnd);
 }
-
 function colorSelectRainbow(event) {
 	var hue,y,crainbow;
 
@@ -733,9 +750,6 @@ function colorSelectRainbow(event) {
 	fillColorPicker(hue);
 	colorSelectRGB(null,true);
 }
-
-
-
 function fillColorPicker(hue) {
 	var shCxt = document.getElementById('colorpicker').getContext('2d'),
 		w = shCxt.canvas.width,
@@ -755,7 +769,6 @@ function fillColorPicker(hue) {
 	shCxt.fillStyle = bla;
 	shCxt.fillRect(0,0,w,h);
 }
-
 function setColorPicker(selectorsColor) {
 	var rgb = selectorsColor.getNbrs();
 	var o = getGeneralPref(currentColorControl.id);
@@ -778,8 +791,6 @@ function setColorPicker(selectorsColor) {
 	o = getControlPrefs(currentColorControl.id);
 	if (o) setPickerCaret(o.x,o.y);
 }
-
-
 function openDrawColor(event,func) {
 
 	var cp = event.currentTarget;
@@ -810,7 +821,6 @@ function openDrawColor(event,func) {
 		},0);
 	}
 }
-
 function closeColorSelector(x,y,fade) {
 	var cselector = document.getElementById('colorselector');
 	cselector.firstElementChild.style.display = 'none';
@@ -823,11 +833,9 @@ function closeColorSelector(x,y,fade) {
 	toggleToolBarControl(cselector.id);
 	currentColorControl = null;
 }
-
 function getComputedBgColor(element) {
 	return window.getComputedStyle(element).getPropertyValue('background-color');
 }
-
 function colorSelectOpacity(event) {
 	colorSelectRGB(null);
 }

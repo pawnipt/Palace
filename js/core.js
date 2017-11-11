@@ -1,13 +1,12 @@
-var smileys = {},
-	mediaUrl = "",
+var mediaUrl = "",
 	grabbedProp = null,
-	directoryList = null,
 	whisperUserID = null,
 	mouseHoverUser = null,
 	mouseLooseProp = null,
 	mouseSelfProp = null,
 	drawPoints = [], // temp coordinates buffer for when the user draws in the room.
 	theRoom = {users:[],looseProps:[],serverUserCount:0,lastUserLogOnID:0,lastUserLogOnTime:0}; // still gotta make a class for PalaceRoom!
+	// redo theRoom, make it a class PalaceRoom!...
 
 //frequently accessed elements
 const overLayer = document.getElementById('container');
@@ -74,25 +73,7 @@ bgEnv.addEventListener('contextmenu', (e) => {
 }, false);
 
 
-(function () {
-	//slice up and preload Smiley Set
-    var buff = document.createElement('canvas');
-	buff.height = 44;
-	buff = buff.getContext('2d');
-	var smile = document.createElement('img'); //maybe just store the images as canvases? im not sure which is more efficient given the substantial amount of times they are redrawn to the canvas
-	buff.width = 44;
-	smile.onload = function() {
-		for (var x = 0; x < 13; x++) {
-			for (var y = 0; y < 16; y++) {
-				buff.clearRect(0,0,44,44);
-				buff.drawImage(this,x*45,y*45,44,44,0,0,44,44);
-				smileys[x+','+y] = document.createElement('img');
-				smileys[x+','+y].src = buff.canvas.toDataURL();
-			}
-		}
-	};
-	smile.src = 'img/smileys.png';
-})();
+
 
 
  // setup core (main canvas related stuff)
@@ -354,7 +335,7 @@ theRoom.setSpotImg = function(spot) {
 theRoom.unloadBgVideo = function() {
 	document.getElementById('muteaudio').style.display = 'none';
 	bgVideo.style.display = 'none';
-	if (bgVideo && bgVideo.src != '') bgVideo.src = '';
+	if (bgVideo.src != '') bgVideo.src = '';
 };
 theRoom.setEnviornment = function(w,h,bg) {
 	toggleLoadingBG();

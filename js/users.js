@@ -240,6 +240,7 @@ class PalaceUser {
 			user.color = color;
 			user.preRenderNametag();
 			reDraw();
+			return true;
 		}
 	}
 	static userFaceChange(id,face) {
@@ -247,6 +248,7 @@ class PalaceUser {
 		if (user && user.face != face) {
 			user.face = face;
 			reDraw();
+			return true;
 		}
 	}
 	static userPropChange(id,props) {
@@ -287,6 +289,8 @@ class PalaceUser {
 		var namespan = document.createElement('div');
 		namespan.className = 'userlogname';
 
+
+
 		var bubInfo = Bubble.processChatType(chat.chatstr);
 
 		if (bubInfo.type > -1 && bubInfo.start < chat.chatstr.length) new Bubble(user,chat,bubInfo);
@@ -298,6 +302,11 @@ class PalaceUser {
 			namespan.innerText = '***';
 			if (chat.whisper !== true) chatspan.style.color = 'IndianRed';
 		}
+
+		var timestamp = document.createElement('span');
+		timestamp.className = 'userlogtime';
+		timestamp.innerText = ' '+timeStampStr(true);
+		namespan.appendChild(timestamp);
 
 		if (chat.whisper === true) {
 			chatspan.className = chatspan.className + ' userlogwhisper';

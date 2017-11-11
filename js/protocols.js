@@ -653,6 +653,22 @@ class PalaceSocket {
 		this.soc.write(packet);
 	}
 
+	sendFace(face) {
+		var packet = Buffer.alloc(14);
+		packet.writeInt32LE(TCPmsgConsts.USERFACE,0);
+		packet.writeInt32LE(2,4);
+		packet.writeInt16LE(face,12);
+		this.soc.write(packet);
+	}
+
+	sendFaceColor(color) {
+		var packet = Buffer.alloc(14);
+		packet.writeInt32LE(TCPmsgConsts.USERCOLOR,0);
+		packet.writeInt32LE(2,4);
+		packet.writeInt16LE(color,12);
+		this.soc.write(packet);
+	}
+
 	sendRegistration() {
 		var reg =  Buffer.alloc(140);
 		reg.writeInt32LE(TCPmsgConsts.LOGON,0);
@@ -678,8 +694,7 @@ class PalaceSocket {
 		reg.writeInt32LE(0x00011940,100);
 		reg.writeInt32LE(0x00011940,104);
 		//reg.writeInt16LE(0,108); //optional room ID to land in (if server allows it)
-
-		reg.write('PC5000',110,6);
+		reg.write('PC5'+remote.app.getVersion().replace(/\./g, ''),110,6);
 
 		reg.writeInt32LE(0x00000041,120);
 		if (this.retryRegistration) {

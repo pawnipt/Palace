@@ -1,5 +1,20 @@
 const shell = require('electron').shell;
 
+function timeStampStr(seconds) {
+	var now = new Date();
+
+	var time = [ now.getHours(), now.getMinutes(), now.getSeconds() ];
+	var suffix = ( time[0] < 12 ) ? "AM" : "PM";
+	time[0] = ( time[0] < 12 ) ? time[0] : time[0] - 12;
+	time[0] = time[0] || 12;
+
+	// If seconds and minutes are less than 10, add a zero
+	if ( time[1] < 10 ) time[1] = "0" + time[1];
+	if ( time[2] < 10 ) time[2] = "0" + time[2];
+
+	if (!seconds) time.pop();
+	return time.join(":") + " " + suffix;
+}
 Buffer.prototype.toArrayBuffer = function() {
 	return this.buffer.slice(this.byteOffset, this.byteOffset + this.byteLength);
 };

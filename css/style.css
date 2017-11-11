@@ -139,7 +139,7 @@ overflow:hidden;
 resize:both;
 width:auto;
 height:65%;
-max-height:80%;
+max-height:calc(100% - 200px);
 max-width:80%;
 border-radius:6px;
 position:fixed;
@@ -243,7 +243,7 @@ background-repeat:no-repeat;
 text-indent:56px;
 /* font-weight:bold; */
 }
-/* 
+/*
 .sListItem > .listName:hover {
 background-size:100px;
 height:100px;
@@ -533,7 +533,7 @@ pointer-events:none;
 opacity:0.5;
 filter:grayscale(100%);
 }
-/* 
+/*
 #prefs > div {
 width:300px;
 height:20px;
@@ -548,7 +548,7 @@ height:200px;
 }
 #prefs, #propeditor {
 font-size:small;
-transition:opacity 0.2s,transform 0.2s;
+transition:opacity 0.3s,transform 0.3s;
 display:none;
 box-shadow:0 0 16px black;
 background-color:RGBA(221,221,221,.95);
@@ -690,7 +690,19 @@ margin-left:3px;
 .userlogname {
 font-size:113%;
 font-weight:bold;
-margin-right:10%;
+margin-right:4px;
+}
+.userlogtime {
+font-weight:normal;
+float:right;
+font-size:x-small;
+color:#7788AA;
+opacity:0;
+display:none;
+}
+.userlogchat:hover .userlogtime {
+opacity:1;
+display:inline;
 }
 .logmsg {
 font-size:85%;
@@ -726,7 +738,7 @@ box-shadow:0 0 6px black;
 transition:0.12s ease-out;
 transition-property:top,left,width,height,opacity,background-color;
 }
-			
+
 #colorselector div:first-child {
 position:relative;
 width:100%;
@@ -840,9 +852,79 @@ position:relative;
 display:none;
 background-image:url(../img/audioon.png);
 }
+#smileypickertoggle:checked ~ #smileypicker {
+opacity:1;
+transform:none;
+}
+#smileypicker {
+display:none;
+transition:transform 0.3s, opacity 0.3s;
+opacity:0;
+background-color:RGBA(221,221,221,.95);
+transform:scale(0);
+box-shadow:0 0 6px black;
+z-index:1002;
+padding:6px;
+overflow:hidden;
+width:133px;
+height:73px;
+border-radius:6px;
+position:fixed;
+left:6px;
+bottom:30px;
+}
+
+#smileycolorpicker {
+position:absolute;
+width:108px;
+height:22px;
+bottom:6px;
+right:8px;
+border-radius:4px;
+
+}
+.smileyface {
+transition:opacity 0.3s;
+opacity:.7;
+width:22px;
+height:22px;
+filter:grayscale(100%);
+}
+.smileyface:hover {
+opacity:1;
+}
+.smileyface:active {
+filter:brightness(120%) grayscale(100%);
+}
+#smileyfaces:hover {
+opacity:1;
+}
+#smileyfaces:active {
+background-size:22px;
+}
+#smileyfaces {
+cursor:pointer;
+transition:opacity 0.3s, filter 0.3s;
+filter:grayscale(100%);
+opacity:.75;
+background-size:20px;
+background-repeat:no-repeat;
+background-position:center;
+position:fixed;
+width:23px;
+height:23px;
+left:0px;
+bottom:0px;
+padding:0px;
+margin:0px;
+z-index:102;
+}
+
 #chatbox {
+text-indent:21px;
 position:fixed;
 bottom:0px;
+left:0px;
 width:100%;
 background-color:RGBA(255,255,255,0.8);
 z-index:101;
