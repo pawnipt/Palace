@@ -50,7 +50,7 @@ bgEnv.addEventListener('contextmenu', (e) => {
 	e.preventDefault();
 
 	var x = (event.layerX/viewScale).fastRound();
-	var y = ((event.layerY + ((45*webFrame.getZoomFactor()) - 45)) /viewScale).fastRound(); // get excess toolbar height if windows is scaling
+	var y = ((event.layerY + (45*webFrame.getZoomFactor() - 45)) /viewScale).fastRound(); // get excess toolbar height if windows is scaling
 
 	var user = mouseOverUser(x,y);
 
@@ -226,7 +226,7 @@ bgEnv.onmousedown = function(event) {
 		event.preventDefault();
 		var isDrawing = document.getElementById('drawcheckbox').checked;
 		var x = (event.layerX/viewScale).fastRound();
-		var y = ((event.layerY + ((45*webFrame.getZoomFactor()) - 45)) /viewScale).fastRound(); // get excess toolbar height if windows is scaling
+		var y = ((event.layerY + (45*webFrame.getZoomFactor() - 45)) /viewScale).fastRound(); // get excess toolbar height if windows is scaling
 		if (isDrawing) {
 			var offset = 0;
 			if (prefs.draw.type == 0) offset = Math.floor(prefs.draw.size/2);
@@ -563,13 +563,22 @@ function loosePropDelete(index) {
 		if (theRoom.looseProps.length > 0) change = true;
 		theRoom.looseProps = [];
 	} else if (theRoom.looseProps.length >= index) {
-		if (grabbedProp != null && grabbedProp.index > -1) {
-			if (index == grabbedProp.index) {
-				grabbedProp = null;
-			} else if (index < grabbedProp.index) {
-				grabbedProp.index--;
+
+		var adjustIndex = function(idx) {
+			if (idx > -1) {
+				if (index == idx) {
+					return null;
+				} else if (index < idx) {
+					return --idx;
+				}
+				return idx;
 			}
-		}
+		};
+
+		if (grabbedProp != null) grabbedProp.index = adjustIndex(grabbedProp.index);
+		if (mouseLooseProp != null) mouseLooseProp = adjustIndex(mouseLooseProp);
+		if (loosePropMenu.lpindex != undefined) loosePropMenu.lpindex = adjustIndex(loosePropMenu.lpindex);
+
 		change = true
 		theRoom.looseProps.splice(index,1);
 	}

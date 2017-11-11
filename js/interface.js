@@ -56,7 +56,8 @@ let contextMenuListener = new ContextMenuListener((info) => {
 		smileycolorpicker.style.background = 'linear-gradient(to right,'+s.substring(0,s.length-1)+')';
 		var mouseDown = false;
 		smileycolorpicker.onmousemove = function(event) {
-			var color = (event.layerX/(this.clientWidth/15)).fastRound();
+			//idfk...
+			var color = ((event.x-(this.offsetLeft+this.parentNode.offsetLeft))/(this.clientWidth/15)).fastRound();
 			if (mouseDown && color > -1 && color < 16 && PalaceUser.userColorChange(theUserID,color)) {
 				palaceTCP.sendFaceColor(color);
 			}
