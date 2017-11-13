@@ -113,7 +113,7 @@ bgEnv.onmousemove = function(event) {
 		var x = (event.layerX/viewScale).fastRound();
 		var y = ((event.layerY+(45*webFrame.getZoomFactor() - 45))/viewScale).fastRound();
 
-		if (palace.theRoom.grabbedProp == null) {
+		if (!palace.theRoom.grabbedProp) {
 
 			if (!event.shiftKey) { /* shift toggles between user and props */
 				var mUser = palace.theRoom.mouseOverUser(x,y);
@@ -167,9 +167,9 @@ bgEnv.onmousemove = function(event) {
 			palace.theRoom.reDraw();
 		}
 
-		if (palace.theRoom.grabbedProp != null && event.altKey) {
+		if (palace.theRoom.grabbedProp && event.altKey) {
 			setEnvCursor('copy');
-		} else if (palace.theRoom.mouseLooseProp != null || palace.theRoom.mouseSelfProp != null || palace.theRoom.grabbedProp != null) {
+		} else if (palace.theRoom.mouseLooseProp != null || palace.theRoom.mouseSelfProp != null || palace.theRoom.grabbedProp) {
 			setEnvCursor('move');
 		} else if (palace.theRoom.mouseHoverUser == palace.theUser && event.ctrlKey) {
 			setEnvCursor('context-menu');
@@ -194,7 +194,7 @@ bgEnv.onmouseleave = function(event) { // this wouldn't be nessacery if i used t
 };
 bgEnv.onmouseup = function(event) {
 	if (palace.theRoom) {
-		if (palace.theRoom.grabbedProp != null) {
+		if (palace.theRoom.grabbedProp) {
 			var x = (event.layerX/viewScale).fastRound();
 			var y = ((event.layerY+(45*webFrame.getZoomFactor() - 45))/viewScale).fastRound();
 			var overSelf = (palace.theUser && palace.theUser.x-22 < x && palace.theUser.x+22 > x && palace.theUser.y-22 < y && palace.theUser.y+22 > y);
@@ -217,7 +217,7 @@ bgEnv.onmouseup = function(event) {
 			}
 			palace.theRoom.reDraw();
 		}
-		palace.theRoom.grabbedProp = null;
+		delete palace.theRoom.grabbedProp;
 		if (palace.theUser && palace.theUser.propsChanged === true) palace.selfPropChange();
 	}
 };
@@ -285,8 +285,13 @@ bgEnv.onmousedown = function(event) {
 								break;
 							case spotConsts.types.deadBolt:
 								var d = palace.theRoom.getSpot(dest);
-								if (d != null)
-									window.status = (d.state == 0?'lockdoor ':'unlockdoor ')+dest; // must implement this protocol....
+								if (d != null) {
+									if (d.state == 0) {
+										palace.sendLockRoom(dest)
+									} else {
+										palace.sendUnlockRoom(dest)
+									}
+								}
 								break;
 						}
 					}
@@ -529,7 +534,7 @@ class Renderer {
 			var size = 1/user.scale;
 			this.context.scale(size,size);
 		}
-		var loc = user.nametagLoc();
+		var loc = user.nameRectBounds;
 
 		this.context.drawImage(user.nametag, loc.x, loc.y);
 		if (this.context.shadowBlur > 0) {
@@ -646,7 +651,6 @@ class Renderer {
 	preDrawDrawing() {
 		var l = this.drawPoints.length;
 		if (l > 0) {
-			//{type:0,size:2,front:true,color:"rgba(255,0,0,1)",fill:"rgba(255,166,0,0.5)"}
 			this.context.lineWidth = prefs.draw.size;
 			this.context.fillStyle = prefs.draw.fill;
 			this.context.strokeStyle = prefs.draw.color;
@@ -710,7 +714,6 @@ class PalaceRoom extends Renderer {
 
 		Object.assign(this, info); // copy info to the new instance
 
-		this.grabbedProp = null; // should get rid of this null bussiness
 		this.whisperUserID = null;
 		this.mouseHoverUser = null;
 		this.mouseLooseProp = null;
@@ -856,7 +859,7 @@ class PalaceRoom extends Renderer {
 		this.looseProps.unshift(data);
 
 		/* corrects index of currently dragged loose prop to prevent moving the wrong one */
-		if (this.grabbedProp != null && this.grabbedProp.index > -1) this.grabbedProp.index++;
+		if (this.grabbedProp && this.grabbedProp.index > -1) this.grabbedProp.index++;
 		if (this.mouseLooseProp != null) this.mouseLooseProp++;
 		if (loosePropMenu.lpindex != undefined) loosePropMenu.lpindex++;
 
@@ -894,7 +897,7 @@ class PalaceRoom extends Renderer {
 				}
 			};
 
-			if (this.grabbedProp != null) this.grabbedProp.index = adjustIndex(this.grabbedProp.index);
+			if (this.grabbedProp) this.grabbedProp.index = adjustIndex(this.grabbedProp.index);
 			if (this.mouseLooseProp != null) this.mouseLooseProp = adjustIndex(this.mouseLooseProp);
 			if (loosePropMenu.lpindex != undefined) loosePropMenu.lpindex = adjustIndex(loosePropMenu.lpindex);
 
@@ -1108,7 +1111,7 @@ class PalaceRoom extends Renderer {
 	}
 
 	mouseOverSelfProp(x,y) {
-		if (this.grabbedProp == null) {
+		if (!this.grabbedProp) {
 			for (var i = palace.theUser.props.length; --i >= 0;) {
 				var aProp = allProps[palace.theUser.props[i]];
 				var px = (palace.theUser.x + aProp.x)-22;
@@ -1121,7 +1124,7 @@ class PalaceRoom extends Renderer {
 	}
 
 	mouseOverLooseProp(x,y) {
-		if (this.grabbedProp == null) {
+		if (!this.grabbedProp) {
 			for (var i = this.looseProps.length; --i >= 0;) {
 				var lProp = this.looseProps[i];
 				var aProp = allProps[lProp.id];

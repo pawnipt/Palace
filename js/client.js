@@ -604,6 +604,24 @@ class PalaceClient {
 		this.soc.write(packet);
 	}
 
+	sendUnlockRoom(spotid) {
+		var packet = Buffer.alloc(16);
+		packet.writeInt32LE(TCPmsgConsts.DOORUNLOCK,0);
+		packet.writeInt32LE(4,4);
+		packet.writeInt16LE(this.theRoom.id,12);
+		packet.writeInt16LE(spotid,14);
+		this.soc.write(packet);
+	}
+
+	sendLockRoom(spotid) {
+		var packet = Buffer.alloc(16);
+		packet.writeInt32LE(TCPmsgConsts.DOORLOCK,0);
+		packet.writeInt32LE(4,4);
+		packet.writeInt16LE(this.theRoom.id,12);
+		packet.writeInt16LE(spotid,14);
+		this.soc.write(packet);
+	}
+
 	sendOperatorRequest(password) {
 		password = Buffer.from(this.textEncoding.encode(password));
 		var leng = password.length;

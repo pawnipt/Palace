@@ -83,12 +83,12 @@ class PalaceUser {
 	}
 
 
-	nametagLoc() { // need to reduce size of this function!
+	get nameRectBounds() { // need to reduce size of this function!
 		var w = this.nametag.width;
 		var h = this.nametag.height;
 		var half = (w/2);
 		var x = this.x*this.scale;
-		var y = (this.y+2)*this.scale;
+		var y = this.y*this.scale;
 		var bgw = bgEnv.width*this.scale;
 		var bgh = bgEnv.height*this.scale;
 
@@ -97,14 +97,14 @@ class PalaceUser {
 
 		if (this.scale != 1) {
 			x = x-half;
-			y = y+(h/2-2);
+			y = y+(h/2);
 		} else {
-			x = (x-half).fastRound();
-			y = (y+(h/2-2)).fastRound();
+			x = (x-half).fastRound(); // don't want floating point coordinates if not scaling
+			y = (y+(h/2)).fastRound();
 		}
 
 		if (y < 0) y = 0;
-		if (y > bgh-(h-3)) y = bgh-(h-3);
+		if (y > bgh-h) y = bgh-h;
 
 		return {x:x,y:y,w:w,h:h};
 	}
