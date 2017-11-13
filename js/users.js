@@ -1,26 +1,23 @@
-var theUser = null;
-var theUserID = null;
-var theUserStatus = null;
 var userNameTagHeight = getTextHeight('bold 18px sans-serif')+2;
 
 class PalaceUser {
 	constructor(info) {
 		Object.assign(this, info); // copy info to the new instance
-		this.preRenderNametag();
 		this.scale = 1;
+		this.preRenderNametag();
 	}
 
 	poke() { // when you click a user (might use for something else later) pressure variable might be an idea!
 		var target = this;
 		this.scale = 1.05;
-		reDraw();
+		palace.theRoom.reDraw();
 		var pokeTimer = setInterval(function() {
 			target.scale -= 0.01;
 			if (target.scale < 1) {
 				target.scale = 1;
 				clearInterval(pokeTimer);
 			}
-			reDraw();
+			palace.theRoom.reDraw();
 		},20);
 	}
 
@@ -35,7 +32,7 @@ class PalaceUser {
 					target.scale = 1;
 				clearInterval(timer);
 			}
-			reDraw();
+			palace.theRoom.reDraw();
 		},20);
 	}
 
@@ -48,16 +45,16 @@ class PalaceUser {
 				clearInterval(timer);
 				target.remove();
 			}
-			reDraw();
+			palace.theRoom.reDraw();
 		},20);
 	}
 
 	remove() {
 		if (this.stopAnimation) this.stopAnimation();
 		this.popBubbles();
-		theRoom.users.splice(theRoom.users.indexOf(this),1);
-		PalaceUser.setUserCount();
-		reDraw();
+		palace.theRoom.users.splice(palace.theRoom.users.indexOf(this),1);
+		palace.theRoom.setUserCount();
+		palace.theRoom.reDraw();
 	}
 
 	preRenderNametag() {
@@ -76,7 +73,7 @@ class PalaceUser {
 		this.nametag.height = userNameTagHeight;
 		setStyle();
 
-		var grd = bgCtx.createLinearGradient(0, 5, 0, userNameTagHeight-5);
+		var grd = ctx.createLinearGradient(0, 5, 0, userNameTagHeight-5);
 		grd.addColorStop(0, getHsl(this.color,78));
 		grd.addColorStop(1, getHsl(this.color,60));
 		ctx.fillStyle = grd;
@@ -86,28 +83,19 @@ class PalaceUser {
 	}
 
 
-	nametagLoc(scale) { // need to reduce size of this function!
+	nametagLoc() { // need to reduce size of this function!
 		var w = this.nametag.width;
 		var h = this.nametag.height;
 		var half = (w/2);
-		var x;
-		var y;
-		var bgw;
-		var bgh;
-		if (scale) {
-			bgw = bgEnv.width*this.scale;
-			bgh = bgEnv.height*this.scale;
-			x = this.x*this.scale;
-			y = (this.y+2)*this.scale;
-		} else {
-			x = this.x;
-			y = this.y+2;
-			bgw = bgEnv.width;
-			bgh = bgEnv.height;
-		}
+		var x = this.x*this.scale;
+		var y = (this.y+2)*this.scale;
+		var bgw = bgEnv.width*this.scale;
+		var bgh = bgEnv.height*this.scale;
+
 		if (x-half < 0) x = half;
 		if (x > bgw-half) x = bgw-half;
-		if (scale) {
+
+		if (this.scale != 1) {
 			x = x-half;
 			y = y+(h/2-2);
 		} else {
@@ -143,7 +131,7 @@ class PalaceUser {
 				this.animatePropID = this.animationPropIDs[0];
 			}
 		}
-		reDraw();
+		palace.theRoom.reDraw();
 	}
 
 
@@ -214,111 +202,15 @@ class PalaceUser {
 		this.props = props;
 		if (significantChange) loadProps(this.props,fromSelf);
 		if (wasChange) {
-			if (this == theUser) enablePropButtons();
-			this.animator();
-			reDraw();
-			return true;
-		}
-	}
-
-
-
-	static userRemove(uid) {
-		var user = getUser(uid);
-		if (user) {
-			if (user == theUser) {
-				user.remove();
-			} else {
-				user.shrink(10);
+			if (this == palace.theUser) {
+				enablePropButtons();
 			}
+			this.animator();
+			palace.theRoom.reDraw();
 			return true;
 		}
 	}
-	static userColorChange(id,color) {
-		var user = getUser(id);
-		if (user && user.color != color) {
-			user.color = color;
-			user.preRenderNametag();
-			reDraw();
-			return true;
-		}
-	}
-	static userFaceChange(id,face) {
-		var user = getUser(id);
-		if (user && user.face != face) {
-			user.face = face;
-			reDraw();
-			return true;
-		}
-	}
-	static userPropChange(id,props) {
-		var user = getUser(id);
-		if (user) user.changeUserProps(props);
-	}
-	static userAvatarChange(id,face,color,props) {
-		var user = getUser(id);
-		if (user) {
-			user.color = color;
-			user.face = face;
-			user.preRenderNametag();
-			user.changeUserProps(props);
-			reDraw();
-		}
-	}
-	static userNameChange(id,name) {
-		var user = getUser(id);
-		if (user && user.name !== name) {
-			user.name = name;
-			user.preRenderNametag();
-			reDraw();
-		}
-	}
-	static userMove(id,x,y) {
-		var user = getUser(id);
-		if (user && (user.x != x || user.y != y)) {
-			user.popBubbles();
-			user.x = x;
-			user.y = y;
-			reDraw();
-		}
-	}
-	static userChat(chat) {
-		var user = getUser(chat.id);
-		var chatspan = document.createElement('div');
-		chatspan.className = 'userlogchat';
-		var namespan = document.createElement('div');
-		namespan.className = 'userlogname';
 
 
 
-		var bubInfo = Bubble.processChatType(chat.chatstr);
-
-		if (bubInfo.type > -1 && bubInfo.start < chat.chatstr.length) new Bubble(user,chat,bubInfo);
-
-		if (user) {
-			namespan.innerText = user.name;
-	 		namespan.style.color = getHsl(user.color,40);
-		} else {
-			namespan.innerText = '***';
-			if (chat.whisper !== true) chatspan.style.color = 'IndianRed';
-		}
-
-		var timestamp = document.createElement('span');
-		timestamp.className = 'userlogtime';
-		timestamp.innerText = ' '+timeStampStr(true);
-		namespan.appendChild(timestamp);
-
-		if (chat.whisper === true) {
-			chatspan.className = chatspan.className + ' userlogwhisper';
-			if (!document.hasFocus() && !prefs.general.disableSounds) systemAudio.whisper.play();
-		}
-		chatspan.appendChild(namespan);
-		chatspan.appendChild(makeHyperLinks(chat.chatstr));
-
-		logAppend(chatspan);
-	}
-
-	static setUserCount() {
-		document.getElementById('palaceroom').title = theRoom.users.length + ' / ' + theRoom.serverUserCount;
-	}
 }

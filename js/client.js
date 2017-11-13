@@ -1,14 +1,33 @@
 var net = require('net');
-var textDecode = null, textEncode = null;
 
-class PalaceSocket {
-	constructor() {
 
+class PalaceClient {
+	constructor(regi,puid) {
+		this.crypt = new PalaceCrypt(1); //palaceCrypt
+		this.regi = new PalaceRegistration(regi,puid); //palaceRegi
+	}
+
+	static toArrayBuffer(b) {
+		return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
+	}
+	static pString(b,offset) {
+		return palace.textDecoding.decode(
+			PalaceClient.toArrayBuffer(
+				b.slice(offset+1,offset+1+b.readUInt8(offset))
+			)
+		);
+	}
+	static cString(b,offset) {
+		return palace.textDecoding.decode(
+			PalaceClient.toArrayBuffer(
+				b.slice(offset,b.indexOf(0,offset))
+			)
+		);
 	}
 
 	connect(ip,port) {
-		textDecode = new TextDecoder('windows-1252'); // default encoding
-		textEncode = new TextEncoderr('windows-1252', { NONSTANDARD_allowLegacyEncoding: true }); // palace default! :\
+		this.textDecoding = new TextDecoder('windows-1252'); // default server encoding
+		this.textEncoding = new TextEncoderer('windows-1252', { NONSTANDARD_allowLegacyEncoding: true }); // palace default! :\
 		if (!port) port = '9998';
 		if (this.soc) {
 			this.soc.socInstance = null; // kill circular reference..
@@ -19,7 +38,7 @@ class PalaceSocket {
 		this.soc.ip = ip;
 		this.soc.port = port;
 		this.soc.buffer = Buffer.alloc(0);
-		connecting(ip+':'+port);
+		this.connecting();
 		this.soc.connect(port, ip);
 
 		this.soc.on('connect', function() {logmsg('Connected');});
@@ -50,6 +69,54 @@ class PalaceSocket {
 		}
 	}
 
+	connecting() {
+		this.serverDown();
+		setEnviornment(window.innerWidth-logField.offsetWidth,window.innerHeight-overLayer.offsetTop-document.getElementById('chatbox').offsetHeight,'');
+		toggleLoadingBG(true);
+		setUserInterfaceAvailability(true);
+	}
+
+	serverDown(msg) { // still gotta implement this in the protocol lol
+		this.mediaUrl = "";
+		allProps = {};
+		this.lastUserLogOnTime = 0;
+		this.lastUserLogOnID = 0;
+		this.serverUserCount = 0;
+		this.theUser = null;
+		this.theUserID = null;
+		this.roomList = null;
+		this.userList = null;
+		this.lastLoadedBG = '';
+		PalaceRoom.removeAllSpotPics();
+
+		Bubble.deleteAllBubbles();
+		unloadBgVideo();
+		if (this.theRoom) {
+			this.theRoom.stopAllUserAnimations();
+			//delete this.theRoom;
+			this.theRoom.spots = [];
+			this.theRoom.draws = [];
+			this.theRoom.looseProps = [];
+			this.theRoom.pics = [];
+			this.theRoom.users = [];
+			this.theRoom.refresh();
+		}
+
+		if (msg) {
+			bgError(true);
+			logmsg(msg.msg);
+		}
+
+	}
+
+	serverInfo(flags,name) {
+		this.servername = name;
+		this.serverflags = flags;
+		var addressBar = document.getElementById('palaceserver');
+		addressBar.title = name;
+		if (addressBar != document.activeElement) addressBar.innerText = this.servername;
+	}
+
 	packetReceived(type,packet) {
 		//logmsg('packet: '+packet.slice(0,4));
 		switch(type) {
@@ -57,112 +124,112 @@ class PalaceSocket {
 				this.sendRegistration();
 				break;
 			case TCPmsgConsts.HTTPSERVER:
-				mediaUrl = packet.cString(12); // should make sure it ends with a forward slash!
+				this.mediaUrl = PalaceClient.cString(packet,12); // should make sure it ends with a forward slash!
 				break;
 
 			case TCPmsgConsts.SPOTMOVE:
-				spotMove(packet.readInt16LE(12),packet.readInt16LE(14),packet.readInt16LE(18),packet.readInt16LE(16))
+				this.theRoom.spotMove(packet.readInt16LE(12),packet.readInt16LE(14),packet.readInt16LE(18),packet.readInt16LE(16))
 				break;
 			case TCPmsgConsts.PICTMOVE:
-				spotMovePic(packet.readInt16LE(12),packet.readInt16LE(14),packet.readInt16LE(18),packet.readInt16LE(16));
+				this.theRoom.spotMovePic(packet.readInt16LE(12),packet.readInt16LE(14),packet.readInt16LE(18),packet.readInt16LE(16));
 				break;
 			case TCPmsgConsts.SPOTSTATE:
-				spotStateChange(packet.readInt16LE(12),packet.readInt16LE(14),packet.readInt16LE(16),0);
+				this.theRoom.spotStateChange(packet.readInt16LE(12),packet.readInt16LE(14),packet.readInt16LE(16),0);
 				break;
 			case TCPmsgConsts.DOORLOCK:
-				spotStateChange(packet.readInt16LE(12),packet.readInt16LE(14),1,-1);
+				this.theRoom.spotStateChange(packet.readInt16LE(12),packet.readInt16LE(14),1,-1);
 				break;
 			case TCPmsgConsts.DOORUNLOCK:
-				spotStateChange(packet.readInt16LE(12),packet.readInt16LE(14),0,1);
+				this.theRoom.spotStateChange(packet.readInt16LE(12),packet.readInt16LE(14),0,1);
 				break;
 			case TCPmsgConsts.ROOMSETDESC:
 			case TCPmsgConsts.ROOMDESC:
-				PalaceSocket.parseRoom(packet);
+				this.parseRoom(packet);
 				break;
 
 			case TCPmsgConsts.NAVERROR:
-				logmsg(PalaceSocket.navigationError(packet.readInt32LE(8)));
+				logmsg(PalaceClient.navigationError(packet.readInt32LE(8)));
 				break;
 			case TCPmsgConsts.LISTOFALLROOMS:
-				PalaceSocket.parseRoomList(packet);
+				PalaceClient.parseRoomList(packet);
 				break;
 			case TCPmsgConsts.LISTOFALLUSERS:
-				PalaceSocket.parseUserList(packet);
+				PalaceClient.parseUserList(packet);
 				break;
 
 			case TCPmsgConsts.PROPDEL:
-				loosePropDelete(packet.readInt32LE(12));
+				this.theRoom.loosePropDelete(packet.readInt32LE(12));
 				break;
 			case TCPmsgConsts.PROPNEW:
-				loosePropAdd({x:packet.readInt16LE(22),y:packet.readInt16LE(20),id:packet.readInt32LE(12),crc:packet.readInt32LE(16)});
+				this.theRoom.loosePropAdd({x:packet.readInt16LE(22),y:packet.readInt16LE(20),id:packet.readInt32LE(12),crc:packet.readInt32LE(16)});
 				break;
 			case TCPmsgConsts.PROPMOVE:
-				loosePropMove(packet.readInt16LE(18),packet.readInt16LE(16),packet.readInt32LE(12));
+				this.theRoom.loosePropMove(packet.readInt16LE(18),packet.readInt16LE(16),packet.readInt32LE(12));
 				break;
 			case TCPmsgConsts.USERSTATUS:
-				theUserID = packet.readInt32LE(8);
-				theUserStatus = packet.readInt16LE(12);
+				this.theUserID = packet.readInt32LE(8);
+				this.theUserStatus = packet.readInt16LE(12);
 				break;
 			case TCPmsgConsts.SERVERINFO:
-				serverInfo(packet.readInt32LE(12),packet.pString(16));
+				this.serverInfo(packet.readInt32LE(12),PalaceClient.pString(packet,16));
 				break;
 
 			case TCPmsgConsts.USERFACE:
-				PalaceUser.userFaceChange(packet.readInt32LE(8),packet.readInt16LE(12));
+				this.theRoom.userFaceChange(packet.readInt32LE(8),packet.readInt16LE(12));
 				break;
 			case TCPmsgConsts.USERCOLOR:
-				PalaceUser.userColorChange(packet.readInt32LE(8),packet.readInt16LE(12));
+				this.theRoom.userColorChange(packet.readInt32LE(8),packet.readInt16LE(12));
 				break;
 			case TCPmsgConsts.USERPROP:
-				PalaceUser.userPropChange(packet.readInt32LE(8),PalaceSocket.buffer2Props( packet.slice(16,packet.length) ));
+				this.theRoom.userPropChange(packet.readInt32LE(8),PalaceClient.buffer2Props(packet.slice(16,packet.length)));
 				break;
 			case TCPmsgConsts.USERDESC:
-				PalaceUser.userAvatarChange(packet.readInt32LE(8),packet.readInt16LE(12),packet.readInt16LE(14),PalaceSocket.buffer2Props( packet.slice(20,packet.length) ));
+				this.theRoom.userAvatarChange(packet.readInt32LE(8),packet.readInt16LE(12),packet.readInt16LE(14),PalaceClient.buffer2Props( packet.slice(20,packet.length) ));
 				break;
 			case TCPmsgConsts.USERNAME:
-				PalaceUser.userNameChange(packet.readInt32LE(8),packet.pString(12));
+				this.theRoom.userNameChange(packet.readInt32LE(8),PalaceClient.pString(packet,12));
 				break;
 			case TCPmsgConsts.USERLOG:
-				userLogOn(packet.readInt32LE(8),packet.readInt32LE(12));
+				this.userLogOn(packet.readInt32LE(8),packet.readInt32LE(12));
 				break;
 			case TCPmsgConsts.LOGOFF:
-				userLogOff(packet.readInt32LE(8),packet.readInt32LE(12));
+				this.userLogOff(packet.readInt32LE(8),packet.readInt32LE(12));
 				break;
 			case TCPmsgConsts.USERMOVE:
-				PalaceUser.userMove(packet.readInt32LE(8),packet.readInt16LE(14),packet.readInt16LE(12));
+				this.theRoom.userMove(packet.readInt32LE(8),packet.readInt16LE(14),packet.readInt16LE(12));
 				break;
 			case TCPmsgConsts.USEREXIT:
-				PalaceUser.userRemove(packet.readInt32LE(8));
+				this.theRoom.removeUser(packet.readInt32LE(8));
 				break;
 			case TCPmsgConsts.USERNEW:
-				PalaceSocket.parseUser(packet);
+				this.parseUser(packet);
 				break;
 			case TCPmsgConsts.USERLIST:
-				PalaceSocket.parseUsers(packet);
+				this.parseUsers(packet);
 				break;
 			case TCPmsgConsts.XWHISPER:
-				PalaceUser.userChat({id:packet.readInt32LE(8),chatstr:palaceCrypt.Decrypt(packet.slice(14,14+packet.readInt16LE(12)-3)),whisper:true});
+				this.theRoom.userChat({id:packet.readInt32LE(8),chatstr:this.crypt.Decrypt(packet.slice(14,14+packet.readInt16LE(12)-3)),whisper:true});
 				break;
 			case TCPmsgConsts.XTALK:
-				PalaceUser.userChat({id:packet.readInt32LE(8),chatstr:palaceCrypt.Decrypt(packet.slice(14,14+packet.readInt16LE(12)-3)),whisper:false});
+				this.theRoom.userChat({id:packet.readInt32LE(8),chatstr:this.crypt.Decrypt(packet.slice(14,14+packet.readInt16LE(12)-3)),whisper:false});
 				break;
 			case TCPmsgConsts.TALK:
-				PalaceUser.userChat({id:packet.readInt32LE(8),chatstr:packet.cString(12),whisper:false});
+				this.theRoom.userChat({id:packet.readInt32LE(8),chatstr:PalaceClient.cString(packet,12),whisper:false});
 				break;
 			case TCPmsgConsts.WHISPER:
-				PalaceUser.userChat({id:0,chatstr:packet.cString(12),whisper:true});
+				this.theRoom.userChat({id:0,chatstr:PalaceClient.cString(packet,12),whisper:true});
 				break;
 			case TCPmsgConsts.PING:
 				this.sendPong();
 				break;
 			case TCPmsgConsts.DRAW:
-				roomDraw(PalaceSocket.parseDraw(packet.slice(22,packet.length),packet.readUInt16LE(16)));
+				this.theRoom.draw(PalaceClient.parseDraw(packet.slice(22,packet.length),packet.readUInt16LE(16)));
 				break;
 			case TCPmsgConsts.BLOWTHRU:
 				if (packet.readInt32LE(8) == 0x4f434e45) { // pserver plugin that sets encoding for the server
 					var encoding = packet.toString('binary',12,packet.readInt32LE(4) + 12);
-					textDecode = new TextDecoder(encoding);
-					textEncode = new TextEncoderr(encoding, { NONSTANDARD_allowLegacyEncoding: true });
+					this.textDecoding = new TextDecoder(encoding);
+					this.textEncoding = new TextEncoderer(encoding, { NONSTANDARD_allowLegacyEncoding: true });
 				}
 				break;
 			case TCPmsgConsts.ASSETQUERY:
@@ -179,10 +246,10 @@ class PalaceSocket {
 	}
 
 
-	static parseRoom(p) {
-		var roomPstring = function(b,offset) {
+	parseRoom(p) {
+		var roomPstring = function(b,offset) { // replace this with standard pstring function..
 			var o = b.readInt16LE(offset)+52;
-			return textDecode.decode(b.slice(o+1,o+1+b.readInt8(o)).toArrayBuffer());
+			return palace.textDecoding.decode(PalaceClient.toArrayBuffer(b.slice(o+1,o+1+b.readInt8(o))));
 		};
 
 		var room = {id:p.readInt16LE(20),
@@ -191,7 +258,7 @@ class PalaceSocket {
 					artist:roomPstring(p,26),
 					background:roomPstring(p,24),
 					password:'',
-					looseprops:[],
+					looseProps:[],
 					spots:[],
 					pictures:[],
 					draws:[]};
@@ -200,7 +267,7 @@ class PalaceSocket {
 		var nxt = p.readInt16LE(46)+52;
 		var count = p.readInt16LE(44);
 		for (var i = 0; i < count; i++) { // make sure loop is correct
-			room.looseprops.push({y:p.readInt16LE(nxt+20), x:p.readInt16LE(nxt+22), id:p.readInt32LE(nxt+4)});
+			room.looseProps.push({y:p.readInt16LE(nxt+20), x:p.readInt16LE(nxt+22), id:p.readInt32LE(nxt+4)});
 			nxt = p.readInt16LE(nxt)+52;
 		}
 
@@ -212,7 +279,7 @@ class PalaceSocket {
 			var spot = {flags:flags,layer:(flags & 0x00000004 || flags & 0x00000040 || flags & 0x00000001)?1:0,
 							y:p.readInt16LE(nxt+16),x:p.readInt16LE(nxt+18),id:p.readInt16LE(nxt+20),dest:p.readInt16LE(nxt+22),
 							type:p.readInt16LE(nxt+28),state:p.readInt16LE(nxt+36),name:roomPstring(p,nxt+42),
-							script:p.cString(p.readInt16LE(nxt+44)+52),
+							script:PalaceClient.cString(p,p.readInt16LE(nxt+44)+52),
 							points:[],statepics:[]};
 
 			var ptsCount = p.readInt16LE(nxt+24);
@@ -249,15 +316,19 @@ class PalaceSocket {
 		var nbrDraws = p.readInt16LE(38);
 		for (var i = 0; i < nbrDraws; i++) {
 			var pos = p.readInt16LE(nxt+8)+52;
-			room.draws.push(PalaceSocket.parseDraw( p.slice(pos,p.readInt16LE(nxt+6)+pos) , p.readInt16LE(nxt+4)));
+			room.draws.push(PalaceClient.parseDraw( p.slice(pos,p.readInt16LE(nxt+6)+pos) , p.readInt16LE(nxt+4)));
 			nxt=p.readInt16LE(nxt)+52;
 		}
 
-		loadRoom(room);
+		var users;
+		if (this.theRoom && this.theRoom.users) users = this.theRoom.users; // if editing room, save users from deletion!
+		this.theRoom = new PalaceRoom(room);
+		this.theRoom.users = users;
+		if (users) this.theRoom.refresh();
 	}
 
-	static parseUser(p) {
-	  var user = {name:p.pString(104),
+	parseUser(p) {
+	  var user = {name:PalaceClient.pString(p,104),
 					id:p.readInt32LE(8),
 					x:p.readInt16LE(18),
 					y:p.readInt16LE(16),
@@ -266,18 +337,19 @@ class PalaceSocket {
 					props:[]};
 
 		var nbrProps = p.readInt16LE(102);
-		for (var j = 0; j < nbrProps; j++)
-			user.props.push(p.readInt32LE(12+(j*8)));
+		for (var j = 0; j < nbrProps; j++) {
+			user.props.push(p.readInt32LE(20+(j*8)));
+		}
 
-		addRoomUser(user);
+		this.theRoom.addUser(user);
 	}
 
-	static parseUsers(p) {
+	parseUsers(p) {
 		var users = [];
 		var uOffset = 12;
 		var count = p.readInt32LE(8);
 		for (var i = 0; i < count; i++) {
-			var user = {name:p.pString(uOffset+92),
+			var user = {name:PalaceClient.pString(p,uOffset+92),
 						id:p.readInt32LE(uOffset),
 						x:p.readInt16LE(uOffset+6),
 						y:p.readInt16LE(uOffset+4),
@@ -293,7 +365,7 @@ class PalaceSocket {
 			uOffset += 124;
 		}
 
-		loadRoomUsers(users);
+		this.theRoom.loadUsers(users);
 	}
 
 	static buffer2Props(b) {
@@ -309,7 +381,7 @@ class PalaceSocket {
 		var add = 12;
 		for (var i = 0; i < count; i++) {
 			var nameLen = b.readInt8(add+8);
-			list.push({name:textDecode.decode(b.slice(add+9,add+9+nameLen).toArrayBuffer()),
+			list.push({name:palace.textDecoding.decode(PalaceClient.toArrayBuffer(b.slice(add+9,add+9+nameLen))),
 							id:b.readInt32LE(add),
 							flags:b.readInt16LE(add+4),
 							population:b.readInt16LE(add+6)});
@@ -324,7 +396,7 @@ class PalaceSocket {
 		var add = 12;
 		for (var i = 0; i < count; i++) {
 			var nameLen = b.readInt8(add+8);
-			list.push({name:textDecode.decode(b.slice(add+9,add+9+nameLen).toArrayBuffer()),
+			list.push({name:palace.textDecoding.decode(PalaceClient.toArrayBuffer(b.slice(add+9,add+9+nameLen))),
 							userid:b.readInt32LE(add),
 							flags:b.readInt16LE(add+4),
 							roomid:b.readInt16LE(add+6)});
@@ -377,10 +449,10 @@ class PalaceSocket {
 				jdraw.underline = (cmdData.readUInt8(18) & 2) != 0;
 				jdraw.italic = (cmdData.readUInt8(18) & 4) != 0;
 
-				var font = cmdData.pString(19);
+				var font = PalaceClient.pString(cmdData,19);
 				var aLen = font.length;
 				jdraw.font = font;
-				var msg = cmdData.cString(20+aLen); //must define utf8!
+				var msg = PalaceClient.cString(cmdData,20+aLen); //must define utf8!
 				jdraw.msg = msg;
 
 				if (aLen+msg.length+29 == cmdData.length) {
@@ -533,12 +605,12 @@ class PalaceSocket {
 	}
 
 	sendOperatorRequest(password) {
-		password = Buffer.from(textEncode.encode(password));
+		password = Buffer.from(this.textEncoding.encode(password));
 		var leng = password.length;
 		var packet = Buffer.alloc(13+leng);
 		packet.writeInt32LE(TCPmsgConsts.SUPERUSER,0);
 		packet.writeInt32LE(leng+1,4);
-		var data = palaceCrypt.Encrypt(password);
+		var data = this.crypt.Encrypt(password);
 		packet.writeInt8(data.length,12);
 		data.copy(packet,13);
 		this.soc.write(packet);
@@ -551,25 +623,25 @@ class PalaceSocket {
 	}
 
 	sendWhisper(msg,whisperID) {
-		msg = Buffer.from(textEncode.encode(msg));
+		msg = Buffer.from(this.textEncoding.encode(msg));
 		var leng = msg.length;
 		var packet = Buffer.alloc(19+leng);
 		packet.writeInt32LE(TCPmsgConsts.XWHISPER,0);
 		packet.writeInt32LE(leng+7,4);
 		packet.writeInt32LE(whisperID,12);
 		packet.writeInt16LE(leng+3,16);
-		palaceCrypt.Encrypt(msg).copy(packet,18);
+		this.crypt.Encrypt(msg).copy(packet,18);
 		this.soc.write(packet);
 	}
 
 	sendXtlk(msg) {
-		msg = Buffer.from(textEncode.encode(msg));
+		msg = Buffer.from(this.textEncoding.encode(msg));
 		var leng = msg.length;
 		var packet = Buffer.alloc(15+leng);
 		packet.writeInt32LE(TCPmsgConsts.XTALK,0);
 		packet.writeInt32LE(leng+3,4);
 		packet.writeInt16LE(leng+3,12);
-		palaceCrypt.Encrypt(msg).copy(packet,14);
+		this.crypt.Encrypt(msg).copy(packet,14);
 		this.soc.write(packet);
 	}
 
@@ -594,14 +666,14 @@ class PalaceSocket {
 	}
 
 	sendPropDress() {
-		var length = theUser.props.length;
+		var length = this.theUser.props.length;
 		var packet = Buffer.alloc(16+length*8);
 
 		packet.writeInt32LE(TCPmsgConsts.USERPROP,0);
 		packet.writeInt32LE(length*8+4,4);
 		packet.writeInt32LE(length,12);
 		for (var i = 0; i < length; i++)
-			packet.writeInt32LE(theUser.props[i],16+i*8);
+			packet.writeInt32LE(this.theUser.props[i],16+i*8);
 
 		this.soc.write(packet);
 	}
@@ -644,7 +716,7 @@ class PalaceSocket {
 	}
 
 	sendUserName(name) {
-		name = Buffer.from(textEncode.encode(name));
+		name = Buffer.from(this.textEncoding.encode(name));
 		var packet = Buffer.alloc(name.length+13);
 		packet.writeInt32LE(TCPmsgConsts.USERNAME,0);
 		packet.writeInt32LE(name.length+1,4);
@@ -674,10 +746,10 @@ class PalaceSocket {
 		reg.writeInt32LE(TCPmsgConsts.LOGON,0);
 		reg.writeInt32LE(128,4); //fixed packet length
 
-		reg.writeInt32LE(palaceRegi.key,12);
-		reg.writeInt32LE(palaceRegi.crc,16);
+		reg.writeInt32LE(this.regi.key,12);
+		reg.writeInt32LE(this.regi.crc,16);
 
-		var name = Buffer.from(textEncode.encode(prefs.general.userName));
+		var name = Buffer.from(this.textEncoding.encode(prefs.general.userName));
 		reg.writeInt8(name.length,20);
 		name.copy(reg,21);//should truncate to 31 bytes max
 
@@ -687,8 +759,8 @@ class PalaceSocket {
 			reg.writeUInt32LE(0x80000002,84);
 		}
 
-		reg.writeInt32LE(palaceRegi.puidCrc,88);
-		reg.writeInt32LE(palaceRegi.puid,92);
+		reg.writeInt32LE(this.regi.puidCrc,88);
+		reg.writeInt32LE(this.regi.puid,92);
 
 		reg.writeInt32LE(0x00011940,96);
 		reg.writeInt32LE(0x00011940,100);
@@ -707,6 +779,52 @@ class PalaceSocket {
 
 		this.soc.write(reg);
 	}
+
+	userLogOn(id,count) {
+		this.lastUserLogOnID = id;
+		this.lastUserLogOnTime = ticks();
+		this.serverUserCount = count;
+		if (this.theRoom) this.theRoom.setUserCount();
+	}
+	userLogOff(id,count) {
+		this.serverUserCount = count;
+		if (this.theRoom) {
+			if (this.theRoom.removeUser(id) && !prefs.general.disableSounds) systemAudio.signoff.play();
+			this.theRoom.setUserCount();
+		}
+	}
+
+	addSelfProp(pid) {
+		if (this.theUser && this.theUser.props.length < 9 && this.theUser.props.indexOf(pid) == -1) {
+			this.theUser.propsChanged = true;
+			this.theUser.props.push(pid);
+			this.theUser.animator();
+			this.theRoom.reDraw();
+			return true;
+		}
+	}
+
+	removeSelfProp(pid) {
+		if (this.theUser) {
+			var i = this.theUser.props.indexOf(pid);
+			if (this.theUser.props.length > 0 && i > -1) {
+				this.theUser.propsChanged = true;
+				this.theUser.props.splice(i,1);
+				this.theUser.animator();
+				this.theRoom.reDraw();
+				return true;
+			}
+		}
+	}
+
+	selfPropChange() {
+		if (this.theUser) {
+			this.sendPropDress();
+		}
+		this.theUser.propsChanged = false;
+		enablePropButtons();
+	}
+
 }
 
 
@@ -822,7 +940,7 @@ class PalaceCrypt {
 			lastChar = tmp^this.gEncryptTable[rc+1];
 			rc += 2;
 		}
-		return textDecode.decode(b.toArrayBuffer());
+		return palace.textDecoding.decode(PalaceClient.toArrayBuffer(b));
 	}
 
 	get LongRandom() {
@@ -847,12 +965,3 @@ class PalaceCrypt {
 		if (this.gSeed == 0) this.gSeed = 1;
 	}
 }
-
-
-
-
-
-var palaceCrypt = new PalaceCrypt(1);
-var palaceRegi = new PalaceRegistration(prefs.registration.regi,prefs.registration.puid);
-let palaceTCP = new PalaceSocket();
-gotourl(prefs.general.home);

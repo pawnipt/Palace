@@ -15,15 +15,7 @@ function timeStampStr(seconds) {
 	if (!seconds) time.pop();
 	return time.join(":") + " " + suffix;
 }
-Buffer.prototype.toArrayBuffer = function() {
-	return this.buffer.slice(this.byteOffset, this.byteOffset + this.byteLength);
-};
-Buffer.prototype.pString = function(offset) {
-	return textDecode.decode(this.slice(offset+1,offset+1+this.readUInt8(offset)).toArrayBuffer());
-};
-Buffer.prototype.cString = function(offset) {
-	return textDecode.decode(this.slice(offset,this.indexOf(0,offset)).toArrayBuffer());
-};
+
 Array.prototype.dedup = function() {
 	return this.filter(
 		function(e,i,a) {

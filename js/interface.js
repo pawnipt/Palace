@@ -1,8 +1,5 @@
 var smileys = {},
-	roomList = null,
-	userList = null,
 	logField = document.getElementById('log'),
-	genericSmiley = new Image(),
 	selectedBagProps = [],
 	propBag = document.getElementById('props'),
 	propBagRetainer = document.getElementById('propbagretainer'), // adjust retainer size to set the scrollbar
@@ -48,18 +45,35 @@ let contextMenuListener = new ContextMenuListener((info) => {
 			}
 		}
 
+
+		smileys[5+',0'].onload = function () {
+			var nakedbutton = document.getElementById('removeprops');
+			var src = 'url('+this.src+')'; // consider using a reference to the image instead.
+			nakedbutton.style.backgroundImage = src;
+
+			var smileyfaces = document.getElementById('smileyfaces');
+			smileyfaces.style.backgroundImage = src;
+			smileyfaces.onclick = function(event) {
+				toggleToolBarControl('smileypicker');
+			};
+			updateDrawPreview();
+			this.onload = null;
+		};
+
+
+
 		var smileycolorpicker = document.getElementById('smileycolorpicker');
-	//	background: linear-gradient(to right, red,yellow,green,blue,violet);
 
 		var s = '';
 		for (var i = 0; i < 15; i++) s += getHsl(i,50)+',';
 		smileycolorpicker.style.background = 'linear-gradient(to right,'+s.substring(0,s.length-1)+')';
+
 		var mouseDown = false;
 		smileycolorpicker.onmousemove = function(event) {
 			//idfk...
 			var color = ((event.x-(this.offsetLeft+this.parentNode.offsetLeft))/(this.clientWidth/15)).fastRound();
-			if (mouseDown && color > -1 && color < 16 && PalaceUser.userColorChange(theUserID,color)) {
-				palaceTCP.sendFaceColor(color);
+			if (mouseDown && color > -1 && color < 16 && palace.theRoom.userColorChange(palace.theUserID,color)) {
+				palace.sendFaceColor(color);
 			}
 		};
 		smileycolorpicker.onmousedown = function(event) {
@@ -79,19 +93,15 @@ let contextMenuListener = new ContextMenuListener((info) => {
 			img.onclick = function() {
 				var faces = this.parentNode.getElementsByTagName('img');
 				for (var e = 0; e < faces.length; e++) {
-					if (faces[e] == this && PalaceUser.userFaceChange(theUserID,e)) {
-						palaceTCP.sendFace(e);
+					if (faces[e] == this && palace.theRoom.userFaceChange(palace.theUserID,e)) {
+						palace.sendFace(e);
 					}
 				}
 			}
 			smileypicker.appendChild(img);
 		}
 
-		var smileyfaces = document.getElementById('smileyfaces');
-		smileyfaces.style.backgroundImage = 'url('+smileys['5,0'].src+')'
-		smileyfaces.onclick = function(event) {
-			toggleToolBarControl('smileypicker');
-		};
+
 		this.onload = null;
 	};
 	smile.src = 'img/smileys.png';
@@ -138,11 +148,11 @@ let contextMenuListener = new ContextMenuListener((info) => {
 					switch(chatCmd[1]) { // eventually add more client side commands
 						case 'op':
 						case 'susr':
-							palaceTCP.sendOperatorRequest(chatCmd[2]);
+							palace.sendOperatorRequest(chatCmd[2]);
 							break;
 						case 'clean':
-							palaceTCP.sendDrawClear(3);
-							palaceTCP.sendPropDelete(-1);
+							palace.sendDrawClear(3);
+							palace.sendPropDelete(-1);
 							break;
 						default:
 							break;
@@ -150,10 +160,10 @@ let contextMenuListener = new ContextMenuListener((info) => {
 				} else if (chat.charAt(0) == '/') {
 					eval(chat.substring(1));
 				} else {
-					if (whisperUserID) {
-						palaceTCP.sendWhisper(event.target.value,whisperUserID);
+					if (palace.theRoom.whisperUserID) {
+						palace.sendWhisper(event.target.value,palace.theRoom.whisperUserID);
 					} else {
-						palaceTCP.sendXtlk(event.target.value);
+						palace.sendXtlk(event.target.value);
 					}
 				}
 				event.target.value = '';
@@ -231,7 +241,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 		setPropButtons();
 	};
 	document.getElementById('saveprop').onclick = function() {
-		for (var i = theUser.props.length; --i >= 0;) saveProp(theUser.props[i]);
+		for (var i = palace.theUser.props.length; --i >= 0;) saveProp(palace.theUser.props[i]);
 		this.disabled = true;
 	};
 
@@ -286,7 +296,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	var serverConnectField = document.getElementById('palaceserver');
 	serverConnectField.onfocus = function() {
 		this.contentEditable = true;
-		if (theRoom.address) this.innerText = theRoom.address.replace(':9998','');
+		this.innerText = (palace.soc.ip + ':' + palace.soc.port).replace(':9998','');
 		var selection = window.getSelection();
 		var range = document.createRange();
 		range.selectNodeContents(this);
@@ -294,13 +304,13 @@ let contextMenuListener = new ContextMenuListener((info) => {
 		selection.addRange(range);
 	};
 	serverConnectField.onblur = function() {
-		this.innerText = theRoom.servername;
+		this.innerText = palace.servername;
 		this.contentEditable = false;
 	};
 	serverConnectField.onkeydown = function(event) {
 		if (event.keyCode == 13) {
 			gotourl(event.currentTarget.innerText);
-			theRoom.servername = '';
+			palace.servername = '';
 			event.currentTarget.blur();
 			return true;
 		}
@@ -317,10 +327,10 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	document.getElementById('navsearch').oninput = function() { // triggered navigation search filter
 		switch (document.getElementById('navframe').dataset.ctrlname) {
 			case 'users':
-				loadUserList(userList);
+				loadUserList(palace.userList);
 				break;
 			case 'rooms':
-				loadRoomList(roomList);
+				loadRoomList(palace.roomList);
 				break;
 			case 'servers':
 				loadDirectoryList(directoryList);
@@ -335,7 +345,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 		if (t.nodeName != 'LI' && type != 'users') t = t.parentNode;
 
 		if (t.dataset.userid) {
-			enterWhisperMode(t.dataset.userid,t.innerText);
+			palace.theRoom.enterWhisperMode(t.dataset.userid,t.innerText);
 			toggleNavListbox(type);
 		} else if (t.dataset.roomid) {
 			gotoroom(t.dataset.roomid);
@@ -440,10 +450,10 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	};
 	var drawEraser = document.getElementById('drawerase');
 	drawEraser.ondblclick = function() { //or clearing room of all draws
-		palaceTCP.sendDrawClear(3);
+		palace.sendDrawClear(3);
 	};
 	drawEraser.onclick = function() { // for clearing the last draw
-		palaceTCP.sendDrawClear(4);
+		palace.sendDrawClear(4);
 	};
 	document.getElementById('drawcolor').onclick = function(event) { // to change draw pen color
 		openDrawColor(event,function(color) { // pop open color selector with callback
@@ -475,7 +485,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 
 	// setup preferences
 	document.getElementById('prefusername').onchange = function() { // set username
-		palaceTCP.sendUserName(this.value);
+		palace.sendUserName(this.value);
 		setGeneralPref('userName',this.value);
 	};
 	document.getElementById('prefhomepalace').onchange = function() {
@@ -501,10 +511,46 @@ let contextMenuListener = new ContextMenuListener((info) => {
 
 })();
 
+function log(data) {
+	logmsg(data.msg);
+}
 
-genericSmiley.src = 'img/user.png';
-genericSmiley.onload = function(){updateDrawPreview();};
+function logerror(msg) {
+	var lmsg = document.createElement('div');
+ 	lmsg.className = 'logmsg';
+ 	lmsg.innerHTML = msg;
+	logAppend(lmsg);
+}
 
+function logmsg(msg) {
+ 	var lmsg = document.createElement('div');
+ 	lmsg.className = 'logmsg';
+ 	lmsg.appendChild(document.createTextNode(msg));
+ 	/* logspan.innerText = msg.makeHyperLinks(); */
+	logAppend(lmsg);
+}
+
+function logAppend(logspan) {
+	var scrollLock = Math.abs((logField.scrollHeight - logField.clientHeight) - logField.scrollTop.fastRound()) < 2; // might need to make this 3...
+	if (logField.children.length > 400)
+		while (logField.children.length > 300) // limit log for performance reasons
+			logField.removeChild(logField.firstChild);
+	logField.appendChild(logspan);
+	if (scrollLock) logField.scrollTop = logField.scrollHeight - logField.clientHeight;
+}
+
+function logspecial(name) {
+	var logspan = document.createElement('div');
+ 	logspan.className = 'logmsg special '+name;
+	logAppend(logspan);
+}
+
+
+// add more elements perhaps.
+function setUserInterfaceAvailability(disable) {
+	document.getElementById('users').disabled = disable;
+	document.getElementById('rooms').disabled = disable;
+}
 
 function scale2Fit() {
 	if (viewScaleTimer) {
@@ -545,9 +591,9 @@ function setBodyWidth() {
 
 function enablePropButtons() {
 	var saved = true;
-	theUser.props.find(function(pid){if (propBagList.indexOf(pid) < 0) saved = false;});
+	palace.theUser.props.find(function(pid){if (propBagList.indexOf(pid) < 0) saved = false;});
 	document.getElementById('saveprop').disabled = saved;
-	document.getElementById('removeprops').disabled = (theUser.props.length == 0);
+	document.getElementById('removeprops').disabled = (palace.theUser.props.length == 0);
 }
 
 
@@ -639,7 +685,7 @@ function wearSelectedProps() {
 	if (selectedBagProps.length > 1) {
 		setprops(selectedBagProps);
 	} else if (selectedBagProps.length == 1) {
-		if (theUser.props.indexOf(selectedBagProps[0]) > -1) {
+		if (palace.theUser.props.indexOf(selectedBagProps[0]) > -1) {
 			removeprop(selectedBagProps[0]);
 		} else {
 			donprop(selectedBagProps[0]);
@@ -854,6 +900,8 @@ function setDrawType() {
 function updateDrawPreview() {
 	var drawCxt = document.getElementById('drawpreview').getContext("2d");
 
+	var genericSmiley = smileys[5+',0'];
+
 	var w = drawCxt.canvas.width;
 	var h = drawCxt.canvas.height;
 	var sw = genericSmiley.naturalWidth/2/2;
@@ -868,7 +916,12 @@ function updateDrawPreview() {
 	drawCxt.fillStyle = prefs.draw.fill;
 	drawCxt.strokeStyle = prefs.draw.color;
 
-	if (prefs.draw.front == true) drawCxt.drawImage(genericSmiley,0,0,42,42,w/2-sw,h/2-sh,21,21);
+
+	if (prefs.draw.front == true) {
+		drawCxt.filter = 'grayscale(100%)';
+		drawCxt.drawImage(genericSmiley,0,0,42,42,w/2-sw,h/2-sh,21,21);
+		drawCxt.filter = 'none';
+	}
 
 	if (prefs.draw.type == 0 || prefs.draw.type == 1) {
 		drawCxt.beginPath();
@@ -883,7 +936,11 @@ function updateDrawPreview() {
 		drawCxt.stroke();
 	}
 
-	if (prefs.draw.front == false) drawCxt.drawImage(genericSmiley,0,0,42,42,w/2-sw,h/2-sh,21,21);
+	if (prefs.draw.front == false) {
+		drawCxt.filter = 'grayscale(100%)';
+		drawCxt.drawImage(genericSmiley,0,0,42,42,w/2-sw,h/2-sh,21,21);
+		drawCxt.filter = 'none';
+	}
 
 }
 
@@ -942,21 +999,21 @@ function toggleNavListbox(cname) {
 		navframe.dataset.ctrlname = cname;
 		if (cname == 'users') {
 			navframe.className = 'navframeusers'; //4 default
-			palaceTCP.sendRoomListRequest();
-			if (roomList && userList) {
-				loadUserList(userList);
+			palace.sendRoomListRequest();
+			if (palace.roomList && palace.userList) {
+				loadUserList(palace.userList);
 			} else {
 				clearListBox(listbox);
 			}
-			palaceTCP.sendUserListRequest();
+			palace.sendUserListRequest();
 		} else if (cname == 'rooms') {
 			navframe.className = 'navframerooms'; // 44
-			if (roomList) {
-				loadRoomList(roomList);
+			if (palace.roomList) {
+				loadRoomList(palace.roomList);
 			} else {
 				clearListBox(listbox);
 			}
-			palaceTCP.sendRoomListRequest();
+			palace.sendRoomListRequest();
 		} else if (cname == 'servers') {
 			navframe.className = 'navframeservers'; // 85
 			if (directoryList) {
@@ -984,28 +1041,28 @@ function loadDirectoryList(directList) {
 	var listbox = document.getElementById('navlistbox'),
 		navframe = document.getElementById('navframe'),
 		scount = directoryList.directory.length,
-		serverInfo, li, s, s2, cl;
+		serverList, li, s, s2, cl;
 
 	if (navframe.dataset.ctrlname == 'servers') {
 		clearListBox(listbox);
 		var word = document.getElementById('navsearch').value.toLowerCase();
 
 		for (var i = 0; i < scount; i++) {
-			serverInfo = directoryList.directory[i];
-			if (word == '' || serverInfo.name.toLowerCase().indexOf(word) > -1) {
+			serverList = directoryList.directory[i];
+			if (word == '' || serverList.name.toLowerCase().indexOf(word) > -1) {
 				li = document.createElement("li");
-				li.dataset.address = serverInfo.address;
+				li.dataset.address = serverList.address;
 
-				li.className = 'sListItem';// '+serverInfo.language+' '+serverInfo.category.replace(/\s/g, '');
-				li.title = serverInfo.description;
+				li.className = 'sListItem';// '+serverList.language+' '+serverList.category.replace(/\s/g, '');
+				li.title = serverList.description;
 				s = document.createElement('div');
 				s.className = 'listName';
-				s.style.backgroundImage = 'url('+serverInfo.picture+')';
-				s.appendChild(document.createTextNode(serverInfo.name));
+				s.style.backgroundImage = 'url('+serverList.picture+')';
+				s.appendChild(document.createTextNode(serverList.name));
 
 				s2 = document.createElement('span');
 				s2.className = 'listPop';
-				s2.appendChild(document.createTextNode(serverInfo.population));
+				s2.appendChild(document.createTextNode(serverList.population));
 
 				li.appendChild(s);
 				li.appendChild(s2);
@@ -1021,7 +1078,7 @@ function loadRoomList(rlist) {
 		rcount = rlist.length,
 		li, s, s2, roomInfo;
 
-	roomList = rlist;
+	palace.roomList = rlist;
 	if (navframe.dataset.ctrlname == 'rooms') {
 		clearListBox(listbox);
 		var word = document.getElementById('navsearch').value.toLowerCase();
@@ -1059,7 +1116,7 @@ function loadUserList(ulist) {
 		ucount = ulist.length,
 		li, s, cl, userInfo, roomInfo, rname = '';
 
-	userList = ulist;
+	palace.userList = ulist;
 	if (navframe.dataset.ctrlname == 'users') {
 		clearListBox(listbox);
 		var word = document.getElementById('navsearch').value.toLowerCase();
@@ -1077,7 +1134,7 @@ function loadUserList(ulist) {
 				if (userInfo.flags & 0x0080) cl.add('gagged');
 				if (userInfo.flags & 2) cl.add('owner');
 				if (userInfo.flags & 1) cl.add('operator');
-				if (userInfo.userid == whisperUserID) cl.add('whisperingTo');
+				if (userInfo.userid == palace.theRoom.whisperUserID) cl.add('whisperingTo');
 
 				s = document.createElement('div');
 				s.className = 'listName';
@@ -1088,7 +1145,7 @@ function loadUserList(ulist) {
 				cl = s2.classList;
 				cl.add('roomName','rListItem');
 
-				roomInfo = roomList.find(function(room){return userInfo.roomid == room.id;});
+				roomInfo = palace.roomList.find(function(room){return userInfo.roomid == room.id;});
 
 				if (roomInfo) {
 					s2.dataset.roomid = userInfo.roomid; /* only if room is visible to the user */
@@ -1187,7 +1244,7 @@ function loadUserList(ulist) {
 // // 		pedit.propCtx.canvas.width = this.naturalWidth;
 // // 		pedit.propCtx.canvas.height = this.naturalHeight;
 // // 		pedit.propCtx.drawImage(this,0,0);
-// // 		pedit.reDraw();
+// // 		pedit.palace.theRoom.reDraw();
 // // 	}
 // // 	img.src = propsPath+id+'.png';
 // };

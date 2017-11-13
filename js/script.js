@@ -1,14 +1,14 @@
 function donprop(pid) {
-	if (addSelfProp(pid)) {
-		userPropChange();
+	if (palace.addSelfProp(pid)) {
+		palace.selfPropChange();
 		loadProps([pid],true);
 	}
 }
 
 function removeprop(pid) {
-	if (removeSelfProp(pid)) {
-		userPropChange();
-		loadProps(theUser.props,true);
+	if (palace.removeSelfProp(pid)) {
+		palace.selfPropChange();
+		loadProps(palace.theUser.props,true);
 	}
 }
 
@@ -17,11 +17,11 @@ function localmsg(msg) {
 }
 
 function setprops(pids) {
-	if (theUser && theUser.changeUserProps(pids,true)) userPropChange();
+	if (palace.theUser && palace.theUser.changeUserProps(pids,true)) palace.selfPropChange();
 }
 
 function gotoroom(id) {
-	palaceTCP.sendRoomNav(id);
+	palace.sendRoomNav(id);
 }
 
 function setpos(x,y) {
@@ -29,19 +29,19 @@ function setpos(x,y) {
 	if (y < 22) y = 22;
 	if (x > bgEnv.width-22) x = bgEnv.width-22;
 	if (y > bgEnv.height-22) y = bgEnv.height-22;
-	palaceTCP.sendUserLocation(x,y);
-	PalaceUser.userMove(theUserID,x,y);
+	palace.sendUserLocation(x,y);
+	palace.theRoom.userMove(palace.theUserID,x,y);
 }
 
 function move(x,y) {
-	if (theUser) setpos(theUser.x+x,theUser.y+y);
+	if (palace.theUser) setpos(palace.theUser.x+x,palace.theUser.y+y);
 }
 
 function gotourl(url) {
 	//window.status = 'setname '+getGeneralPref('userName'); ??
 	var blah = url.trim().replace('palace://','').split(':'); //should use forgiving regex
-	palaceTCP.retryRegistration = false;
-	palaceTCP.connect(blah[0],blah[1]);
+	palace.retryRegistration = false;
+	palace.connect(blah[0],blah[1]);
 }
 
 function datetime() {

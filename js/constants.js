@@ -1,7 +1,7 @@
-// window.onerror = function(e, url, line){
-// 	logerror(e + "<br>" + url.split('/').pop() + "&nbsp;&nbsp;&nbsp;&nbsp;Line:" + line + '<br><br>');
-// 	return true;
-// };
+window.onerror = function(e, url, line){
+	logerror(e + "<br>" + url.split('/').pop() + "&nbsp;&nbsp;&nbsp;&nbsp;Line:" + line + '<br><br>');
+	// return true;
+};
 
 var okayChar = /^[a-zA-Z0-9-=_+!@#$%^&*()\]\[{}\\\|;:'"\.,<>\?\/]$/;
 var linkSearch = /(\bhttps?:\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/i;

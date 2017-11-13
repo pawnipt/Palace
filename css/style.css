@@ -389,7 +389,8 @@ left:116px;
 top:2px;
 width:32px;
 height:32px;
-background-image:url(../img/naked.png);
+background-size:29px;
+filter:grayscale(100%);
 }
 #editprop {
 background-image:url(../img/editprop.png);

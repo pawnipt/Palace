@@ -10,14 +10,14 @@ class Bubble {
 			if (user.sticky) {
 				user.sticky.remove(true);
 				user.sticky = null;
-				reDraw();
+				palace.theRoom.reDraw();
 			}
 			x = user.x;
 			y = user.y;
-		} else if (theRoom.sticky) {
-			theRoom.sticky.remove(true);
-			theRoom.sticky = null;
-			reDraw();
+		} else if (palace.theRoom.sticky) {
+			palace.theRoom.sticky.remove(true);
+			palace.theRoom.sticky = null;
+			palace.theRoom.reDraw();
 		}
 
 		if (bubInfo.x !== undefined) {
@@ -87,7 +87,7 @@ class Bubble {
 	}
 	show() {
 		if (this.sticky && this.user) this.user.sticky = this;
-		if (this.sticky && !this.user) theRoom.sticky = this;
+		if (this.sticky && !this.user) palace.theRoom.sticky = this;
 
 		chatBubs.push(this);
 
@@ -103,7 +103,7 @@ class Bubble {
 			var bub = this;
 			this.popTimer = setTimeout(function(){bub.remove(false)}, speed); //is bub=null; required?
 		}
-		reDraw();
+		palace.theRoom.reDraw();
 	}
 	inflate() {
 		this.deflated = false;
@@ -121,7 +121,7 @@ class Bubble {
 				bub.p.style.left = bub.x+'px';
 				bub.p.style.top = bub.y+'px';
 			}
-			reDraw();
+			palace.theRoom.reDraw();
 		},20);
 	}
 	deflate(remove) {
@@ -141,7 +141,7 @@ class Bubble {
 				}
 				if (remove) bub.remove(true);
 			}
-			reDraw();
+			palace.theRoom.reDraw();
 		},20);
 	}
 	makeShoutBubble(ctx) {
@@ -369,9 +369,9 @@ class Bubble {
 			overLayer.removeChild(quedBubbles[i].p);
 			quedBubbles.splice(i,1);
 		}
-		if (theRoom.sticky) {
-			theRoom.sticky.remove(true);
-			theRoom.sticky = null;
+		if (palace.theRoom && palace.theRoom.sticky) {
+			palace.theRoom.sticky.remove(true);
+			palace.theRoom.sticky = null;
 		}
 	}
 

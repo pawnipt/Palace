@@ -1,24 +1,17 @@
-var mediaUrl = "",
-	grabbedProp = null,
-	whisperUserID = null,
-	mouseHoverUser = null,
-	mouseLooseProp = null,
-	mouseSelfProp = null,
-	drawPoints = [], // temp coordinates buffer for when the user draws in the room.
-	theRoom = {users:[],looseProps:[],serverUserCount:0,lastUserLogOnID:0,lastUserLogOnTime:0}; // still gotta make a class for PalaceRoom!
-	// redo theRoom, make it a class PalaceRoom!...
+const palace = new PalaceClient(prefs.registration.regi,prefs.registration.puid);
 
 //frequently accessed elements
 const overLayer = document.getElementById('container');
 const bgVideo = document.getElementById('bgVideo');
 const backGround = document.getElementById('background');
 const bgEnv = document.getElementById('mainlayer');
-const bgCtx = bgEnv.getContext("2d");
+
 
 const systemAudio = {signon:createAudio('SignOn'),signoff:createAudio('SignOff'),whisper:createAudio('Whispered'),doorclose:createAudio('DoorClose'),dooropen:createAudio('DoorOpen')};
 
 const electron = require('electron');
 const webFrame = electron.webFrame; // need this to getZoomFactor for proper mouse coordinates later
+
 
 
 const {remote} = require('electron');
@@ -27,47 +20,49 @@ const {Menu, MenuItem} = remote;
 const loosePropMenu = new Menu();
 loosePropMenu.append(new MenuItem({label: 'Save Prop', click(item) { saveProp(item.menu.pid); }}));
 loosePropMenu.append(new MenuItem({type: 'separator'}));
-loosePropMenu.append(new MenuItem({label: 'Remove Prop', click(item) { palaceTCP.sendPropDelete(item.menu.lpindex) }}));
+loosePropMenu.append(new MenuItem({label: 'Remove Prop', click(item) { palace.sendPropDelete(item.menu.lpindex) }}));
 
 const userMenu = new Menu();
 userMenu.append(new MenuItem({label: 'Whisper ',type: 'checkbox', click(item) {
-	var user = getUser(item.menu.userId);
-	if (user) enterWhisperMode(user.id,user.name);
+	var user = palace.theRoom.getUser(item.menu.userId);
+	if (user) palace.theRoom.enterWhisperMode(user.id,user.name);
 }}));
 userMenu.append(new MenuItem({type: 'separator'}));
-userMenu.append(new MenuItem({label: 'Offer avatar', click(item) { palaceTCP.sendWhisper("'offer",item.menu.userId); }}));
-userMenu.append(new MenuItem({label: 'Accept avatar', click(item) { palaceTCP.sendXtlk("'accept"); }}));
+userMenu.append(new MenuItem({label: 'Offer avatar', click(item) { palace.sendWhisper("'offer",item.menu.userId); }}));
+userMenu.append(new MenuItem({label: 'Accept avatar', click(item) { palace.sendXtlk("'accept"); }}));
 userMenu.append(new MenuItem({type: 'separator'}));
 userMenu.append(new MenuItem({label: 'Prop mute',type: 'checkbox', click(item) {
-	var user = getUser(item.menu.userId);
+	var user = palace.theRoom.getUser(item.menu.userId);
 	if (user) {
 		user.propMuted = !user.propMuted;
-		reDraw();
+		palace.theRoom.reDraw();
 	}
 }}));
 
 bgEnv.addEventListener('contextmenu', (e) => {
-	e.preventDefault();
+	if (palace.theRoom) {
+		e.preventDefault();
 
-	var x = (event.layerX/viewScale).fastRound();
-	var y = ((event.layerY + (45*webFrame.getZoomFactor() - 45)) /viewScale).fastRound(); // get excess toolbar height if windows is scaling
+		var x = (event.layerX/viewScale).fastRound();
+		var y = ((event.layerY + (45*webFrame.getZoomFactor() - 45)) /viewScale).fastRound(); // get excess toolbar height if windows is scaling
 
-	var user = mouseOverUser(x,y);
+		var user = palace.theRoom.mouseOverUser(x,y);
 
-	if (user && user != theUser) {
-		userMenu.userId = user.id;
-		userMenu.items[0].checked = Boolean(whisperUserID);
-		userMenu.items[5].checked = Boolean(user.propMuted);
-		userMenu.items[2].enabled = theUser.props.length > 0;
-		userMenu.popup(remote.getCurrentWindow(),{x:e.x,y:e.y,async:true});
-	} else {
-		var lpIndex = mouseOverLooseProp(x,y);
-		if (lpIndex != null) {
-			var lp = theRoom.looseProps[lpIndex];
-			loosePropMenu.items[0].enabled = (propBagList.indexOf(lp.id) < 0);
-			loosePropMenu.pid = lp.id;
-			loosePropMenu.lpindex = lpIndex;
-			loosePropMenu.popup(remote.getCurrentWindow(),{x:e.x,y:e.y,async:true});
+		if (user && user != palace.theUser) {
+			userMenu.userId = user.id;
+			userMenu.items[0].checked = Boolean(palace.theRoom.whisperUserID);
+			userMenu.items[5].checked = Boolean(user.propMuted);
+			userMenu.items[2].enabled = palace.theUser.props.length > 0;
+			userMenu.popup(remote.getCurrentWindow(),{x:e.x,y:e.y,async:true});
+		} else {
+			var lpIndex = palace.theRoom.mouseOverLooseProp(x,y);
+			if (lpIndex != null) {
+				var lp = palace.theRoom.looseProps[lpIndex];
+				loosePropMenu.items[0].enabled = (propBagList.indexOf(lp.id) < 0);
+				loosePropMenu.pid = lp.id;
+				loosePropMenu.lpindex = lpIndex;
+				loosePropMenu.popup(remote.getCurrentWindow(),{x:e.x,y:e.y,async:true});
+			}
 		}
 	}
 }, false);
@@ -82,19 +77,19 @@ bgEnv.ondragover = function(event) {
 };
 bgEnv.ondrop = function(event) {
 	event.preventDefault();
-	if (theUser && dragPropID) {
+	if (palace.theUser && dragPropID) {
 		var x = (event.layerX/viewScale).fastRound();
 		var y = (event.layerY/viewScale).fastRound();
-		var overSelf = (theUser && theUser.x-22 < x && theUser.x+22 > x && theUser.y-22 < y && theUser.y+22 > y);
+		var overSelf = (palace.theUser && palace.theUser.x-22 < x && palace.theUser.x+22 > x && palace.theUser.y-22 < y && palace.theUser.y+22 > y);
 
 		loadProps([dragPropID],true,function() { //callback to drop the prop once it is loaded from the users bag
 			var prop = allProps[dragPropID];
 			if (prop) {
 				if (!overSelf) {
-					palaceTCP.sendPropDrop(x-prop.w/2,y-prop.h/2,dragPropID);
+					palace.sendPropDrop(x-prop.w/2,y-prop.h/2,dragPropID);
 				} else {
-					addSelfProp(dragPropID);
-					userPropChange(); //normally the mouse up even for the canvas would handle this but we're now async
+					palace.addSelfProp(dragPropID);
+					palace.selfPropChange(); //normally the mouse up even for the canvas would handle this but we're now async?
 				}
 			}
 		});
@@ -102,127 +97,133 @@ bgEnv.ondrop = function(event) {
 };
 bgEnv.oncontextmenu = function() {return false;}; // prevent right click for now
 bgEnv.onmousemove = function(event) {
-	var isDrawing = document.getElementById('drawcheckbox').checked;
+	if (palace.theRoom) {
+		var isDrawing = document.getElementById('drawcheckbox').checked;
 
-	if (isDrawing) {
-		switch(prefs.draw.type) {
-			case 1: bgEnv.style.cursor = 'url(img/bucket.cur) 16 13,crosshair'; break;
-			default: bgEnv.style.cursor = 'url(img/pen.cur) 1 14,crosshair';
-		}
-		bgEnv.dataset.cursorName = '';
-		return true;
-	}
-	if (theUser == null) return false;
-
-	var x = (event.layerX/viewScale).fastRound();
-	var y = ((event.layerY+(45*webFrame.getZoomFactor() - 45))/viewScale).fastRound();
-
-	if (grabbedProp == null) {
-
-		if (!event.shiftKey) { /* shift toggles between user and props */
-			var mUser = mouseOverUser(x,y);
-			if (mouseHoverUser != mUser) {
-				if (mUser != null) {
-					mouseEnterUser(mUser);
-				} else {
-					mouseExitUser();
-				}
+		if (isDrawing) {
+			switch(prefs.draw.type) {
+				case 1: bgEnv.style.cursor = 'url(img/bucket.cur) 16 13,crosshair'; break;
+				default: bgEnv.style.cursor = 'url(img/pen.cur) 1 14,crosshair';
 			}
-		} else {
-			mouseExitUser();
+			bgEnv.dataset.cursorName = '';
+			return true;
 		}
+		if (palace.theUser == null) return false;
 
-		if (event.shiftKey) { /* for efficiency sake, check shiftkey before bothering to scan */
-			var pid = mouseOverSelfProp(x,y);
-			if (mouseSelfProp != pid) {
-				if (pid != null) {
-					mouseEnterSelfProp(pid);
-				} else {
-					mouseExitSelfProp();
+		var x = (event.layerX/viewScale).fastRound();
+		var y = ((event.layerY+(45*webFrame.getZoomFactor() - 45))/viewScale).fastRound();
+
+		if (palace.theRoom.grabbedProp == null) {
+
+			if (!event.shiftKey) { /* shift toggles between user and props */
+				var mUser = palace.theRoom.mouseOverUser(x,y);
+				if (palace.theRoom.mouseHoverUser != mUser) {
+					if (mUser != null) {
+						palace.theRoom.mouseEnterUser(mUser);
+					} else {
+						palace.theRoom.mouseExitUser();
+					}
 				}
-			}
-		} else {
-			mouseExitSelfProp();
-		}
-
-		var lpIndex = mouseOverLooseProp(x,y);
-		if (lpIndex != mouseLooseProp) {
-			if (lpIndex != null) {
-				mouseEnterLooseProp(lpIndex);
 			} else {
-				mouseExitLooseProp();
+				palace.theRoom.mouseExitUser();
 			}
-		}
-	} else {
-		mouseExitLooseProp();
-		mouseExitSelfProp();
 
-		if (theUser.x-22 < x && theUser.x+22 > x && theUser.y-22 < y && theUser.y+22 > y) {
-			addSelfProp(grabbedProp.id);
-			grabbedProp.mx = -999; /* temp vanishing */
-			grabbedProp.my = -999;
+			if (event.shiftKey) { /* for efficiency sake, check shiftkey before bothering to scan */
+				var pid = palace.theRoom.mouseOverSelfProp(x,y);
+				if (palace.theRoom.mouseSelfProp != pid) {
+					if (pid != null) {
+						palace.theRoom.mouseEnterSelfProp(pid);
+					} else {
+						palace.theRoom.mouseExitSelfProp();
+					}
+				}
+			} else {
+				palace.theRoom.mouseExitSelfProp();
+			}
+
+			var lpIndex = palace.theRoom.mouseOverLooseProp(x,y);
+			if (lpIndex != palace.theRoom.mouseLooseProp) {
+				if (lpIndex != null) {
+					palace.theRoom.mouseEnterLooseProp(lpIndex);
+				} else {
+					palace.theRoom.mouseExitLooseProp();
+				}
+			}
 		} else {
-			if (event.altKey == false && (theUser.propsChanged == true || grabbedProp.index < 0))
-				removeSelfProp(grabbedProp.id);
+			palace.theRoom.mouseExitLooseProp();
+			palace.theRoom.mouseExitSelfProp();
 
-			grabbedProp.mx = (x-grabbedProp.offsetX);
-			grabbedProp.my = (y-grabbedProp.offsetY);
+			if (palace.theUser.x-22 < x && palace.theUser.x+22 > x && palace.theUser.y-22 < y && palace.theUser.y+22 > y) {
+				palace.addSelfProp(palace.theRoom.grabbedProp.id);
+				palace.theRoom.grabbedProp.mx = -999; /* temp vanishing */
+				palace.theRoom.grabbedProp.my = -999;
+			} else {
+				if (event.altKey == false && (palace.theUser.propsChanged == true || palace.theRoom.grabbedProp.index < 0))
+					palace.removeSelfProp(palace.theRoom.grabbedProp.id);
+
+				palace.theRoom.grabbedProp.mx = (x-palace.theRoom.grabbedProp.offsetX);
+				palace.theRoom.grabbedProp.my = (y-palace.theRoom.grabbedProp.offsetY);
+			}
+			palace.theRoom.reDraw();
 		}
-		reDraw();
-	}
 
-	if (grabbedProp != null && event.altKey) {
-		setEnvCursor('copy');
-	} else if (mouseLooseProp != null || mouseSelfProp != null || grabbedProp != null) {
-		setEnvCursor('move');
-	} else if (mouseHoverUser == theUser && event.ctrlKey) {
-		setEnvCursor('context-menu');
-	} else {
-		var spot = mouseInSpot(x,y);
-		if ((mouseHoverUser != null && mouseHoverUser != theUser) || (spot && spot.type > 0)) {
-			setEnvCursor('pointer');
+		if (palace.theRoom.grabbedProp != null && event.altKey) {
+			setEnvCursor('copy');
+		} else if (palace.theRoom.mouseLooseProp != null || palace.theRoom.mouseSelfProp != null || palace.theRoom.grabbedProp != null) {
+			setEnvCursor('move');
+		} else if (palace.theRoom.mouseHoverUser == palace.theUser && event.ctrlKey) {
+			setEnvCursor('context-menu');
 		} else {
-			setEnvCursor('default');
+			var spot = palace.theRoom.mouseInSpot(x,y);
+			if ((palace.theRoom.mouseHoverUser != null && palace.theRoom.mouseHoverUser != palace.theUser) || (spot && spot.type > 0)) {
+				setEnvCursor('pointer');
+			} else {
+				setEnvCursor('default');
+			}
 		}
 	}
 };
 bgEnv.onmouseleave = function(event) { // this wouldn't be nessacery if i used the windows mouse events
-	var x = (event.layerX/viewScale).fastRound();
-	var y = (event.layerY/viewScale).fastRound();
-	mouseExitSelfProp();
-	mouseExitLooseProp();
-	mouseExitUser();
+	if (palace.theRoom) {
+		var x = (event.layerX/viewScale).fastRound();
+		var y = (event.layerY/viewScale).fastRound();
+		palace.theRoom.mouseExitSelfProp();
+		palace.theRoom.mouseExitLooseProp();
+		palace.theRoom.mouseExitUser();
+	}
 };
 bgEnv.onmouseup = function(event) {
-	if (grabbedProp != null) {
-		var x = (event.layerX/viewScale).fastRound();
-		var y = ((event.layerY+(45*webFrame.getZoomFactor() - 45))/viewScale).fastRound();
-		var overSelf = (theUser && theUser.x-22 < x && theUser.x+22 > x && theUser.y-22 < y && theUser.y+22 > y);
-		if (grabbedProp.index == -1) {
-			if (!overSelf) {
-				palaceTCP.sendPropDrop(x-grabbedProp.offsetX,y-grabbedProp.offsetY,grabbedProp.id);
-			} else {
-				addSelfProp(grabbedProp.id);
-			}
-		} else {
-			if (!event.altKey) {
-				if (overSelf) {
-					palaceTCP.sendPropDelete(grabbedProp.index);
+	if (palace.theRoom) {
+		if (palace.theRoom.grabbedProp != null) {
+			var x = (event.layerX/viewScale).fastRound();
+			var y = ((event.layerY+(45*webFrame.getZoomFactor() - 45))/viewScale).fastRound();
+			var overSelf = (palace.theUser && palace.theUser.x-22 < x && palace.theUser.x+22 > x && palace.theUser.y-22 < y && palace.theUser.y+22 > y);
+			if (palace.theRoom.grabbedProp.index == -1) {
+				if (!overSelf) {
+					palace.sendPropDrop(x - palace.theRoom.grabbedProp.offsetX,y - palace.theRoom.grabbedProp.offsetY, palace.theRoom.grabbedProp.id);
 				} else {
-					palaceTCP.sendPropMove(x-grabbedProp.offsetX,y-grabbedProp.offsetY,grabbedProp.index);
+					palace.addSelfProp(palace.theRoom.grabbedProp.id);
 				}
 			} else {
-				if (!overSelf) palaceTCP.sendPropDrop(x-grabbedProp.offsetX,y-grabbedProp.offsetY,grabbedProp.id);
+				if (!event.altKey) {
+					if (overSelf) {
+						palace.sendPropDelete(palace.theRoom.grabbedProp.index);
+					} else {
+						palace.sendPropMove(x - palace.theRoom.grabbedProp.offsetX,y - palace.theRoom.grabbedProp.offsetY, palace.theRoom.grabbedProp.index);
+					}
+				} else {
+					if (!overSelf) palace.sendPropDrop(x - palace.theRoom.grabbedProp.offsetX,y - palace.theRoom.grabbedProp.offsetY, palace.theRoom.grabbedProp.id);
+				}
 			}
+			palace.theRoom.reDraw();
 		}
-		reDraw();
+		palace.theRoom.grabbedProp = null;
+		if (palace.theUser && palace.theUser.propsChanged === true) palace.selfPropChange();
 	}
-	grabbedProp = null;
-	if (theUser && theUser.propsChanged == true) userPropChange();
 };
 bgEnv.onmousedown = function(event) {
 	document.getElementById('chatbox').blur();
-	if (event.button == 0) {
+	if (palace.theUser && event.button == 0) {
 		event.preventDefault();
 		var isDrawing = document.getElementById('drawcheckbox').checked;
 		var x = (event.layerX/viewScale).fastRound();
@@ -230,35 +231,35 @@ bgEnv.onmousedown = function(event) {
 		if (isDrawing) {
 			var offset = 0;
 			if (prefs.draw.type == 0) offset = Math.floor(prefs.draw.size/2);
-			drawPoints = [x-offset,y-offset];
-			window.addEventListener('mousemove',drawing);
-			window.addEventListener('mouseup',drawingEnd);
+			palace.theRoom.drawPoints = [x-offset,y-offset];
+			window.addEventListener('mousemove',Renderer.drawing);
+			window.addEventListener('mouseup',Renderer.drawingEnd);
 		} else {
 			var lpIndex = null;
 			var pid = null;
 
-			var mUser = mouseOverUser(x,y);
-			if (!event.shiftKey && mUser != theUser && mUser != null) {
-				enterWhisperMode(mUser.id,mUser.name);
+			var mUser = palace.theRoom.mouseOverUser(x,y);
+			if (!event.shiftKey && mUser != palace.theUser && mUser != null) {
+				palace.theRoom.enterWhisperMode(mUser.id,mUser.name);
 			} else {
-				if (event.shiftKey) pid = mouseOverSelfProp(x,y);
-				if (pid == null) lpIndex = mouseOverLooseProp(x,y);
+				if (event.shiftKey) pid = palace.theRoom.mouseOverSelfProp(x,y);
+				if (pid == null) lpIndex = palace.theRoom.mouseOverLooseProp(x,y);
 
 				if (pid != null) {
 					var aProp = allProps[pid];
-					makeDragProp(-1, pid, x, y, x-aProp.x-theUser.x+22, y-aProp.y-theUser.y+22);
+					palace.theRoom.makeDragProp(-1, pid, x, y, x-aProp.x-palace.theUser.x+22, y-aProp.y-palace.theUser.y+22);
 				} else if (lpIndex != null) {
-					var lProp = theRoom.looseProps[lpIndex];
-					makeDragProp(lpIndex, lProp.id, x, y, x-lProp.x, y-lProp.y);
-				} else if (mUser == null || mUser == theUser) { /* if not clicking another user */
+					var lProp = palace.theRoom.looseProps[lpIndex];
+					palace.theRoom.makeDragProp(lpIndex, lProp.id, x, y, x-lProp.x, y-lProp.y);
+				} else if (mUser == null || mUser == palace.theUser) { /* if not clicking another user */
 
 					var clickSpotInfo = function(x,y) {
 						var ai = {};
 						var spot;
-						for (var i = theRoom.spots.length; --i >= 0;) {
-							spot = theRoom.spots[i];
-							makeHotSpot(spot);
-							if (bgCtx.isPointInPath(x,y)) {
+						for (var i = palace.theRoom.spots.length; --i >= 0;) {
+							spot = palace.theRoom.spots[i];
+							palace.theRoom.makeHotSpot(spot);
+							if (palace.theRoom.context.isPointInPath(x,y)) {
 								if (ai.spot == null) ai.spot = spot;
 								if (spotConsts.DontMoveHere & spot.flags) ai.dontMove = true;
 							}
@@ -283,9 +284,9 @@ bgEnv.onmousedown = function(event) {
 								}
 								break;
 							case spotConsts.types.deadBolt:
-								var d = getSpot(dest);
+								var d = palace.theRoom.getSpot(dest);
 								if (d != null)
-									window.status = (d.state == 0?'lockdoor ':'unlockdoor ')+dest;
+									window.status = (d.state == 0?'lockdoor ':'unlockdoor ')+dest; // must implement this protocol....
 								break;
 						}
 					}
@@ -295,57 +296,24 @@ bgEnv.onmousedown = function(event) {
 	}
 };
 
-theRoom.createSpotPicPlaceholder = function() {
-	var ph = document.createElement('span');
-	ph.className = 'spholder';
-	return ph;
-};
-theRoom.removeAllRoomPics = function() {
-	var childs = overLayer.children;
-	for (var i = childs.length; --i >= 0;)
-		if (childs[i].className.substr(0,7) == 'spotpic' || childs[i].className == 'spholder')
-			overLayer.removeChild(childs[i]);
-};
-theRoom.setSpotImg = function(spot) {
-	var statepic = spot.statepics[spot.state];
-	if (statepic && theRoom.pics[statepic.id]) {
-		var img = theRoom.pics[statepic.id].img;
-		if (img.naturalWidth > 0) {
-			if (spot.img.src !== img.src) {
-				img = img.cloneNode(false);
-				img.style.left = spot.x+statepic.x-(img.naturalWidth/2).fastRound()+'px';
-				img.style.top = spot.y+statepic.y-(img.naturalHeight/2).fastRound()+'px';
-				img.className = 'spotpic';
-				if (Boolean(spotConsts.PicturesAboveAll & spot.flags || spotConsts.PicturesAboveProps & spot.flags || spotConsts.PicturesAboveNameTags & spot.flags))
-					img.className += ' ontop';
-				overLayer.replaceChild(img,spot.img);
-				spot.img = img;
-			} else {
-				spot.img.style.left = spot.x+statepic.x-(spot.img.naturalWidth/2).fastRound()+'px';
-				spot.img.style.top = spot.y+statepic.y-(spot.img.naturalHeight/2).fastRound()+'px';
-			}
-		}
-	} else if (spot.img && spot.img.className != 'spholder') { /* spot is not displaying a pic so put in placeholder */
-		var img = theRoom.createSpotPicPlaceholder();
-		overLayer.replaceChild(img,spot.img);
-		spot.img = img;
-	}
-};
 
-theRoom.unloadBgVideo = function() {
+
+
+
+function unloadBgVideo() {
 	document.getElementById('muteaudio').style.display = 'none';
 	bgVideo.style.display = 'none';
 	if (bgVideo.src != '') bgVideo.src = '';
-};
-theRoom.setEnviornment = function(w,h,bg) {
+}
+function setEnviornment(w,h,bg) {
 	toggleLoadingBG();
-	theRoom.setEnviornmentSize(w,h);
+	setEnviornmentSize(w,h);
 	backGround.style.backgroundImage = bg;
     Bubble.resetDisplayedBubbles();
-    refresh(true);
-};
+    if (palace.theRoom) palace.theRoom.refresh();
+}
 
-theRoom.setEnviornmentSize = function(w,h) {
+function setEnviornmentSize(w,h) {
 /* mitigates flicker on canvas resize */
 	var tempCanvas = document.createElement('canvas');
     tempCanvas.width = bgEnv.width;
@@ -356,15 +324,14 @@ theRoom.setEnviornmentSize = function(w,h) {
 	bgEnv.width = w;
 	bgEnv.height = h;
 
-	bgCtx.lineJoin = 'round';
-	bgCtx.lineCap = 'round';
-	bgCtx.imageSmoothingEnabled = false;
-	//bgCtx.imageSmoothingQuality = 'high';
-
+	if (palace.theRoom) {
+		palace.theRoom.context.lineJoin = 'round';
+		palace.theRoom.context.lineCap = 'round';
+		palace.theRoom.context.imageSmoothingEnabled = false;
+		//palace.theRoom.context.imageSmoothingQuality = 'high';
+    	palace.theRoom.context.drawImage(tempContext.canvas, 0, 0);
+	}
 	scale2Fit();
-
-    bgCtx.drawImage(tempContext.canvas, 0, 0);
-
 	backGround.style.width = w+'px';
     backGround.style.height = h+'px';
 	overLayer.style.width = w+'px';
@@ -372,9 +339,9 @@ theRoom.setEnviornmentSize = function(w,h) {
   											 // 45 is toolbar height
     document.body.style.height = bgEnv.height + 45 + document.getElementById('chatbox').offsetHeight + 'px';
     setBodyWidth();
-};
+}
 
-theRoom.setEnviornmentSize(window.innerWidth-logField.offsetWidth,window.innerHeight-overLayer.offsetTop-document.getElementById('chatbox').offsetHeight);
+setEnviornmentSize(window.innerWidth-logField.offsetWidth,window.innerHeight-overLayer.offsetTop-document.getElementById('chatbox').offsetHeight);
 
 function createAudio(name) {
 	var a = document.createElement("audio");
@@ -384,54 +351,875 @@ function createAudio(name) {
 
 function passUrl(s) {
 	var url = s.trim().replace(/ /g,'%20');
-	return (url.indexOf('http') === 0)? url:mediaUrl+url;
+	return (url.indexOf('http') === 0)? url:palace.mediaUrl+url;
 }
 
-function loadRoom(room) {
-	Bubble.deleteAllBubbles();
 
-	document.getElementById('palaceroom').innerText = room.name;
 
-	theRoom.spots = room.spots;
-	theRoom.draws = room.draws;
-	theRoom.looseProps = room.looseprops;
+class Renderer {
+	constructor(canvas) {
+		this.context = canvas.getContext("2d");
+		this.drawPoints = [];
+	}
 
-	var media = passUrl(room.background);
-	var ext = parseURL(media).pathname.split('.').pop();
-	if (media != theRoom.lastLoadedBG) {	/* prevent reloading of background media when room is authored */
-		//theRoom.setEnviornment(window.innerWidth-logField.offsetWidth,window.innerHeight-overLayer.offsetTop,'');
-		theRoom.setEnviornment(bgEnv.width,bgEnv.height,'');
-		toggleLoadingBG(true);
-		if (ext == 'mp4' || ext == 'ogg' || ext == 'webm' || ext == 'm4v') {	/* eventually use http request as well, to determine resource type */
-			setBackGroundVideo(media);
+	refresh() {
+		if (this.drawTimer) {
+			clearTimeout(this.drawTimer);
+			this.drawTimer = null;
+		}
+
+		this.context.clearRect(0,0,this.context.canvas.width,this.context.canvas.height);
+		//bgEnv.width = bgEnv.width;
+
+		var i;
+
+		for (i = 0; i < this.spots.length; i++) {this.drawSpot(this.spots[i],false);}
+		for (i = 0; i < this.draws.length; i++) {this.drawDraws(this.draws[i],false);}
+		if (!prefs.draw.front) this.preDrawDrawing();
+		for (i = 0; i < this.spots.length; i++) {this.drawSpotName(this.spots[i],false);}
+		this.drawLimboProp();
+		for (i = 0; i < this.looseProps.length; i++) {this.drawLooseProp(this.looseProps[i]);}
+		for (i = 0; i < this.users.length; i++) {this.drawAvatar(this.users[i]);}
+		for (i = 0; i < this.users.length; i++) {this.drawName(this.users[i]);}
+		for (i = 0; i < this.spots.length; i++) {this.drawSpot(this.spots[i],true);}
+		for (i = 0; i < this.spots.length; i++) {this.drawSpotName(this.spots[i],true);}
+		for (i = 0; i < this.draws.length; i++) {this.drawDraws(this.draws[i],true);}
+		if (prefs.draw.front) this.preDrawDrawing();
+		for (i = 0; i < chatBubs.length; i++) {this.drawBubble(chatBubs[i]);} // add chat bubbles to PalaceRoom..
+
+		if (this.context.shadowBlur > 0) {	//intelligently and efficiently restore state machine.
+			this.context.shadowColor = 'transparent';
+			this.context.globalAlpha = 1;
+			this.context.shadowBlur = 0;
+			this.context.shadowOffsetY = 0;
+		}
+
+	}
+
+	reDraw() {
+		if (this.drawTimer) clearTimeout(this.drawTimer);
+		this.drawTimer = setTimeout(function(){palace.theRoom.refresh();},0);
+	}
+
+	drawBubble(bub) {
+
+		if (this.context.shadowBlur != 2) {
+			this.context.shadowColor = 'RGBA(0,0,0,.6)';
+			this.context.shadowOffsetY = 1;
+			this.context.shadowBlur = 3;
+		}
+
+		if (bub.user) {
+			var grd;
+			if (bub.right) {
+				grd = this.context.createLinearGradient(bub.x, 0, bub.x+bub.textWidth, 0);
+			} else {
+				grd = this.context.createLinearGradient(bub.x+bub.textWidth, 0,bub.x, 0);
+			}
+
+			grd.addColorStop(0, getHsl(bub.color,73));
+			grd.addColorStop(0.5, getHsl(bub.color,79));
+			grd.addColorStop(1, getHsl(bub.color,73));
+
+
+			this.context.fillStyle = grd;
 		} else {
-			setBackGround(media);
+			this.context.fillStyle = 'white';
+		}
+
+		if (bub.shout) {
+			bub.makeShoutBubble(this.context);
+		/* } else if (bub.thought) { */
+
+		} else {
+			bub.makeRegularBubble(this.context, bubbleConsts.radius);
+		}
+		this.context.globalAlpha = bub.size-0.1;
+		this.context.fill();
+
+	}
+
+	drawSpot(spot,above) {
+		if (above == Boolean(spotConsts.PicturesAboveAll & spot.flags || spotConsts.PicturesAboveProps & spot.flags || spotConsts.PicturesAboveNameTags & spot.flags)) {
+			if ((spotConsts.ShowFrame & spot.flags) || (spotConsts.Shadow & spot.flags)) {
+				this.makeHotSpot(spot); /* the spots polygon frame */
+
+				if (spotConsts.Shadow & spot.flags) {
+					this.context.fillStyle = 'black';
+					this.context.fill();
+				}
+				if (spotConsts.ShowFrame & spot.flags) {
+					this.context.strokeStyle = 'black';
+					this.context.lineWidth = 1;
+					this.context.stroke();
+				}
+			}
 		}
 	}
 
-	theRoom.pics = [];
-	theRoom.removeAllRoomPics();
+	drawSpotName(spot,above) {
+		if ((spotConsts.ShowName & spot.flags) && spot.name.length > 0) {
+			if (above == Boolean(spotConsts.PicturesAboveAll & spot.flags || spotConsts.PicturesAboveProps & spot.flags || spotConsts.PicturesAboveNameTags & spot.flags)) {
+				var size = 12;
+				this.context.fillStyle = 'white';
+				this.context.font = size+'px sans-serif';
+				this.context.textBaseline = 'top';
+				this.context.textAlign = 'center';
+				var w = this.context.measureText(spot.name).width+4;
+				roundRect(this.context, spot.x-(w/2)-2, spot.y-1, w+4, size+4, 4, true, false);
+				this.context.fillStyle = 'black';
+				//this.context.shadowColor = 'transparent';
+				this.context.fillText(spot.name, spot.x, spot.y);
+			}
+		}
+	}
 
-	room.pictures.find(function(pict) {
-		var newImg = document.createElement('img');
-		newImg.onload = function() {
-			theRoom.spots.find(function(spot) {
-				if (!spot.img) {
-					spot.img = theRoom.createSpotPicPlaceholder();
-					overLayer.appendChild(spot.img);
+	makeHotSpot(spot) {
+		this.context.beginPath();
+		this.context.moveTo(spot.x + spot.points[0], spot.y + spot.points[1]);
+		var len = spot.points.length-1;
+		for (var i=2; i < len; i+=2) {
+		 	this.context.lineTo(spot.x + spot.points[i], spot.y + spot.points[i+1]);
+		 }
+		this.context.closePath();
+	}
+
+	drawLooseProp(lProp) {
+		var aProp = allProps[lProp.id];
+		if (aProp && aProp.isComplete) {
+			var gAlpha = 1;
+			if (aProp.ghost) gAlpha = gAlpha/2;
+
+			if (this.grabbedProp && this.looseProps[this.grabbedProp.index] == lProp) {
+				this.context.globalAlpha = gAlpha/2;
+				this.context.drawImage(aProp.img,this.grabbedProp.mx,this.grabbedProp.my);
+			}
+			if (lProp.light > 0) {
+				this.context.shadowColor = 'rgba(124,252,0,'+lProp.light+')';
+				this.context.shadowBlur = 4;
+			}
+			this.context.globalAlpha = gAlpha;
+			this.context.drawImage(aProp.img,lProp.x,lProp.y);
+			if (this.context.shadowBlur > 0) {
+				this.context.shadowColor = 'transparent';
+				this.context.shadowBlur = 0;
+			}
+			if (this.context.globalAlpha < 1) {
+				this.context.globalAlpha = 1;
+			}
+		}
+	}
+
+	drawName(user) {
+		var overUser = (this.mouseHoverUser != palace.theUser && this.mouseHoverUser == user);
+
+		if (overUser && this.whisperUserID == user.id) {
+			this.context.shadowColor = 'IndianRed';
+			this.context.shadowBlur = 6;
+		} else if (((overUser && this.whisperUserID != user.id) || this.whisperUserID == user.id) || user.light > 0) {
+			this.context.shadowColor = 'rgba(152,251,152,'+user.light+')';
+			this.context.shadowBlur = 6;
+		}
+
+
+		if (this.whisperUserID != null && this.whisperUserID != user.id && user != palace.theUser) {
+			this.context.globalAlpha = 0.5;
+		}
+		if (user.scale != 1) {
+			var size = 1/user.scale;
+			this.context.scale(size,size);
+		}
+		var loc = user.nametagLoc();
+
+		this.context.drawImage(user.nametag, loc.x, loc.y);
+		if (this.context.shadowBlur > 0) {
+			this.context.shadowColor = 'transparent';
+			this.context.shadowBlur = 0;
+		}
+		if (this.context.globalAlpha < 1) {
+			this.context.globalAlpha = 1;
+		}
+		if (user.scale != 1) {
+			this.context.setTransform(1, 0, 0, 1, 0, 0); // resets transform
+		}
+
+	}
+
+	drawAvatar(user) {
+		var overUser = (this.mouseHoverUser != palace.theUser && this.mouseHoverUser == user);
+
+		if (overUser && this.whisperUserID == user.id) {
+			this.context.shadowColor = 'IndianRed';
+			this.context.shadowBlur = 6;
+		} else if (((overUser && this.whisperUserID != user.id) || this.whisperUserID == user.id) || user.light > 0) {
+			this.context.shadowColor = 'rgba(152,251,152,'+user.light+')';
+			this.context.shadowBlur = 6;
+		}
+
+		if (user.scale != 1) {
+			var size = 1/user.scale;
+			this.context.scale(size,size);
+		}
+
+		if ((this.whisperUserID != null && this.whisperUserID != user.id && user != palace.theUser)) {
+			this.context.globalAlpha = 0.5;
+		}
+		if (user.showHead !== false || user.propMuted) {
+			this.drawSmiley(user);
+		}
+		if (!user.propMuted) {
+			for (var i = 0; i < user.props.length; i++) {
+				var aProp = allProps[user.props[i]];
+				if (aProp && (!aProp.animated || user.animatePropID === undefined || user.animatePropID == aProp.id)) {
+					this.drawUserProp(user,aProp);
 				}
-				theRoom.setSpotImg(spot);
-			});
-			this.onload = null;
-		};
-		pict.img = newImg;
-		theRoom.pics[pict.id] = pict;
-		newImg.src = passUrl(pict.name);
-	});
+			}
+		}
+		if (this.context.shadowBlur > 0) {
+			this.context.shadowColor = 'transparent';
+			this.context.shadowBlur = 0;
+		}
+		if (this.context.globalAlpha < 1) this.context.globalAlpha = 1;
+		if (user.scale != 1) this.context.setTransform(1, 0, 0, 1, 0, 0); // resets transform
+	}
+
+	drawSmiley(user) {
+		this.context.drawImage(smileys[user.face+','+user.color],user.x*user.scale-21,user.y*user.scale-21);
+	}
+
+	drawUserProp(user,aProp) {
+		if (aProp.isComplete) {
+			var iAlpha = this.context.globalAlpha;
+			if (aProp.ghost) this.context.globalAlpha = iAlpha/2;
+			var draggingSelfProp = (aProp.id == this.mouseSelfProp && user == palace.theUser);
+			if (draggingSelfProp) {
+				this.context.shadowColor = 'LawnGreen';
+				this.context.shadowBlur = 4;
+			}
+			this.context.drawImage(aProp.img,user.x*user.scale-22+aProp.x,user.y*user.scale-22+aProp.y,aProp.w,aProp.h);
+			if (aProp.ghost) this.context.globalAlpha = iAlpha; //minimizing changes to machine state
+			if (draggingSelfProp) {
+				this.context.shadowColor = 'transparent';
+				this.context.shadowBlur = 0;
+			}
+		}
+	}
 
 
-	refresh(true);
+
+	drawLimboProp() { /* when dragging a prop from self or another location */
+		if (this.grabbedProp && this.grabbedProp.index == -1) {
+			var aProp = allProps[this.grabbedProp.id];
+			if (aProp && aProp.isComplete) {
+				if (aProp.ghost) this.context.globalAlpha = 0.5;
+				this.context.globalAlpha = this.context.globalAlpha/2;
+				this.context.drawImage(aProp.img,this.grabbedProp.mx,this.grabbedProp.my);
+				this.context.globalAlpha = 1;
+			}
+		}
+	}
+
+
+	drawDraws(draw,foreground) {
+		if (Boolean(roomDrawConsts.front & draw.type) == foreground) {
+			this.context.lineWidth = draw.pensize;
+			this.context.fillStyle = draw.fillcolor;
+			this.context.strokeStyle = draw.pencolor;
+
+			if (!Boolean(draw.type & roomDrawConsts.text) && !Boolean(draw.type & roomDrawConsts.oval)) {
+				this.context.beginPath();
+				this.context.moveTo(draw.points[0], draw.points[1]);
+
+				for (var item = 2; item < draw.points.length-1; item += 2)
+					this.context.lineTo(draw.points[item], draw.points[item+1]);
+
+				if (roomDrawConsts.shape & draw.type) {
+					this.context.closePath();
+					this.context.fill();
+				}
+				this.context.stroke();
+
+			}
+		}
+	}
+
+	preDrawDrawing() {
+		var l = this.drawPoints.length;
+		if (l > 0) {
+			//{type:0,size:2,front:true,color:"rgba(255,0,0,1)",fill:"rgba(255,166,0,0.5)"}
+			this.context.lineWidth = prefs.draw.size;
+			this.context.fillStyle = prefs.draw.fill;
+			this.context.strokeStyle = prefs.draw.color;
+
+			this.context.beginPath();
+
+			var offset = 0;
+			if (prefs.draw.type == 0) offset = Math.floor(prefs.draw.size/2);
+
+			this.context.moveTo(this.drawPoints[0]+offset, this.drawPoints[1]+offset);
+
+			for (var item = 2; item < l-1; item += 2)
+				this.context.lineTo(this.drawPoints[item]+offset, this.drawPoints[item+1]+offset);
+
+			if (prefs.draw.type == 1) {
+				this.context.closePath();
+				this.context.fill();
+			}
+			this.context.stroke();
+		}
+	}
+
+
+	static drawingEnd() { // might redo these functions, don't like it like that
+		palace.sendDraw({
+			type:(prefs.draw.type == 1),
+			front:prefs.draw.front,
+			color:prefs.draw.color.getNbrs(),
+			fill:prefs.draw.fill.getNbrs(),
+			size:prefs.draw.size,
+			points:palace.theRoom.drawPoints
+		});
+
+		window.removeEventListener('mousemove',Renderer.drawing);
+		window.removeEventListener('mouseup',Renderer.drawingEnd);
+
+		palace.theRoom.drawPoints = [];
+	}
+	static drawing(event) {
+		var offset = 0;
+		if (prefs.draw.type == 0) offset = Math.floor(prefs.draw.size/2);
+		var x = ((event.x+document.body.scrollLeft-overLayer.offsetLeft)/viewScale).fastRound()-offset;
+		var y = ((event.y+document.body.scrollTop-overLayer.offsetTop)/viewScale).fastRound()-offset; //45 get new toolbar height if zooming
+		if (event.shiftKey && drawPoints.length > 3) {
+			palace.theRoom.drawPoints[palace.theRoom.drawPoints.length-1] = y;
+			palace.theRoom.drawPoints[palace.theRoom.drawPoints.length-2] = x;
+		} else {
+			palace.theRoom.drawPoints.push(x);
+			palace.theRoom.drawPoints.push(y);
+		}
+
+		palace.theRoom.reDraw();
+	}
 }
+
+
+
+class PalaceRoom extends Renderer {
+	constructor(info) {
+		super(bgEnv);
+
+		Object.assign(this, info); // copy info to the new instance
+
+		this.grabbedProp = null; // should get rid of this null bussiness
+		this.whisperUserID = null;
+		this.mouseHoverUser = null;
+		this.mouseLooseProp = null;
+		this.mouseSelfProp = null;
+
+		var mCanvas = document.createElement('canvas'); /* offscreen buffer for prop pixel detection */
+		mCanvas.width = 220;
+		mCanvas.height = 220;
+		this.mCtx = mCanvas.getContext('2d');
+
+
+		Bubble.deleteAllBubbles();
+
+		document.getElementById('palaceroom').innerText = this.name;
+
+		var media = passUrl(this.background);
+		var ext = parseURL(media).pathname.split('.').pop();
+		if (media != palace.lastLoadedBG) {	/* prevent reloading of background media when room is authored */
+			//setEnviornment(window.innerWidth-logField.offsetWidth,window.innerHeight-overLayer.offsetTop,'');
+			setEnviornment(bgEnv.width,bgEnv.height,'');
+			toggleLoadingBG(true);
+			if (ext == 'mp4' || ext == 'ogg' || ext == 'webm' || ext == 'm4v') {	/* eventually use http request as well, to determine resource type */
+				setBackGroundVideo(media);
+			} else {
+				setBackGround(media);
+			}
+		}
+
+		PalaceRoom.removeAllSpotPics();
+
+		var thisRoom = this;
+		this.pics = [];
+
+		info.pictures.forEach(function(pict) {
+			var newImg = document.createElement('img');
+			newImg.onload = function() {
+				thisRoom.spots.find(function(spot) {
+					if (!spot.img) {
+						spot.img = PalaceRoom.createSpotPicPlaceholder();
+						overLayer.appendChild(spot.img);
+					}
+					thisRoom.setSpotImg(spot);
+				});
+				this.onload = null;
+			};
+			pict.img = newImg;
+			thisRoom.pics[pict.id] = pict;
+			newImg.src = passUrl(pict.name);
+		});
+
+	}
+
+
+
+	static createSpotPicPlaceholder() {
+		var ph = document.createElement('span');
+		ph.className = 'spholder';
+		return ph;
+	}
+	static removeAllSpotPics() {
+		var childs = overLayer.children;
+		for (var i = childs.length; --i >= 0;)
+			if (childs[i].className.substr(0,7) == 'spotpic' || childs[i].className == 'spholder')
+				overLayer.removeChild(childs[i]);
+	}
+
+	draw(draw) {
+		if (roomDrawConsts.clean & draw.type) {
+			this.draws = [];
+		} else if (roomDrawConsts.undo & draw.type) {
+			this.draws.pop();
+		} else {
+			this.draws.push(draw);
+		}
+		palace.theRoom.reDraw();
+	}
+
+	setSpotImg(spot) {
+		var statepic = spot.statepics[spot.state];
+		if (statepic && this.pics[statepic.id]) {
+			var img = this.pics[statepic.id].img;
+			if (img.naturalWidth > 0) {
+				if (spot.img.src !== img.src) {
+					img = img.cloneNode(false);
+					img.style.left = spot.x+statepic.x-(img.naturalWidth/2).fastRound()+'px';
+					img.style.top = spot.y+statepic.y-(img.naturalHeight/2).fastRound()+'px';
+					img.className = 'spotpic';
+					if (Boolean(spotConsts.PicturesAboveAll & spot.flags || spotConsts.PicturesAboveProps & spot.flags || spotConsts.PicturesAboveNameTags & spot.flags))
+						img.className += ' ontop';
+					overLayer.replaceChild(img,spot.img);
+					spot.img = img;
+				} else {
+					spot.img.style.left = spot.x+statepic.x-(spot.img.naturalWidth/2).fastRound()+'px';
+					spot.img.style.top = spot.y+statepic.y-(spot.img.naturalHeight/2).fastRound()+'px';
+				}
+			}
+		} else if (spot.img && spot.img.className != 'spholder') { /* spot is not displaying a pic so put in placeholder */
+			var img = PalaceRoom.createSpotPicPlaceholder();
+			overLayer.replaceChild(img,spot.img);
+			spot.img = img;
+		}
+	}
+
+	spotStateChange(roomId,spotId,state,lock) {
+		var spot = this.getSpot(spotId);
+		if (this.id == roomId && spot) {
+			spot.state = state;
+			this.setSpotImg(spot);
+			if (lock == 1) {
+				if (!prefs.general.disableSounds) systemAudio.dooropen.play();
+			} else if (lock == -1) {
+				if (!prefs.general.disableSounds) systemAudio.doorclose.play();
+			}
+		}
+	}
+
+	spotMove(roomId,spotId,x,y) {
+		var spot = this.getSpot(spotId);
+		if (this.id == roomId && spot) {
+			spot.x = x;
+			spot.y = y;
+			this.setSpotImg(spot);
+			palace.theRoom.reDraw();
+		}
+	}
+
+	spotMovePic(roomId,spotId,x,y) {
+		var spot = this.getSpot(spotId);
+		if (this.id == roomId && spot && spot.statepics[spot.state]) {
+			spot.statepics[spot.state].x = x;
+			spot.statepics[spot.state].y = y;
+			this.setSpotImg(spot);
+			//palace.theRoom.reDraw();
+		}
+	}
+
+	getSpot(spotid) {
+		return this.spots.find(function(spot){return spotid == spot.id;});
+	}
+
+
+	loosePropAdd(data) {
+		this.looseProps.unshift(data);
+
+		/* corrects index of currently dragged loose prop to prevent moving the wrong one */
+		if (this.grabbedProp != null && this.grabbedProp.index > -1) this.grabbedProp.index++;
+		if (this.mouseLooseProp != null) this.mouseLooseProp++;
+		if (loosePropMenu.lpindex != undefined) loosePropMenu.lpindex++;
+
+		loadProps([data.id]);
+		palace.theRoom.reDraw();
+	}
+
+	loosePropMove(x,y,index) {
+		if (index >= 0 && this.looseProps.length > index) {
+			var lp = this.looseProps[index];
+			if (lp && (lp.x != x || lp.y != y)) {
+				lp.x = x;
+				lp.y = y;
+				palace.theRoom.reDraw();
+			}
+			/* mouseMove(event); */
+		}
+	}
+
+	loosePropDelete(index) {
+		var change = false;
+		if (index < 0) {
+			if (this.looseProps.length > 0) change = true;
+			this.looseProps = [];
+		} else if (this.looseProps.length >= index) {
+
+			var adjustIndex = function(idx) {
+				if (idx > -1) {
+					if (index == idx) {
+						return null;
+					} else if (index < idx) {
+						return --idx;
+					}
+					return idx;
+				}
+			};
+
+			if (this.grabbedProp != null) this.grabbedProp.index = adjustIndex(this.grabbedProp.index);
+			if (this.mouseLooseProp != null) this.mouseLooseProp = adjustIndex(this.mouseLooseProp);
+			if (loosePropMenu.lpindex != undefined) loosePropMenu.lpindex = adjustIndex(loosePropMenu.lpindex);
+
+			change = true
+			this.looseProps.splice(index,1);
+		}
+		if (change) palace.theRoom.reDraw();
+	}
+
+
+
+	removeUser(uid) {
+		var user = this.getUser(uid);
+		if (user) {
+			if (user == palace.theUser) {
+				user.remove();
+			} else {
+				user.shrink(10);
+			}
+			return true;
+		}
+	}
+
+
+
+	addUser(info) {
+		var dude = new PalaceUser(info);
+		if (palace.lastUserLogOnID == dude.id && ticks()-palace.lastUserLogOnTime < 900) { // if under 15 seconds
+			palace.lastUserLogOnID = 0;
+			palace.lastUserLogOnTime = 0;
+			if (!prefs.general.disableSounds) systemAudio.signon.play();
+		}
+		if (palace.theUserID == dude.id && palace.theUser != dude) {
+			setUserInterfaceAvailability(false);
+			palace.theUser = dude;
+		}
+
+		this.users.push(dude);
+
+		loadProps(dude.props);
+		dude.animator();
+		dude.grow(10);
+		this.setUserCount(); // add to palace client class
+	}
+	getUser(uid) {
+		return this.users.find(function(user){return uid == user.id;});
+	}
+	loadUsers(infos) {
+		this.stopAllUserAnimations();
+
+		var dudes = [];
+		infos.find(function(info){dudes.push(new PalaceUser(info))});
+
+		this.users = dudes;
+
+		var pids = [];
+		dudes.find(function(dude){pids = dude.props.concat(pids)});
+		this.looseProps.find(function(prop){pids.push(prop.id)});
+
+		loadProps(pids.dedup());
+		dudes.find(function(dude){dude.animator()});
+
+		this.setUserCount();
+
+		this.refresh();
+	}
+
+	stopAllUserAnimations() {
+		if (this.users) this.users.forEach(function(dude){if (dude.animateTimer) dude.stopAnimation();});
+	}
+
+
+	userColorChange(id,color) {
+		var user = this.getUser(id);
+		if (user && user.color != color) {
+			user.color = color;
+			user.preRenderNametag();
+			palace.theRoom.reDraw();
+			return true;
+		}
+	}
+	userFaceChange(id,face) {
+		var user = this.getUser(id);
+		if (user && user.face != face) {
+			user.face = face;
+			palace.theRoom.reDraw();
+			return true;
+		}
+	}
+	userPropChange(id,props) {
+		var user = this.getUser(id);
+		if (user) user.changeUserProps(props);
+	}
+
+	userAvatarChange(id,face,color,props) {
+		var user = this.getUser(id);
+		if (user) {
+			user.color = color;
+			user.face = face;
+			user.preRenderNametag();
+			user.changeUserProps(props);
+			palace.theRoom.reDraw();
+		}
+	}
+	userNameChange(id,name) {
+		var user = this.getUser(id);
+		if (user && user.name !== name) {
+			user.name = name;
+			user.preRenderNametag();
+			palace.theRoom.reDraw();
+		}
+	}
+	userMove(id,x,y) {
+		var user = this.getUser(id);
+		if (user && (user.x != x || user.y != y)) {
+			user.popBubbles();
+			user.x = x;
+			user.y = y;
+			palace.theRoom.reDraw();
+		}
+	}
+	userChat(chat) {
+		var user = this.getUser(chat.id);
+		var chatspan = document.createElement('div');
+		chatspan.className = 'userlogchat';
+		var namespan = document.createElement('div');
+		namespan.className = 'userlogname';
+
+
+
+		var bubInfo = Bubble.processChatType(chat.chatstr);
+
+		if (bubInfo.type > -1 && bubInfo.start < chat.chatstr.length) new Bubble(user,chat,bubInfo);
+
+		if (user) {
+			namespan.innerText = user.name;
+	 		namespan.style.color = getHsl(user.color,40);
+		} else {
+			namespan.innerText = '***';
+			if (chat.whisper !== true) chatspan.style.color = 'IndianRed';
+		}
+
+		var timestamp = document.createElement('span');
+		timestamp.className = 'userlogtime';
+		timestamp.innerText = ' '+timeStampStr(true);
+		namespan.appendChild(timestamp);
+
+		if (chat.whisper === true) {
+			chatspan.className = chatspan.className + ' userlogwhisper';
+			if (!document.hasFocus() && !prefs.general.disableSounds) systemAudio.whisper.play();
+		}
+		chatspan.appendChild(namespan);
+		chatspan.appendChild(makeHyperLinks(chat.chatstr));
+
+		logAppend(chatspan);
+	}
+
+	setUserCount() {
+		document.getElementById('palaceroom').title = this.users.length + ' / ' + palace.serverUserCount;
+	}
+
+
+
+	enterWhisperMode(userid,name) {
+		var cancel = (this.whisperUserID == userid);
+		if (this.whisperUserID != null || cancel) {
+			this.exitWhisperMode(); /* whisper toggle */
+		}
+		if (!cancel) {
+			document.getElementById('chatbox').placeholder = 'Whisper to ' + name;
+			this.whisperUserID = userid;
+			var user = this.getUser(userid);
+			if (user) {
+				user.light = 1;
+				user.poke();
+			}
+			this.refresh();
+		}
+	}
+
+	exitWhisperMode() {
+		document.getElementById('chatbox').placeholder = 'Chat...';
+		var user = this.getUser(this.whisperUserID);
+		if (user) {
+			user.light = 0;
+			user.poke();
+		}
+		this.whisperUserID = null;
+		this.refresh();
+	}
+
+	makeDragProp(i,pid,x,y,x2,y2) {
+		this.grabbedProp = {index:i,id:pid,offsetX:x2,offsetY:y2,mx:x-x2,my:y-y2};
+	}
+
+	mouseInSpot(x,y) {
+		var spot;
+		for (var i = this.spots.length; --i >= 0;) {
+			spot = this.spots[i];
+			this.makeHotSpot(spot);
+			if (this.context.isPointInPath(x,y)) return spot;
+		}
+	}
+
+	mouseOverUser(x,y) {
+		for (var i = this.users.length; --i >= 0;) {
+			var user = this.users[i];
+			if (user.x+22 > x && user.x-22 < x && user.y+22 > y && user.y-22 < y)
+				return user;
+		}
+	}
+
+	mouseOverSelfProp(x,y) {
+		if (this.grabbedProp == null) {
+			for (var i = palace.theUser.props.length; --i >= 0;) {
+				var aProp = allProps[palace.theUser.props[i]];
+				var px = (palace.theUser.x + aProp.x)-22;
+				var py = (palace.theUser.y + aProp.y)-22;
+				if (aProp && (!aProp.animated || palace.theUser.animatePropID === undefined || palace.theUser.animatePropID == aProp.id) && aProp.isComplete && px < x && (px+aProp.w) > x && py < y && (py+aProp.h) > y) {
+					if (this.mouseOverProp(aProp,x,y,px,py)) return aProp.id; /* maybe pass object instead of id */
+				}
+			}
+		}
+	}
+
+	mouseOverLooseProp(x,y) {
+		if (this.grabbedProp == null) {
+			for (var i = this.looseProps.length; --i >= 0;) {
+				var lProp = this.looseProps[i];
+				var aProp = allProps[lProp.id];
+				if (aProp && aProp.isComplete && lProp.x < x && (lProp.x+aProp.w) > x && lProp.y < y && (lProp.y+aProp.h) > y) {
+					if (this.mouseOverProp(aProp,x,y,lProp.x,lProp.y)) return i; /* maybe pass object instead of index */
+				}
+			}
+		}
+	}
+
+	mouseOverProp(aProp,x,y,px,py) { // maybe store props as canvas instead...
+		this.mCtx.clearRect(0,0,this.mCtx.canvas.width,this.mCtx.canvas.height);
+		this.mCtx.drawImage(aProp.img,0,0,aProp.w,aProp.h);
+		return (this.mCtx.getImageData((x-px),(y-py),1,1).data[3] > 0);
+	}
+
+	mouseEnterUser(user) {
+		this.mouseExitSelfProp();
+		this.mouseExitLooseProp();
+		this.mouseExitUser();
+		if (user != palace.theUser) user.light = 1;
+		this.mouseHoverUser = user;
+		palace.theRoom.reDraw();
+	}
+
+	mouseExitUser() {
+		if (this.mouseHoverUser) {
+			var target = this.mouseHoverUser;
+			if (this.whisperUserID != this.mouseHoverUser.id && target != palace.theUser) {
+				var thisRoom = this;
+				target.light = 1;
+				var fadeTimer = setInterval(function() {
+					var user = thisRoom.getUser(target.id);
+					if (target.light - 0.1 <= 0 || user == thisRoom.mouseHoverUser || !user) {
+						if (!thisRoom.mouseHoverUser || user != thisRoom.mouseHoverUser) target.light = 0;
+						clearInterval(fadeTimer);
+					} else {
+						target.light -= 0.09;
+						palace.theRoom.reDraw();
+					}
+
+				},20);
+			}
+			this.mouseHoverUser = null;
+			palace.theRoom.reDraw();
+		}
+	}
+
+
+	mouseEnterLooseProp(lpIndex) {
+		if (this.mouseHoverUser == null && this.mouseSelfProp == null) {
+			this.mouseExitLooseProp();
+			this.mouseLooseProp = lpIndex;
+			this.looseProps[this.mouseLooseProp].light = 1;
+			palace.theRoom.reDraw();
+		}
+	}
+
+	mouseExitLooseProp() {
+		if (this.mouseLooseProp != null) {
+			var target = this.looseProps[this.mouseLooseProp];
+			if (target) {
+				var thisRoom = this;
+				target.light = 1;
+				var fadeTimer = setInterval(function() {
+					var idx = thisRoom.looseProps.indexOf(target);
+					if (target.light - 0.1 <= 0 || target == thisRoom.looseProps[thisRoom.mouseLooseProp] || idx < 0) {
+						if (target != thisRoom.looseProps[thisRoom.mouseLooseProp]) target.light = 0;
+						clearInterval(fadeTimer);
+						//delete fadeTimer;
+					} else {
+						target.light -= 0.09;
+						palace.theRoom.reDraw();
+					}
+
+				},20);
+			}
+			this.mouseLooseProp = null;
+			palace.theRoom.reDraw();
+		}
+	}
+
+	mouseEnterSelfProp(pid) {
+		this.mouseExitLooseProp();
+		if (this.mouseHoverUser == null) {
+			this.mouseExitSelfProp();
+			this.mouseSelfProp = pid;
+			palace.theRoom.reDraw();
+		}
+	}
+	mouseExitSelfProp() {
+		if (this.mouseSelfProp != null) {
+			this.mouseSelfProp = null;
+			palace.theRoom.reDraw();
+		}
+	}
+}
+
 
 
 bgVideo.onloadeddata = function () {
@@ -439,24 +1227,24 @@ bgVideo.onloadeddata = function () {
 };
 
 bgVideo.onloadedmetadata = function () {
-	theRoom.lastLoadedBG = this.src; /* to prevent reloading the video when authoring */
+	palace.lastLoadedBG = this.src; /* to prevent reloading the video when authoring */
 	this.width = this.videoWidth;
     this.height = this.videoHeight;
-	theRoom.setEnviornment(this.videoWidth,this.videoHeight,'');
+	setEnviornment(this.videoWidth,this.videoHeight,'');
     this.style.display = 'block';
 
 };
 
 function setBackGroundVideo(url) {
-	theRoom.unloadBgVideo();
+	unloadBgVideo();
 	bgVideo.src = url;
 }
 
 function bgFinished() {
-	if (theRoom.currentBG == this.src) {
+	if (palace.currentBG == this.src) {
 		if (this.naturalWidth > 0) {
-			theRoom.lastLoadedBG = this.src; /* to prevent reloading the image when authoring */
-			theRoom.setEnviornment(this.naturalWidth,this.naturalHeight,"url("+this.src+")");
+			palace.lastLoadedBG = this.src; /* to prevent reloading the image when authoring */
+			setEnviornment(this.naturalWidth,this.naturalHeight,"url("+this.src+")");
 		} else {
 			bgError();
 		}
@@ -464,59 +1252,20 @@ function bgFinished() {
 }
 
 function bgError(force) {
-	if (force || theRoom.currentBG == this.src)
-		theRoom.setEnviornment(window.innerWidth-logField.offsetWidth,window.innerHeight-overLayer.offsetTop,"url(img/error.png)");
+	if (force || palace.currentBG == this.src)
+		setEnviornment(window.innerWidth-logField.offsetWidth,window.innerHeight-overLayer.offsetTop,"url(img/error.png)");
 }
 
 
 function setBackGround(url) {
-	theRoom.currentBG = url;
-	theRoom.unloadBgVideo();
+	palace.currentBG = url;
+	unloadBgVideo();
 	var bg = document.createElement('img');
 	bg.onload = bgFinished;
 	bg.onerror = bgError;
 	bg.src = url;
 }
 
-function serverDown(msg) { // still gotta implement this in the protocol lol
-
-	mediaUrl = "";
-	allProps = {}; /* might need to delete image events */
-	theRoom.lastUserLogOnTime = 0;
-	theRoom.lastUserLogOnID = 0;
-	theRoom.serverUserCount = 0;
-	theRoom.spots = [];
-	theRoom.draws = [];
-	theRoom.looseProps = [];
-	theRoom.pics = [];
-	theRoom.lastLoadedBG = '';
-	theRoom.removeAllRoomPics();
-	stopAllUserAnimations();
-	Bubble.deleteAllBubbles();
-	theRoom.users = [];
-	theUser = null;
-	theUserID = null;
-	roomList = null;
-	userList = null;
-	theRoom.unloadBgVideo();
-	if (msg) {
-		bgError(true);
-		logmsg(msg.msg);
-	}
-	refresh(true);
-}
-function serverInfo(flags,name) {
-	theRoom.servername = name;
-	theRoom.serverflags = flags;
-	var addressBar = document.getElementById('palaceserver');
-	addressBar.title = name;
-	if (addressBar != document.activeElement) addressBar.innerText = theRoom.servername;
-}
-
-function fullyLoggedOn() {
-	document.getElementById('users').disabled = false;
-	document.getElementById('rooms').disabled = false;
-}
 
 function toggleLoadingBG(on) {
 	if (on) {
@@ -528,166 +1277,6 @@ function toggleLoadingBG(on) {
 	}
 }
 
-function connecting(address) {
-	serverDown();
-	theRoom.setEnviornment(window.innerWidth-logField.offsetWidth,window.innerHeight-overLayer.offsetTop-document.getElementById('chatbox').offsetHeight,'');
-	toggleLoadingBG(true);
-	theRoom.address = address;
-	document.getElementById('users').disabled = true;
-	document.getElementById('rooms').disabled = true;
-}
-
-function loosePropAdd(data) {
-	theRoom.looseProps.unshift(data);
-	/* corrects index of currently dragged loose prop to prevent moving the wrong one */
-	if (grabbedProp != null && grabbedProp.index > -1) grabbedProp.index++;
-	loadProps([data.id]);
-	reDraw();
-}
-
-function loosePropMove(x,y,index) {
-	if (index >= 0 && theRoom.looseProps.length > index) {
-		var lp = theRoom.looseProps[index];
-		if (lp && (lp.x != x || lp.y != y)) {
-			lp.x = x;
-			lp.y = y;
-			reDraw();
-		}
-		/* mouseMove(event); */
-	}
-}
-
-function loosePropDelete(index) {
-	var change = false;
-	if (index < 0) {
-		if (theRoom.looseProps.length > 0) change = true;
-		theRoom.looseProps = [];
-	} else if (theRoom.looseProps.length >= index) {
-
-		var adjustIndex = function(idx) {
-			if (idx > -1) {
-				if (index == idx) {
-					return null;
-				} else if (index < idx) {
-					return --idx;
-				}
-				return idx;
-			}
-		};
-
-		if (grabbedProp != null) grabbedProp.index = adjustIndex(grabbedProp.index);
-		if (mouseLooseProp != null) mouseLooseProp = adjustIndex(mouseLooseProp);
-		if (loosePropMenu.lpindex != undefined) loosePropMenu.lpindex = adjustIndex(loosePropMenu.lpindex);
-
-		change = true
-		theRoom.looseProps.splice(index,1);
-	}
-	if (change) reDraw();
-}
-
-function addSelfProp(pid) {
-	if (theUser && theUser.props.length < 9 && theUser.props.indexOf(pid) == -1) {
-		theUser.propsChanged = true;
-		theUser.props.push(pid);
-		theUser.animator();
-		reDraw();
-		return true;
-	}
-}
-
-function removeSelfProp(pid) {
-	if (theUser) {
-		var i = theUser.props.indexOf(pid);
-		if (theUser.props.length > 0 && i > -1) {
-			theUser.propsChanged = true;
-			theUser.props.splice(i,1);
-			theUser.animator();
-			reDraw();
-			return true;
-		}
-	}
-}
-
-
-function enterWhisperMode(userid,name) {
-	var cancel = (whisperUserID == userid);
-	if (whisperUserID != null || cancel) exitWhisperMode(); /* whisper toggle */
-	if (!cancel) {
-		document.getElementById('chatbox').placeholder = 'Whisper to ' + name;
-		whisperUserID = userid;
-		var user = getUser(userid);
-		if (user) {
-			user.light = 1;
-			user.poke();
-		}
-		refresh(true);
-	}
-}
-
-function exitWhisperMode() {
-	document.getElementById('chatbox').placeholder = 'Chat...';
-	var user = getUser(whisperUserID);
-	if (user) {
-		user.light = 0;
-		user.poke();
-	}
-	whisperUserID = null;
-	refresh(true);
-}
-
-/* increment or decrement index when loose prop is added or deleted */
-function drawingEnd() {
-	var draw = {
-		type:(prefs.draw.type == 1),
-		front:prefs.draw.front,
-		color:prefs.draw.color.getNbrs(),
-		fill:prefs.draw.fill.getNbrs(),
-		size:prefs.draw.size,
-		points:drawPoints
-	};
-
-	palaceTCP.sendDraw(draw);
-	window.removeEventListener('mousemove',drawing);
-	window.removeEventListener('mouseup',drawingEnd);
-
-	drawPoints = [];
-}
-function drawing(event) {
-	var offset = 0;
-	if (prefs.draw.type == 0) offset = Math.floor(prefs.draw.size/2);
-	var x = ((event.x+document.body.scrollLeft-overLayer.offsetLeft)/viewScale).fastRound()-offset;
-	var y = ((event.y+document.body.scrollTop-overLayer.offsetTop)/viewScale).fastRound()-offset; //45 get new toolbar height if zooming
-	if (event.shiftKey && drawPoints.length > 3) {
-		drawPoints[drawPoints.length-1] = y;
-		drawPoints[drawPoints.length-2] = x;
-	} else {
-		drawPoints.push(x);
-		drawPoints.push(y);
-	}
-
-	reDraw();
-}
-
-
-function makeDragProp(i,pid,x,y,x2,y2) {
-	grabbedProp = {index:i,id:pid,offsetX:x2,offsetY:y2,mx:x-x2,my:y-y2};
-}
-
-function mouseInSpot(x,y) {
-	var spot;
-	for (var i = theRoom.spots.length; --i >= 0;) {
-		spot = theRoom.spots[i];
-		makeHotSpot(spot);
-		if (bgCtx.isPointInPath(x,y)) return spot;
-	}
-}
-
-function userPropChange() {
-	if (theUser) palaceTCP.sendPropDress();
-	theUser.propsChanged = false;
-	enablePropButtons();
-}
-
 
 function setEnvCursor(name) {
 	if (bgEnv.dataset.cursorName != name) {
@@ -697,556 +1286,7 @@ function setEnvCursor(name) {
 
 }
 
-function mouseOverUser(x,y) {
-	for (var i = theRoom.users.length; --i >= 0;) {
-		var user = theRoom.users[i];
-		if (user.x+22 > x && user.x-22 < x && user.y+22 > y && user.y-22 < y)
-			return user;
-	}
-}
 
-function mouseOverSelfProp(x,y) {
-	if (grabbedProp == null) {
-		for (var a = theUser.props.length; --a >= 0;) {
-			var aProp = allProps[theUser.props[a]];
-			var px = (theUser.x + aProp.x)-22;
-			var py = (theUser.y + aProp.y)-22;
-			if (aProp && (!aProp.animated || theUser.animatePropID === undefined || theUser.animatePropID == aProp.id) && aProp.isComplete && px < x && (px+aProp.w) > x && py < y && (py+aProp.h) > y) {
-				if (mouseOverProp(aProp,x,y,px,py)) return aProp.id; /* maybe pass object instead of id */
-			}
-		}
-	}
-}
 
-function mouseOverLooseProp(x,y) {
-	if (grabbedProp == null && theRoom.looseProps) {
-		for (var i = theRoom.looseProps.length; --i >= 0;) {
-			var lProp = theRoom.looseProps[i];
-			var aProp = allProps[lProp.id];
-			if (aProp && aProp.isComplete && lProp.x < x && (lProp.x+aProp.w) > x && lProp.y < y && (lProp.y+aProp.h) > y) {
-				if (mouseOverProp(aProp,x,y,lProp.x,lProp.y)) return i; /* maybe pass object instead of index */
-			}
-		}
-	}
-}
 
-
-
-
-function mouseEnterUser(user) {
-	mouseExitSelfProp();
-	mouseExitLooseProp();
-	mouseExitUser();
-	if (user != theUser) user.light = 1;
-	mouseHoverUser = user;
-	reDraw();
-}
-function mouseExitUser() {
-	if (mouseHoverUser) {
-		var target = mouseHoverUser;
-		if (whisperUserID != mouseHoverUser.id && target != theUser) {
-			target.light = 1;
-			var fadeTimer = setInterval(function() {
-				var user = getUser(target.id);
-				if (target.light - 0.1 <= 0 || user == mouseHoverUser || !user) {
-					if (!mouseHoverUser || user != mouseHoverUser) target.light = 0;
-					clearInterval(fadeTimer);
-				} else {
-					target.light -= 0.09;
-					reDraw();
-				}
-
-			},20);
-		}
-		mouseHoverUser = null;
-		reDraw();
-	}
-}
-
-
-function mouseEnterLooseProp(lpIndex) {
-	if (mouseHoverUser == null && mouseSelfProp == null) {
-		mouseExitLooseProp();
-		mouseLooseProp = lpIndex;
-		theRoom.looseProps[mouseLooseProp].light = 1;
-		reDraw();
-	}
-}
-function mouseExitLooseProp() {
-	if (mouseLooseProp != null) {
-		var target = theRoom.looseProps[mouseLooseProp];
-		if (target) {
-			target.light = 1;
-			var fadeTimer = setInterval(function() {
-				var idx = theRoom.looseProps.indexOf(target);
-				if (target.light - 0.1 <= 0 || target == theRoom.looseProps[mouseLooseProp] || idx < 0) {
-					if (target != theRoom.looseProps[mouseLooseProp]) target.light = 0;
-					clearInterval(fadeTimer);
-				} else {
-					target.light -= 0.09;
-					reDraw();
-				}
-
-			},20);
-		}
-		mouseLooseProp = null;
-		reDraw();
-	}
-}
-
-function mouseEnterSelfProp(pid) {
-	mouseExitLooseProp();
-	if (mouseHoverUser == null) {
-		mouseExitSelfProp();
-		mouseSelfProp = pid;
-		reDraw();
-	}
-}
-function mouseExitSelfProp() {
-	if (mouseSelfProp != null) {
-		mouseSelfProp = null;
-		reDraw();
-	}
-}
-
-function getSpot(spotid) {
-	return theRoom.spots.find(function(spot){return spotid == spot.id;});
-}
-
-function spotStateChange(roomId,spotId,state,lock) {
-	var spot = getSpot(spotId);
-	if (theRoom.id == roomId && spot) {
-		spot.state = state;
-		theRoom.setSpotImg(spot);
-		if (lock == 1) {
-			if (!prefs.general.disableSounds) systemAudio.dooropen.play();
-		} else if (spotInfo.lock == -1) {
-			if (!prefs.general.disableSounds) systemAudio.doorclose.play();
-		}
-	}
-}
-
-function spotMove(roomId,spotId,x,y) {
-	var spot = getSpot(spotId);
-	if (theRoom.id == roomId && spot) {
-		spot.x = x;
-		spot.y = y;
-		theRoom.setSpotImg(spot);
-		reDraw();
-	}
-}
-
-function spotMovePic(roomId,spotId,x,y) {
-	var spot = getSpot(spotId);
-	if (theRoom.id == roomId && spot && spot.statepics[spot.state]) {
-		spot.statepics[spot.state].x = x;
-		spot.statepics[spot.state].y = y;
-		theRoom.setSpotImg(spot);
-		//reDraw();
-	}
-}
-
-// to add to room object!!!
-function addRoomUser(info) {
-	var dude = new PalaceUser(info);
-	if (theRoom.lastUserLogOnID == dude.id && ticks()-theRoom.lastUserLogOnTime < 900) { // if under 15 seconds
-		theRoom.lastUserLogOnID = 0;
-		theRoom.lastUserLogOnTime = 0;
-		if (!getGeneralPref('disableSounds')) systemAudio.signon.play();
-	}
-	if (theUserID == dude.id) {
-		theUser = dude;
-		fullyLoggedOn();
-	}
-
-	theRoom.users.push(dude);
-	loadProps(dude.props);
-	dude.animator();
-	dude.grow(10);
-	PalaceUser.setUserCount();
-}
-function getUser(uid) {
-	return theRoom.users.find(function(user){return uid == user.id;});
-}
-function loadRoomUsers(infos) {
-	stopAllUserAnimations();
-
-	var dudes = [];
-	infos.find(function(info){dudes.push(new PalaceUser(info))});
-
-	theRoom.users = dudes;
-
-	var pids = [];
-	dudes.find(function(dude){pids = dude.props.concat(pids)});
-	theRoom.looseProps.find(function(prop){pids.push(prop.id)});
-
-	loadProps(pids.dedup());
-	dudes.find(function(dude){dude.animator()});
-
-	PalaceUser.setUserCount();
-	refresh(true);
-}
-function stopAllUserAnimations() {
-	theRoom.users.find(function(dude){if (dude.animateTimer) dude.stopAnimation();});
-}
-function userLogOn(id,count) {
-	theRoom.lastUserLogOnID = id;
-	theRoom.lastUserLogOnTime = ticks();
-	theRoom.serverUserCount = count;
-}
-function userLogOff(id,count) {
-	theRoom.serverUserCount = count;
-	if (PalaceUser.userRemove(id) && !getGeneralPref('disableSounds')) systemAudio.signoff.play();
-	//if (whisperUserID == uInfo.id) exitWhisperMode(); // warn user that whisper target signed off
-}
-
-
-
-
-
-function log(data) {
-	logmsg(data.msg);
-}
-
-function logerror(msg) {
-	var lmsg = document.createElement('div');
- 	lmsg.className = 'logmsg';
- 	lmsg.innerHTML = msg;
-	logAppend(lmsg);
-}
-
-function logmsg(msg) {
- 	var lmsg = document.createElement('div');
- 	lmsg.className = 'logmsg';
- 	lmsg.appendChild(document.createTextNode(msg));
- 	/* logspan.innerText = msg.makeHyperLinks(); */
-	logAppend(lmsg);
-}
-
-function logAppend(logspan) {
-	var scrollLock = Math.abs((logField.scrollHeight - logField.clientHeight) - logField.scrollTop.fastRound()) < 2; // might need to make this 3...
-	if (logField.children.length > 400)
-		while (logField.children.length > 300) // limit log for performance reasons
-			logField.removeChild(logField.firstChild);
-	logField.appendChild(logspan);
-	if (scrollLock) logField.scrollTop = logField.scrollHeight - logField.clientHeight;
-}
-
-function logspecial(name) {
-	var logspan = document.createElement('div');
- 	logspan.className = 'logmsg special '+name;
-	logAppend(logspan);
-}
-
-function drawBubble(bub) {
-
-	if (bgCtx.shadowBlur != 2) {
-		bgCtx.shadowColor = 'RGBA(0,0,0,.6)';
-		bgCtx.shadowOffsetY = 1;
-		bgCtx.shadowBlur = 3;
-	}
-
-	if (bub.user) {
-		var grd;
-		if (bub.right) {
-			grd = bgCtx.createLinearGradient(bub.x, 0, bub.x+bub.textWidth, 0);
-		} else {
-			grd = bgCtx.createLinearGradient(bub.x+bub.textWidth, 0,bub.x, 0);
-		}
-
-		grd.addColorStop(0, getHsl(bub.color,73));
-		grd.addColorStop(0.5, getHsl(bub.color,79));
-		grd.addColorStop(1, getHsl(bub.color,73));
-
-
-		bgCtx.fillStyle = grd;
-	} else {
-		bgCtx.fillStyle = 'white';
-	}
-
-	if (bub.shout) {
-		bub.makeShoutBubble(bgCtx);
-	/* } else if (bub.thought) { */
-
-	} else {
-		bub.makeRegularBubble(bgCtx, bubbleConsts.radius);
-	}
-	bgCtx.globalAlpha = bub.size-0.1;
-	bgCtx.fill();
-
-}
-
-function drawSpot(spot,above) {
-	if (above == Boolean(spotConsts.PicturesAboveAll & spot.flags || spotConsts.PicturesAboveProps & spot.flags || spotConsts.PicturesAboveNameTags & spot.flags)) {
-		if ((spotConsts.ShowFrame & spot.flags) || (spotConsts.Shadow & spot.flags)) {
-			makeHotSpot(spot); /* the spots polygon frame */
-
-			if (spotConsts.Shadow & spot.flags) {
-				bgCtx.fillStyle = 'black';
-				bgCtx.fill();
-			}
-			if (spotConsts.ShowFrame & spot.flags) {
-				bgCtx.strokeStyle = 'black';
-				bgCtx.lineWidth = 1;
-				bgCtx.stroke();
-			}
-		}
-	}
-}
-
-function drawSpotName(spot,above) {
-	if ((spotConsts.ShowName & spot.flags) && spot.name.length > 0) {
-		if (above == Boolean(spotConsts.PicturesAboveAll & spot.flags || spotConsts.PicturesAboveProps & spot.flags || spotConsts.PicturesAboveNameTags & spot.flags)) {
-			var size = 12;
-			bgCtx.fillStyle = 'white';
-			bgCtx.font = size+'px sans-serif';
-			bgCtx.textBaseline = 'top';
-			bgCtx.textAlign = 'center';
-			var w = bgCtx.measureText(spot.name).width+4;
-			roundRect(bgCtx, spot.x-(w/2)-2, spot.y-1, w+4, size+4, 4, true, false);
-			bgCtx.fillStyle = 'black';
-			//bgCtx.shadowColor = 'transparent';
-			bgCtx.fillText(spot.name, spot.x, spot.y);
-		}
-	}
-}
-
-function makeHotSpot(spot) {
-	bgCtx.beginPath();
-	bgCtx.moveTo(spot.x + spot.points[0], spot.y + spot.points[1]);
-	var len = spot.points.length-1;
-	for (var i=2; i < len; i+=2) {
-	 	bgCtx.lineTo(spot.x + spot.points[i], spot.y + spot.points[i+1]);
-	 }
-	bgCtx.closePath();
-}
-
-function drawLooseProp(lProp) {
-	var aProp = allProps[lProp.id]; //perhaps store prop object on the looseProp array for convenience/speed
-	if (aProp && aProp.isComplete) {
-		var gAlpha = 1;
-		if (aProp.ghost) gAlpha = gAlpha/2;
-
-		if (grabbedProp && theRoom.looseProps[grabbedProp.index] == lProp) {
-			bgCtx.globalAlpha = gAlpha/2;
-			bgCtx.drawImage(aProp.img,grabbedProp.mx,grabbedProp.my);
-		}
-		if (lProp.light > 0) {
-			bgCtx.shadowColor = 'rgba(124,252,0,'+lProp.light+')';
-			bgCtx.shadowBlur = 4;
-		}
-		bgCtx.globalAlpha = gAlpha;
-		bgCtx.drawImage(aProp.img,lProp.x,lProp.y);
-		if (bgCtx.shadowBlur > 0) {
-			bgCtx.shadowColor = 'transparent';
-			bgCtx.shadowBlur = 0;
-		}
-		if (bgCtx.globalAlpha < 1) bgCtx.globalAlpha = 1;
-	}
-}
-
-function drawName(user) {
-	var loc = user.nametagLoc();
-	if (loc) {
-		var overUser = (mouseHoverUser != theUser && mouseHoverUser == user);
-
-		if (overUser && whisperUserID == user.id) {
-			bgCtx.shadowColor = 'IndianRed';
-			bgCtx.shadowBlur = 6;
-		} else if (((overUser && whisperUserID != user.id) || whisperUserID == user.id) || user.light > 0) {
-			bgCtx.shadowColor = 'rgba(152,251,152,'+user.light+')';
-			bgCtx.shadowBlur = 6;
-		}
-
-
-		if (whisperUserID != null && whisperUserID != user.id && user != theUser) bgCtx.globalAlpha = 0.5;
-
-		if (user.scale != 1) {
-			var size = 1/user.scale;
-			bgCtx.scale(size,size);
-			loc = user.nametagLoc(true);
-		}
-
-
-		bgCtx.drawImage(user.nametag, loc.x, loc.y);
-		if (bgCtx.shadowBlur > 0) {
-			bgCtx.shadowColor = 'transparent';
-			bgCtx.shadowBlur = 0;
-		}
-		if (bgCtx.globalAlpha < 1) bgCtx.globalAlpha = 1;
-		if (user.scale != 1) bgCtx.setTransform(1, 0, 0, 1, 0, 0);
-	}
-}
-
-function drawAvatar(user) {
-	var overUser = (mouseHoverUser != theUser && mouseHoverUser == user);
-
-	if (overUser && whisperUserID == user.id) {
-		bgCtx.shadowColor = 'IndianRed';
-		bgCtx.shadowBlur = 6;
-	} else if (((overUser && whisperUserID != user.id) || whisperUserID == user.id) || user.light > 0) {
-		bgCtx.shadowColor = 'rgba(152,251,152,'+user.light+')';
-		bgCtx.shadowBlur = 6;
-	}
-
-	if (user.scale != 1) {
-		var size = 1/user.scale;
-		bgCtx.scale(size,size);
-	}
-
-	if ((whisperUserID != null && whisperUserID != user.id && user != theUser)) bgCtx.globalAlpha = 0.5;
-	if (user.showHead !== false || user.propMuted) drawSmiley(user);
-
-	if (!user.propMuted) {
-		for (var i = 0; i < user.props.length; i++) {
-			var aProp = allProps[user.props[i]];
-			if (aProp && (!aProp.animated || user.animatePropID === undefined || user.animatePropID == aProp.id)) drawUserProp(user,aProp);
-		}
-	}
-	if (bgCtx.shadowBlur > 0) {
-		bgCtx.shadowColor = 'transparent';
-		bgCtx.shadowBlur = 0;
-	}
-	if (bgCtx.globalAlpha < 1) bgCtx.globalAlpha = 1;
-	if (user.scale != 1) bgCtx.setTransform(1, 0, 0, 1, 0, 0);
-}
-
-function drawSmiley(user) {
-	bgCtx.drawImage(smileys[user.face+','+user.color],user.x*user.scale-21,user.y*user.scale-21);
-}
-
-function drawUserProp(user,aProp) {
-	if (aProp.isComplete) {
-		var iAlpha = bgCtx.globalAlpha;
-		if (aProp.ghost) bgCtx.globalAlpha = iAlpha/2;
-		var draggingSelfProp = (aProp.id == mouseSelfProp && user == theUser);
-		if (draggingSelfProp) {
-			bgCtx.shadowColor = 'LawnGreen';
-			bgCtx.shadowBlur = 4;
-		}
-		bgCtx.drawImage(aProp.img,user.x*user.scale-22+aProp.x,user.y*user.scale-22+aProp.y,aProp.w,aProp.h);
-		if (aProp.ghost) bgCtx.globalAlpha = iAlpha; //minimizing changes to machine state
-		if (draggingSelfProp) {
-			bgCtx.shadowColor = 'transparent';
-			bgCtx.shadowBlur = 0;
-		}
-	}
-}
-
-
-
-function drawLimboProp() { /* when dragging a prop from self or another location */
-	if (grabbedProp && grabbedProp.index == -1) {
-		var aProp = allProps[grabbedProp.id];
-		if (aProp && aProp.isComplete) {
-			if (aProp.ghost) bgCtx.globalAlpha = 0.5;
-			bgCtx.globalAlpha = bgCtx.globalAlpha/2;
-			bgCtx.drawImage(aProp.img,grabbedProp.mx,grabbedProp.my);
-			bgCtx.globalAlpha = 1;
-		}
-	}
-}
-
-function roomDraw(draw) {
-
-
-
-	if (roomDrawConsts.clean & draw.type) {
-		theRoom.draws = [];
-	} else if (roomDrawConsts.undo & draw.type) {
-		theRoom.draws.pop();
-	} else {
-		theRoom.draws.push(draw);
-	}
-
-	reDraw();
-
-
-}
-
-function drawDraws(draw,foreground) {
-	if (Boolean(roomDrawConsts.front & draw.type) == foreground) {
-		bgCtx.lineWidth = draw.pensize;
-		bgCtx.fillStyle = draw.fillcolor;
-		bgCtx.strokeStyle = draw.pencolor;
-
-		if (!Boolean(draw.type & roomDrawConsts.text) && !Boolean(draw.type & roomDrawConsts.oval)) {
-			bgCtx.beginPath();
-			bgCtx.moveTo(draw.points[0], draw.points[1]);
-
-			for (var item = 2; item < draw.points.length-1; item += 2)
-				bgCtx.lineTo(draw.points[item], draw.points[item+1]);
-
-			if (roomDrawConsts.shape & draw.type) {
-				bgCtx.closePath();
-				bgCtx.fill();
-			}
-			bgCtx.stroke();
-
-		}
-	}
-}
-
-function preDrawDrawing() {
-	var l = drawPoints.length;
-	if (l > 0) {
-		//{type:0,size:2,front:true,color:"rgba(255,0,0,1)",fill:"rgba(255,166,0,0.5)"}
-		bgCtx.lineWidth = prefs.draw.size;
-		bgCtx.fillStyle = prefs.draw.fill;
-		bgCtx.strokeStyle = prefs.draw.color;
-
-		bgCtx.beginPath();
-
-		var offset = 0;
-		if (prefs.draw.type == 0) offset = Math.floor(prefs.draw.size/2);
-
-		bgCtx.moveTo(drawPoints[0]+offset, drawPoints[1]+offset);
-
-		for (var item = 2; item < l-1; item += 2)
-			bgCtx.lineTo(drawPoints[item]+offset, drawPoints[item+1]+offset);
-
-		if (prefs.draw.type == 1) {
-			bgCtx.closePath();
-			bgCtx.fill();
-		}
-		bgCtx.stroke();
-	}
-}
-
-
-
-function refresh(all) {
-	if (drawTimer) {clearTimeout(drawTimer);drawTimer = null;}
-
-	bgCtx.clearRect(0,0,bgEnv.width,bgEnv.height);
-	//bgEnv.width = bgEnv.width;
-
-	var i;
-
-	for (i = 0; i < theRoom.spots.length; i++) {drawSpot(theRoom.spots[i],false);}
-	for (i = 0; i < theRoom.draws.length; i++) {drawDraws(theRoom.draws[i],false);}
-	if (!prefs.draw.front) preDrawDrawing();
-	for (i = 0; i < theRoom.spots.length; i++) {drawSpotName(theRoom.spots[i],false);}
-	drawLimboProp();
-	for (i = 0; i < theRoom.looseProps.length; i++) {drawLooseProp(theRoom.looseProps[i]);}
-	for (i = 0; i < theRoom.users.length; i++) {drawAvatar(theRoom.users[i]);}
-	for (i = 0; i < theRoom.users.length; i++) {drawName(theRoom.users[i]);}
-	for (i = 0; i < theRoom.spots.length; i++) {drawSpot(theRoom.spots[i],true);}
-	for (i = 0; i < theRoom.spots.length; i++) {drawSpotName(theRoom.spots[i],true);}
-	for (i = 0; i < theRoom.draws.length; i++) {drawDraws(theRoom.draws[i],true);}
-	if (prefs.draw.front) preDrawDrawing();
-	for (i = 0; i < chatBubs.length; i++) {drawBubble(chatBubs[i]);}
-
-	if (bgCtx.shadowBlur > 0) {	//intelligently and efficiently restore state machine.
-		bgCtx.shadowColor = 'transparent';
-		bgCtx.globalAlpha = 1;
-		bgCtx.shadowBlur = 0;
-		bgCtx.shadowOffsetY = 0;
-	}
-}
-
-var drawTimer = null;
-function reDraw() {
-	if (drawTimer) clearTimeout(drawTimer);
-	drawTimer = setTimeout(function(){refresh();},0);
-}
+gotourl(prefs.general.home);

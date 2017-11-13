@@ -2,16 +2,6 @@ var allProps = {},
     nbrProps = 0, // keep record of the number of props loaded into memory because counting allProps object properties is inefficient
     retryProps = [];
 
-var mCanvas = document.createElement('canvas'); /* offscreen buffer for pixel detection */
-mCanvas.width = 220;
-mCanvas.height = 220;
-var mCtx = mCanvas.getContext('2d');
-function mouseOverProp(aProp,x,y,px,py) { // maybe store props as canvas instead...
-	mCtx.clearRect(0,0,mCanvas.width,mCanvas.height);
-	mCtx.drawImage(aProp.img,0,0,aProp.w,aProp.h);
-	return (mCtx.getImageData((x-px),(y-py),1,1).data[3] > 0);
-}
-
 
 class PalaceProp {
     constructor(id,info) {
@@ -40,11 +30,11 @@ class PalaceProp {
     	var p = this;
     	this.img = document.createElement('img');
     	this.img.onload = function(){
-    		for (var i = 0; i < theRoom.users.length; i++) {
-    			var user = theRoom.users[i];
+    		for (var i = 0; i < palace.theRoom.users.length; i++) {
+    			var user = palace.theRoom.users[i];
     			if (user.props.indexOf(p.id) > -1 && (p.animated || p.head)) user.animator();
     		}
-    		reDraw();
+    		palace.theRoom.reDraw();
     		p = null;
     		this.onload = null;
     	};
@@ -97,18 +87,18 @@ class PalaceProp {
 
 function nbrRoomProps() {
 	var count = 0;
-	for (var i = 0; i < theRoom.users.length; i++)
-		count += theRoom.users[i].props.length;
-	count += theRoom.looseProps.length;
+	for (var i = 0; i < palace.theRoom.users.length; i++)
+		count += palace.theRoom.users[i].props.length;
+	count += palace.theRoom.looseProps.length;
 	return count;
 }
 
 function propInUse(id) {
-	for (var i = 0; i < theRoom.users.length; i++)
-		for (var j = 0; j < theRoom.users[i].props.length; j++)
-			if (theRoom.users[i].props[j] == id) return true;
-	for (var o = 0; o < theRoom.looseProps.length; o++)
-			if (theRoom.looseProps[o].id == id) return true;
+	for (var i = 0; i < palace.theRoom.users.length; i++)
+		for (var j = 0; j < palace.theRoom.users[i].props.length; j++)
+			if (palace.theRoom.users[i].props[j] == id) return true;
+	for (var o = 0; o < palace.theRoom.looseProps.length; o++)
+			if (palace.theRoom.looseProps[o].id == id) return true;
 	return false;
 }
 
@@ -203,6 +193,6 @@ function loadProps(pids,fromSelf,callback) {
 			}
 		}
 		if (toLoad.props.length > 0)
-			httpPostAsync(mediaUrl + 'webservice/props/get/',downloadPropInfoCallBack,JSON.stringify(toLoad));
+			httpPostAsync(palace.mediaUrl + 'webservice/props/get/',downloadPropInfoCallBack,JSON.stringify(toLoad));
 	}
 }

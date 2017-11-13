@@ -1196,20 +1196,20 @@
     return serializeStream.call(this, output);
   };
 
-  // 8.2 Interface TextEncoderr
+  // 8.2 Interface TextEncoderer
 
   /**
    * @constructor
    * @param {string=} label The label of the encoding. NONSTANDARD.
    * @param {Object=} options NONSTANDARD.
    */
-  function TextEncoderr(label, options) {
+  function TextEncoderer(label, options) {
     // Web IDL conventions
-    if (!(this instanceof TextEncoderr))
+    if (!(this instanceof TextEncoderer))
       throw TypeError('Called as a function. Did you forget \'new\'?');
     options = ToDictionary(options);
 
-    // A TextEncoderr object has an associated encoding and encoder.
+    // A TextEncoderer object has an associated encoding and encoder.
 
     /** @private */
     this._encoding = null;
@@ -1222,7 +1222,7 @@
     /** @private @type {string} */
     this._fatal = Boolean(options['fatal']) ? 'fatal' : 'replacement';
 
-    // 1. Let enc be a new TextEncoderr object.
+    // 1. Let enc be a new TextEncoderer object.
     var enc = this;
 
     // 2. Set enc's encoding to UTF-8's encoder.
@@ -1242,7 +1242,7 @@
       enc._encoding = getEncoding('utf-8');
 
       if (label !== undefined && 'console' in global) {
-        console.warn('TextEncoderr constructor called with encoding label, '
+        console.warn('TextEncoderer constructor called with encoding label, '
                      + 'which is ignored.');
       }
     }
@@ -1257,8 +1257,8 @@
 
   if (Object.defineProperty) {
     // The encoding attribute's getter must return encoding's name.
-    Object.defineProperty(TextEncoderr.prototype, 'encoding', {
-      /** @this {TextEncoderr} */
+    Object.defineProperty(TextEncoderer.prototype, 'encoding', {
+      /** @this {TextEncoderer} */
       get: function() { return this._encoding.name.toLowerCase(); }
     });
   }
@@ -1268,7 +1268,7 @@
    * @param {Object=} options
    * @return {!Uint8Array} Encoded bytes, as a Uint8Array.
    */
-  TextEncoderr.prototype.encode = function encode(opt_string, options) {
+  TextEncoderer.prototype.encode = function encode(opt_string, options) {
     opt_string = opt_string === undefined ? '' : String(opt_string);
     options = ToDictionary(options);
 
@@ -3295,14 +3295,14 @@
     return new XUserDefinedDecoder(options);
   };
 
-  if (!global['TextEncoderr'])
-    global['TextEncoderr'] = TextEncoderr;
+  if (!global['TextEncoderer'])
+    global['TextEncoderer'] = TextEncoderer;
   if (!global['TextDecoder'])
     global['TextDecoder'] = TextDecoder;
 
   if (typeof module !== "undefined" && module.exports) {
     module.exports = {
-      TextEncoderr: global['TextEncoderr'],
+      TextEncoderer: global['TextEncoderer'],
       TextDecoder: global['TextDecoder'],
       EncodingIndexes: global["encoding-indexes"]
     };

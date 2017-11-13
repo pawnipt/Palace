@@ -93,7 +93,7 @@ function cacheBagProp(id,toUpload,callback) {
 					offsets:{x:aProp.x,y:aProp.y},flags:aProp.encodePropFlags,
 					id:aProp.id,crc:0}
 				]};
-			httpPostAsync(mediaUrl + 'webservice/props/new/',propUploadCallBack,JSON.stringify(p));
+			httpPostAsync(palace.mediaUrl + 'webservice/props/new/',propUploadCallBack,JSON.stringify(p));
 		}
 	};
 }
