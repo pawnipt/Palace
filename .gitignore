@@ -6,6 +6,7 @@
 # misc
 .DS_Store
 package-lock.json
+.flowconfig
 
 # release
 /release-builds
