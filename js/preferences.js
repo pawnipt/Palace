@@ -1,3 +1,5 @@
+// @flow
+
 var prefs = {general:{},control:{},draw:{type:0,size:2,front:true,color:"rgba(255,0,0,1)",fill:"rgba(255,166,0,0.5)"}},
 	propBagList = [];
 

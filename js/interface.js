@@ -1,3 +1,5 @@
+// @flow
+
 var smileys = {},
 	logField = document.getElementById('log'),
 	selectedBagProps = [],
@@ -19,7 +21,7 @@ const ContextMenuListener = electronSpellchecker.ContextMenuListener;
 const ContextMenuBuilder = electronSpellchecker.ContextMenuBuilder;
 window.spellCheckHandler = new SpellCheckHandler();
 window.spellCheckHandler.attachToInput();
-window.spellCheckHandler.switchLanguage('en-US'); // Start off as "US English, America" ...maybe use navigator.language
+window.spellCheckHandler.switchLanguage(navigator.language); // Start off as "US English, America" ...maybe use navigator.language
 let contextMenuBuilder = new ContextMenuBuilder(window.spellCheckHandler,null,true);
 // Add context menu listener
 let contextMenuListener = new ContextMenuListener((info) => {
@@ -72,7 +74,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 		smileycolorpicker.onmousemove = function(event) {
 			//idfk...
 			var color = ((event.x-(this.offsetLeft+this.parentNode.offsetLeft))/(this.clientWidth/15)).fastRound();
-			if (mouseDown && color > -1 && color < 16 && palace.theRoom.userColorChange(palace.theUserID,color)) {
+			if (mouseDown && color > -1 && color < 16 && palace.theRoom.userColorChange({id:palace.theUserID,color:color})) {
 				palace.sendFaceColor(color);
 			}
 		};
@@ -93,7 +95,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 			img.onclick = function() {
 				var faces = this.parentNode.getElementsByTagName('img');
 				for (var e = 0; e < faces.length; e++) {
-					if (faces[e] == this && palace.theRoom.userFaceChange(palace.theUserID,e)) {
+					if (faces[e] == this && palace.theRoom.userFaceChange({id:palace.theUserID,face:e})) {
 						palace.sendFace(e);
 					}
 				}
@@ -253,10 +255,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	};
 
 	document.body.onkeypress = function(keyboard) {
-		var chr = String.fromCharCode(keyboard.keyCode);
-		if (document.activeElement.nodeName == 'BODY' && !keyboard.metaKey && !keyboard.ctrlKey && okayChar.test(chr)) {
-			//keyboard.preventDefault();
-			//window.status = 'focuschat ' + chr;
+		if (document.activeElement.nodeName == 'BODY' && !keyboard.metaKey && !keyboard.ctrlKey) {
 			document.getElementById('chatbox').focus();
 		}
 	};
@@ -283,7 +282,22 @@ let contextMenuListener = new ContextMenuListener((info) => {
 			move(x,y);
 		}
 	};
-
+	window.addEventListener('keydown', function(e) {
+		var mac = /^darwin/.test(process.platform);
+		if ((mac && e.metaKey) || (!mac && e.ctrlKey)) {
+			switch (e.key) {
+				case 'd':
+					document.getElementById('servers').click();
+					break;
+				case 'g':
+					document.getElementById('rooms').click();
+					break;
+				case 'f':
+					document.getElementById('users').click();
+					break;
+			}
+		}
+	}, true);
 
 	document.getElementById('muteaudio').onclick = function() {
 		bgVideo.muted = !bgVideo.muted;
@@ -296,7 +310,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	var serverConnectField = document.getElementById('palaceserver');
 	serverConnectField.onfocus = function() {
 		this.contentEditable = true;
-		this.innerText = (palace.soc.ip + ':' + palace.soc.port).replace(':9998','');
+		this.innerText = (palace.ip + ':' + palace.port).replace(':9998','');
 		var selection = window.getSelection();
 		var range = document.createRange();
 		range.selectNodeContents(this);
@@ -364,12 +378,12 @@ let contextMenuListener = new ContextMenuListener((info) => {
 		};
 
 		if (resizingPropBag || (propBag.offsetLeft <= event.x && event.x < propBag.offsetLeft+2)) {
-			propBag.style.cursor = 'ew-resize';
+			propBag.style.cursor = 'col-resize';
 		} else {
 			propBag.style.cursor = 'auto';
 		}
 		if (resizingChatLog || (logField.offsetLeft <= event.x && event.x < logField.offsetLeft+2)) {
-			logField.style.cursor = 'ew-resize';
+			logField.style.cursor = 'col-resize';
 		} else {
 			logField.style.cursor = 'auto';
 		}
@@ -557,8 +571,7 @@ function scale2Fit() {
 		clearTimeout(viewScaleTimer);
 		viewScaleTimer = null;
 	}
-	var style = getComputedStyle(document.getElementById('chatbox'));
-	var chatBoxHeight = parseInt(style.getPropertyValue('height')) + 5;
+	var chatBoxHeight = document.getElementById('chatbox').offsetHeight;
 	var logWidth = logField.offsetWidth;
 
 	if (!prefs.general.viewScales && (prefs.general.viewScaleAll || (bgEnv.width > window.innerWidth-logWidth || bgEnv.height > window.innerHeight-45-chatBoxHeight))) {
@@ -1164,91 +1177,3 @@ function loadUserList(ulist) {
 		}
 	}
 }
-
-
-
-
-
-
-
-
-
-// function closePropEditor() {
-// 	PropEdit.editor.style.transform = 'scale(0,0)';
-// 	PropEdit.editor.style.opacity = '0';
-// 	toggleToolBarControl(PropEdit.editor.id);
-// }
-//
-// function PropEditor(tile) {
-// 	var id = tile.dataset.pid;
-// 	var pedit = this;
-// 	this.scale = 2;
-// 	this.trans = 'none';
-// 	this.editor = document.getElementById('propeditor');
-// 	var pecanvas = document.getElementById('propeditorcanvas');
-// 	this.canvasCtx = pecanvas.getContext('2d');
-// 	this.canvasCtx.imageSmoothingEnabled = false;
-//
-// 	this.propCtx = document.createElement('canvas');
-// 	this.propCtx = this.propCtx.getContext('2d');
-//
-//
-// 	this.editor.addEventListener('mousedown',function(event) {
-// 		if (event.target == pedit.editor) {
-// 			var coords = pedit.editor.style.transform.getNbrs();
-// 			var x = 0;
-// 			var y = 0;
-// 			if (coords) {
-// 				x = coords[0];
-// 				y = coords[1];
-// 			}
-// 			pedit.dragX = event.clientX - x;
-// 			pedit.dragY = event.clientY - y;
-// 			pedit.editor.style.transition = 'none';
-// 			event.preventDefault();
-// 		}
-// 	});
-// 	window.addEventListener('mousemove',function(event) {
-// 		if (pedit.dragX != undefined) {
-// 			pedit.trans = 'translate(' + (event.clientX - pedit.dragX) + 'px,' + (event.clientY - pedit.dragY) + 'px)';
-// 			pedit.editor.style.transform = pedit.trans;
-// 		}
-// 	});
-// 	window.addEventListener('mouseup',function(event) {
-// 		delete pedit.dragX;
-// 		delete pedit.dragY;
-// 		pedit.editor.style.transition = 'opacity 0.2s,transform 0.2s';
-// 	});
-//
-// 	this.canvasCtx.canvas.addEventListener('mousemove',function(event) {
-// 		pedit.canvasCtx.canvas.style.cursor = 'zoom-' + (event.altKey?'out':'in');
-// 	});
-// 	this.canvasCtx.canvas.addEventListener('mousedown',function(event) {
-// 		if (event.altKey || event.button == 2) {
-// 			pedit.scale--;
-// 		} else {
-// 			pedit.scale++;
-// 		}
-// 		if (pedit.scale < 1) pedit.scale = 1;
-// 		if (pedit.scale > 8) pedit.scale = 8;
-// 		pecanvas.style.transform = 'scale('+pedit.scale+','+pedit.scale+')';
-// 	});
-// }
-// PropEditor.prototype.loadProp = function(id) {
-// // 	var pedit = this;
-// // 	this.pid = id;
-// // 	this.prp = propBagList[id];
-// //
-// // 	var img = document.createElement('img');
-// // 	img.onload = function() {
-// // 		pedit.propCtx.canvas.width = this.naturalWidth;
-// // 		pedit.propCtx.canvas.height = this.naturalHeight;
-// // 		pedit.propCtx.drawImage(this,0,0);
-// // 		pedit.palace.theRoom.reDraw();
-// // 	}
-// // 	img.src = propsPath+id+'.png';
-// };
-// PropEditor.prototype.reDraw = function() {
-// 	this.canvasCtx.clearRect(0,0,this.canvasCtx.canvas.width,this.canvasCtx.canvas.height);
-// 	this.canvasCtx.drawImage(this.propCtx.canvas,this.prp.x+this.canvasCtx.canvas.width/2-22,this.prp.y+this.canvasCtx.canvas.height/2-22);
-// };

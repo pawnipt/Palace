@@ -1,3 +1,5 @@
+// @flow
+
 const shell = require('electron').shell;
 
 function timeStampStr(seconds) {
@@ -103,7 +105,6 @@ function toHex(str) {
 	var hex = '';
 	for(var i=0;i<str.length;i++) {
 		var s = str.charCodeAt(i).toString(16);
-		if (s.length < 1) localmsg('length wrong '+s.length);
 		if (s.length % 2) s = "0" + s;
 
 		hex += ''+s;
@@ -196,9 +197,16 @@ function calculateAspectRatio(w,h,newSize) {
 }
 function httpPostAsync(theUrl, callback, postContent) {
 	var xmlHttp = new XMLHttpRequest();
+	xmlHttp.onerror = function() {
+		logmsg('Error '+xmlHttp.status+' with http post request: '+xmlHttp.responseText);
+	};
 	xmlHttp.onload = function() {
-		if (xmlHttp.status == 200) callback(xmlHttp.responseText);
-	}
+		if (xmlHttp.status == 200) {
+			callback(xmlHttp.responseText);
+		} else {
+			logmsg('Error '+xmlHttp.status+' with http post request: '+xmlHttp.responseText);
+		}
+	};
 	xmlHttp.open("POST", theUrl, true);
 	xmlHttp.send(postContent);
 }
@@ -206,9 +214,16 @@ function httpPostAsync(theUrl, callback, postContent) {
 function httpGetAsync(theUrl, callback, rtype) {
 	var xmlHttp = new XMLHttpRequest();
 	if (rtype) xmlHttp.responseType = rtype;
+	xmlHttp.onerror = function() {
+		logmsg('Error '+xmlHttp.status+' with http get request: '+xmlHttp.responseText);
+	};
 	xmlHttp.onload = function() {
-		if (xmlHttp.status == 200) callback(xmlHttp.responseText);
-	}
+		if (xmlHttp.status == 200) {
+			callback(xmlHttp.responseText);
+		} else {
+			logmsg('Error '+xmlHttp.status+' with http post request: '+xmlHttp.responseText);
+		}
+	};
 	xmlHttp.open("GET", theUrl, true);
 	xmlHttp.send();
 }

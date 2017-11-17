@@ -1,5 +1,7 @@
-var chatBubs = [],
-	quedBubbles = [];
+// @flow
+
+var chatBubs = [];
+var quedBubbles = [];
 
 class Bubble {
 	constructor(user,chat,bubInfo) {
@@ -100,26 +102,24 @@ class Bubble {
 			} else if (speed > 12000) {
 				speed = 12000;
 			}
-			var bub = this;
-			this.popTimer = setTimeout(function(){bub.remove(false)}, speed); //is bub=null; required?
+			this.popTimer = setTimeout(() =>{this.remove(false)}, speed); //is bub=null; required?
 		}
 		palace.theRoom.reDraw();
 	}
 	inflate() {
 		this.deflated = false;
 		if (this.timer) clearInterval(this.timer);
-		var bub = this;
-		this.timer = setInterval(function() {
-			if (bub.size < 1) {
-				bub.size += 0.08;
+		this.timer = setInterval(() => {
+			if (this.size < 1) {
+				this.size += 0.08;
 			} else {
-				bub.size = 1;
-				if (bub.timer) {
-					clearInterval(bub.timer);
-					bub.timer = null;
+				this.size = 1;
+				if (this.timer) {
+					clearInterval(this.timer);
+					this.timer = null;
 				}
-				bub.p.style.left = bub.x+'px';
-				bub.p.style.top = bub.y+'px';
+				this.p.style.left = this.x+'px';
+				this.p.style.top = this.y+'px';
 			}
 			palace.theRoom.reDraw();
 		},20);
@@ -129,17 +129,16 @@ class Bubble {
 		this.deflated = true;
 		if (this.timer) clearInterval(this.timer);
 		this.timer = null;
-		var bub = this;
-		this.timer = setInterval(function() {
-			if (bub.size > 0.5) {
-				bub.size -= 0.1;
+		this.timer = setInterval(() => {
+			if (this.size > 0.5) {
+				this.size -= 0.1;
 			} else {
-				bub.size = 0.5;
-				if (bub.timer) {
-					clearInterval(bub.timer);
-					bub.timer = null;
+				this.size = 0.5;
+				if (this.timer) {
+					clearInterval(this.timer);
+					this.timer = null;
 				}
-				if (remove) bub.remove(true);
+				if (remove) this.remove(true);
 			}
 			palace.theRoom.reDraw();
 		},20);
@@ -386,8 +385,9 @@ class Bubble {
 		}
 		for (var i = chatBubs.length; --i >= 0;) {
 			var bub = chatBubs[i];
-			if (bub.sticky && bub.deflated && !bub.awaitDirection())
+			if (bub.sticky && bub.deflated && !bub.awaitDirection()) {
 				bub.inflate();
+			}
 		}
 	}
 

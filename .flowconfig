@@ -1,0 +1,13 @@
+[ignore]
+.*/node_modules/styled-components/.*
+.*/release-builds/.*
+
+[include]
+/js/.*
+
+[libs]
+
+[options]
+emoji=true
+
+[lints]

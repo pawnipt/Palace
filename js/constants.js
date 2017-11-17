@@ -1,12 +1,13 @@
+// @flow
+
 window.onerror = function(e, url, line){
 	logerror(e + "<br>" + url.split('/').pop() + "&nbsp;&nbsp;&nbsp;&nbsp;Line:" + line + '<br><br>');
 	// return true;
 };
 
-var okayChar = /^[a-zA-Z0-9-=_+!@#$%^&*()\]\[{}\\\|;:'"\.,<>\?\/]$/;
-var linkSearch = /(\bhttps?:\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/i;
+const linkSearch = /(\bhttps?:\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/i;
 
-var spotConsts = {
+const spotConsts = {
 	PicturesAboveAll : 0x00000001,
 	DontMoveHere : 0x00000002,
 	PicturesAboveProps : 0x00000004,
@@ -20,7 +21,7 @@ var spotConsts = {
 	types : {normal:0,passage:1,shutable:2,lockable:3,deadBolt:4,navArea:5}
 };
 
-var propConsts = {
+const propConsts = {
 	head : 2,
 	ghost :4,
 	rare : 8,
@@ -29,7 +30,7 @@ var propConsts = {
 	png : 1024
 };
 
-var bubbleConsts = {
+const bubbleConsts = {
 	padding : 9,
 	radius : 14,
 	spikeSize : 3,
@@ -38,7 +39,7 @@ var bubbleConsts = {
 	sound : /([a-zA-Z0-9\._-]*)(\s?)/i
 };
 
-var roomDrawConsts = {
+const roomDrawConsts = {
 	oval : 0x4000,
 	text : 0x2000,
 	shape : 0x0100,
@@ -48,7 +49,7 @@ var roomDrawConsts = {
 	pen : 0
 };
 
-var TCPmsgConsts = {
+const TCPmsgConsts = {
 ASSETNEW : 0x61417374,
 ASSETQUERY : 0x71417374,
 ASSETREGI : 0x72417374,
@@ -116,7 +117,7 @@ IPTSIGNAL : 0x69707473
 };
 
 
-var drawType = {
+const drawType = {
 OVAL : 0x4000,
 TEXT : 0x2000,
 SHAPE : 0x0100,

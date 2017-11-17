@@ -1,3 +1,5 @@
+// @flow
+
 function donprop(pid) {
 	if (palace.addSelfProp(pid)) {
 		palace.selfPropChange();
@@ -30,7 +32,7 @@ function setpos(x,y) {
 	if (x > bgEnv.width-22) x = bgEnv.width-22;
 	if (y > bgEnv.height-22) y = bgEnv.height-22;
 	palace.sendUserLocation(x,y);
-	palace.theRoom.userMove(palace.theUserID,x,y);
+	palace.theRoom.userMove({id:palace.theUserID,x:x,y:y});
 }
 
 function move(x,y) {

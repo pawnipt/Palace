@@ -1,3 +1,5 @@
+// @flow
+
 var userNameTagHeight = getTextHeight('bold 18px sans-serif')+2;
 
 class PalaceUser {
@@ -8,13 +10,12 @@ class PalaceUser {
 	}
 
 	poke() { // when you click a user (might use for something else later) pressure variable might be an idea!
-		var target = this;
 		this.scale = 1.05;
 		palace.theRoom.reDraw();
-		var pokeTimer = setInterval(function() {
-			target.scale -= 0.01;
-			if (target.scale < 1) {
-				target.scale = 1;
+		var pokeTimer = setInterval(() => {
+			this.scale -= 0.01;
+			if (this.scale < 1) {
+				this.scale = 1;
 				clearInterval(pokeTimer);
 			}
 			palace.theRoom.reDraw();
@@ -23,13 +24,12 @@ class PalaceUser {
 
 	grow(from) {
 		this.scale = from;
-		var target = this;
-		var timer = setInterval(function(){
-			if (target.scale > 1)
-				target.scale -= (target.scale/8);
-			if (target.scale <= 1 || target.id == -1) {
-				if (target.id != -1) // full scale only if not exiting
-					target.scale = 1;
+		var timer = setInterval(() => {
+			if (this.scale > 1)
+				this.scale -= (this.scale/8);
+			if (this.scale <= 1 || this.id == -1) {
+				if (this.id != -1) // full scale only if not exiting
+					this.scale = 1;
 				clearInterval(timer);
 			}
 			palace.theRoom.reDraw();
@@ -37,13 +37,12 @@ class PalaceUser {
 	}
 
 	shrink(to) {
-		var target = this;
-		target.id = -1; // marks user as exited and going to be removed from the room.
-		var timer = setInterval(function(){
-			if (target.scale < to) target.scale += (target.scale/8);
-			if (target.scale >= to) {
+		this.id = -1; // marks user as exited and going to be removed from the room.
+		var timer = setInterval(() => {
+			if (this.scale < to) this.scale += (this.scale/8);
+			if (this.scale >= to) {
 				clearInterval(timer);
-				target.remove();
+				this.remove();
 			}
 			palace.theRoom.reDraw();
 		},20);
@@ -155,8 +154,7 @@ class PalaceUser {
 			this.animationPropIDs = temp;
 			this.nextFrame();
 			if (!this.animateTimer) {
-				var user = this;
-				this.animateTimer = setInterval(function(){user.nextFrame()},350);
+				this.animateTimer = setInterval(() => {this.nextFrame()},350);
 			}
 		} else if (this.animateTimer) {
 			this.stopAnimation();

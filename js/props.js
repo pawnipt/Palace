@@ -1,3 +1,5 @@
+// @flow
+
 var allProps = {},
     nbrProps = 0, // keep record of the number of props loaded into memory because counting allProps object properties is inefficient
     retryProps = [];
@@ -12,9 +14,9 @@ class PalaceProp {
     		this.rcounter = 0;
     	}
     	nbrProps++;
-    	if (nbrProps > nbrRoomProps()+66) { // limit props stored in memory
+    	if (nbrProps > palace.theRoom.nbrRoomProps+66) { // limit props stored in memory
     		for (var k in allProps) {
-    			if (!propInUse(parseInt(k))) {
+    			if (!palace.theRoom.propInUse(parseInt(k))) {
     				delete allProps[k];
     				nbrProps--;
     			}
@@ -27,16 +29,13 @@ class PalaceProp {
     }
 
     requestPropImage(url) {
-    	var p = this;
     	this.img = document.createElement('img');
-    	this.img.onload = function(){
+    	this.img.onload = () => {
     		for (var i = 0; i < palace.theRoom.users.length; i++) {
     			var user = palace.theRoom.users[i];
-    			if (user.props.indexOf(p.id) > -1 && (p.animated || p.head)) user.animator();
+    			if (user.props.indexOf(this.id) > -1 && (this.animated || this.head)) user.animator();
     		}
     		palace.theRoom.reDraw();
-    		p = null;
-    		this.onload = null;
     	};
     	this.img.src = url;
     }
@@ -85,22 +84,7 @@ class PalaceProp {
 
 
 
-function nbrRoomProps() {
-	var count = 0;
-	for (var i = 0; i < palace.theRoom.users.length; i++)
-		count += palace.theRoom.users[i].props.length;
-	count += palace.theRoom.looseProps.length;
-	return count;
-}
 
-function propInUse(id) {
-	for (var i = 0; i < palace.theRoom.users.length; i++)
-		for (var j = 0; j < palace.theRoom.users[i].props.length; j++)
-			if (palace.theRoom.users[i].props[j] == id) return true;
-	for (var o = 0; o < palace.theRoom.looseProps.length; o++)
-			if (palace.theRoom.looseProps[o].id == id) return true;
-	return false;
-}
 
 
 
@@ -166,11 +150,6 @@ function downloadPropInfoCallBack(response) { // need to handle possible http er
 			retryProps = [];
 		}, 3200);
 	}
-}
-
-function clearFailedProps() {
-	// loop allProps and clear props that haven't loaded; when the user logs onto a new server
-
 }
 
 function loadProps(pids,fromSelf,callback) {

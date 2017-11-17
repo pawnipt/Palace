@@ -1,8 +1,6 @@
-const {app, Menu, BrowserWindow} = require('electron');
+const {app, Menu, BrowserWindow, globalShortcut} = require('electron');
 const path = require('path');
 const url = require('url');
-
-
 
 
 app.commandLine.appendSwitch('high-dpi-support', 'true'); // might not be needed
@@ -17,17 +15,15 @@ function createWindow () {
     const display = screen.getPrimaryDisplay();
     const area = display.workArea;
 
+
+
   // Create the browser window.
   win = new BrowserWindow({width: area.width, height: area.height});
-  
-  
-  
 
-  
-  
+
   //win.hide(); // seems to make launching look alittle better...
   win.maximize();
-  
+
   // and load the index.html of the app.
   win.loadURL(url.format({
     pathname: path.join(__dirname, 'index.html'),
@@ -47,7 +43,7 @@ function createWindow () {
     app.quit()
   });
   //win.toggleDevTools();
-  
+
 const template = [
   {
     label: 'Edit',
@@ -166,5 +162,3 @@ app.on('activate', () => {
 });
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
-
-

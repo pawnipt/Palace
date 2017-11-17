@@ -1,3 +1,6 @@
+window.TextEncoder = null; // we're forcing a polyfill for this function so that we can support legacy encoding
+
+
 // This is free and unencumbered software released into the public domain.
 // See LICENSE.md for more information.
 
@@ -1196,20 +1199,20 @@
     return serializeStream.call(this, output);
   };
 
-  // 8.2 Interface TextEncoderer
+  // 8.2 Interface TextEncoder
 
   /**
    * @constructor
    * @param {string=} label The label of the encoding. NONSTANDARD.
    * @param {Object=} options NONSTANDARD.
    */
-  function TextEncoderer(label, options) {
+  function TextEncoder(label, options) {
     // Web IDL conventions
-    if (!(this instanceof TextEncoderer))
+    if (!(this instanceof TextEncoder))
       throw TypeError('Called as a function. Did you forget \'new\'?');
     options = ToDictionary(options);
 
-    // A TextEncoderer object has an associated encoding and encoder.
+    // A TextEncoder object has an associated encoding and encoder.
 
     /** @private */
     this._encoding = null;
@@ -1222,7 +1225,7 @@
     /** @private @type {string} */
     this._fatal = Boolean(options['fatal']) ? 'fatal' : 'replacement';
 
-    // 1. Let enc be a new TextEncoderer object.
+    // 1. Let enc be a new TextEncoder object.
     var enc = this;
 
     // 2. Set enc's encoding to UTF-8's encoder.
@@ -1242,7 +1245,7 @@
       enc._encoding = getEncoding('utf-8');
 
       if (label !== undefined && 'console' in global) {
-        console.warn('TextEncoderer constructor called with encoding label, '
+        console.warn('TextEncoder constructor called with encoding label, '
                      + 'which is ignored.');
       }
     }
@@ -1257,8 +1260,8 @@
 
   if (Object.defineProperty) {
     // The encoding attribute's getter must return encoding's name.
-    Object.defineProperty(TextEncoderer.prototype, 'encoding', {
-      /** @this {TextEncoderer} */
+    Object.defineProperty(TextEncoder.prototype, 'encoding', {
+      /** @this {TextEncoder} */
       get: function() { return this._encoding.name.toLowerCase(); }
     });
   }
@@ -1268,7 +1271,7 @@
    * @param {Object=} options
    * @return {!Uint8Array} Encoded bytes, as a Uint8Array.
    */
-  TextEncoderer.prototype.encode = function encode(opt_string, options) {
+  TextEncoder.prototype.encode = function encode(opt_string, options) {
     opt_string = opt_string === undefined ? '' : String(opt_string);
     options = ToDictionary(options);
 
@@ -3295,14 +3298,14 @@
     return new XUserDefinedDecoder(options);
   };
 
-  if (!global['TextEncoderer'])
-    global['TextEncoderer'] = TextEncoderer;
+  if (!global['TextEncoder'])
+    global['TextEncoder'] = TextEncoder;
   if (!global['TextDecoder'])
     global['TextDecoder'] = TextDecoder;
 
   if (typeof module !== "undefined" && module.exports) {
     module.exports = {
-      TextEncoderer: global['TextEncoderer'],
+      TextEncoder: global['TextEncoder'],
       TextDecoder: global['TextDecoder'],
       EncodingIndexes: global["encoding-indexes"]
     };
