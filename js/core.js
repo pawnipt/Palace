@@ -18,25 +18,30 @@ const {Menu, MenuItem} = remote;
 
 
 const loosePropMenu = new Menu();
-loosePropMenu.append(new MenuItem({label: 'Save Prop', click(item) {
-	saveProp(item.pid);
+loosePropMenu.append(new MenuItem({label: 'Save Prop', click() {
+	saveProp(palace.contextMenuLooseProp.id);
 }}));
 loosePropMenu.append(new MenuItem({type: 'separator'}));
-loosePropMenu.append(new MenuItem({label: 'Remove Prop', click(item) {
-	palace.sendPropDelete(item.lpindex);
+loosePropMenu.append(new MenuItem({label: 'Remove Prop', click() {
+	var index = palace.theRoom.looseProps.indexOf(palace.contextMenuLooseProp);
+	if (index > -1) {
+		palace.sendPropDelete(index);
+	}
 }}));
 
 const userMenu = new Menu();
-userMenu.append(new MenuItem({label: 'Whisper ',type: 'checkbox', click(item) {
-	var user = palace.theRoom.getUser(item.userId);
-	if (user) palace.theRoom.enterWhisperMode(user.id,user.name);
+userMenu.append(new MenuItem({label: 'Whisper ',type: 'checkbox', click() {
+	var user = palace.theRoom.getUser(palace.contextMenuUserId);
+	if (user) {
+		palace.theRoom.enterWhisperMode(user.id,user.name);
+	}
 }}));
 userMenu.append(new MenuItem({type: 'separator'}));
-userMenu.append(new MenuItem({label: 'Offer avatar', click(item) { palace.sendWhisper("'offer",item.userId); }}));
-userMenu.append(new MenuItem({label: 'Accept avatar', click(item) { palace.sendXtlk("'accept"); }}));
+userMenu.append(new MenuItem({label: 'Offer avatar', click() { palace.sendWhisper("'offer",palace.contextMenuUserId); }}));
+userMenu.append(new MenuItem({label: 'Accept avatar', click() { palace.sendXtlk("'accept"); }}));
 userMenu.append(new MenuItem({type: 'separator'}));
-userMenu.append(new MenuItem({label: 'Prop mute',type: 'checkbox', click(item) {
-	var user = palace.theRoom.getUser(item.userId);
+userMenu.append(new MenuItem({label: 'Prop mute',type: 'checkbox', click() {
+	var user = palace.theRoom.getUser(palace.contextMenuUserId);
 	if (user) {
 		user.propMuted = !user.propMuted;
 		palace.theRoom.reDraw();
@@ -53,9 +58,7 @@ bgEnv.addEventListener('contextmenu', (e) => {
 		var user = palace.theRoom.mouseOverUser(x,y);
 
 		if (user && user != palace.theUser) {
-			userMenu.items[0].userId = user.id;
-			userMenu.items[2].userId = user.id;
-			userMenu.items[5].userId = user.id;
+			palace.contextMenuUserId = user.id;
 			userMenu.items[0].checked = Boolean(palace.theRoom.whisperUserID);
 			userMenu.items[5].checked = Boolean(user.propMuted);
 			userMenu.items[2].enabled = palace.theUser.props.length > 0;
@@ -65,8 +68,7 @@ bgEnv.addEventListener('contextmenu', (e) => {
 			if (lpIndex != null) {
 				var lp = palace.theRoom.looseProps[lpIndex];
 				loosePropMenu.items[0].enabled = (propBagList.indexOf(lp.id) < 0);
-				loosePropMenu.items[0].pid = lp.id;
-				loosePropMenu.items[2].lpindex = lpIndex;
+				palace.contextMenuLooseProp = lp;
 				loosePropMenu.popup(remote.getCurrentWindow(),{x:e.x,y:e.y,async:true});
 			}
 		}
@@ -829,18 +831,17 @@ class PalaceRoom extends Renderer {
 		/* corrects index of currently dragged loose prop to prevent moving the wrong one */
 		if (this.grabbedProp && this.grabbedProp.index > -1) this.grabbedProp.index++;
 		if (this.mouseLooseProp != null) this.mouseLooseProp++;
-		if (loosePropMenu.lpindex != undefined) loosePropMenu.lpindex++;
 
 		loadProps([data.id]);
 		this.reDraw();
 	}
 
-	loosePropMove(x,y,index) {
-		if (index >= 0 && this.looseProps.length > index) {
-			var lp = this.looseProps[index];
-			if (lp && (lp.x != x || lp.y != y)) {
-				lp.x = x;
-				lp.y = y;
+	loosePropMove(info) {
+		if (info.index >= 0 && this.looseProps.length > info.index) {
+			var lp = this.looseProps[info.index];
+			if (lp && (lp.x != info.x || lp.y != info.y)) {
+				lp.x = info.x;
+				lp.y = info.y;
 				this.reDraw();
 			}
 			/* mouseMove(event); */
@@ -867,7 +868,6 @@ class PalaceRoom extends Renderer {
 
 			if (this.grabbedProp) this.grabbedProp.index = adjustIndex(this.grabbedProp.index);
 			if (this.mouseLooseProp != null) this.mouseLooseProp = adjustIndex(this.mouseLooseProp);
-			if (loosePropMenu.lpindex != undefined) loosePropMenu.lpindex = adjustIndex(loosePropMenu.lpindex);
 
 			change = true
 			this.looseProps.splice(index,1);
