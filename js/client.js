@@ -88,9 +88,6 @@ class PalaceProtocol {
 			case TCPmsgConsts.DRAW:
 				this.parseDrawing(packet);
 				break;
-			case TCPmsgConsts.XWHISPER:
-				this.parseXwhisper(packet);
-				break;
 			case TCPmsgConsts.XTALK:
 				this.parseXtalk(packet);
 				break;
@@ -99,6 +96,9 @@ class PalaceProtocol {
 				break;
 			case TCPmsgConsts.WHISPER:
 				this.parseWhisper(packet);
+				break;
+			case TCPmsgConsts.XWHISPER:
+				this.parseXwhisper(packet);
 				break;
 			case TCPmsgConsts.USEREXIT:
 				this.parseUserExit(packet);
