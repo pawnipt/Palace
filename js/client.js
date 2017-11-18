@@ -980,7 +980,7 @@ class PalaceClient extends PalaceProtocol {
 	userLogOff(info) {
 		this.serverUserCount = info.count;
 		if (this.theRoom) {
-			if (this.theRoom.removeUser(info.id,true) && !prefs.general.disableSounds) systemAudio.signoff.play();
+			if (this.theRoom.removeUser(info) && !prefs.general.disableSounds) systemAudio.signoff.play();
 			this.theRoom.setUserCount();
 		}
 	}

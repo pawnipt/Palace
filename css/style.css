@@ -702,7 +702,7 @@ font-weight:bold;
 margin-right:4px;
 }
 .userlogtime {
-
+font-size:small;
 position:absolute;
 background-color:RGBA(221,221,221,.95);
 /*box-shadow:-1px 1px 0.1px #bfbfbf;*/
