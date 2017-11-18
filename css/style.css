@@ -359,6 +359,7 @@ background-image:url(../img/pen.png);
 #drawsize {
 width:76px;
 left:4px;
+top:5px;
 }
 #drawpreview {
 border-radius:2px;
@@ -995,3 +996,37 @@ display:block;
 margin:0px;
 padding:0px;
 }
+
+
+/* emulate mac range input for windows, because the windows one has a huge knob! */
+input[type=range]{
+    -webkit-appearance: none;
+	background:transparent;
+}
+
+input[type=range]::-webkit-slider-runnable-track {
+	height:5px;
+	box-shadow: 0px 1px 3px RGBA(0,0,0,0.3) inset;
+    border: 1px inset RGBA(0,0,0,0.5);
+	border-bottom-color: RGBA(0,0,0,0.2);
+	background: lightgray;
+    border-radius: 2px;
+}
+
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    border: 1px solid RGBA(0,0,0,0.5);
+    height: 15px;
+    width: 15px;
+    border-radius: 50%;
+    background: linear-gradient(white, lightgray);
+    margin-top: -6px;
+}
+
+/*input[type=range]:focus {
+    outline: none;
+}
+
+input[type=range]:focus::-webkit-slider-runnable-track {
+    background: #ccc;
+}*/

@@ -18,21 +18,25 @@ const {Menu, MenuItem} = remote;
 
 
 const loosePropMenu = new Menu();
-loosePropMenu.append(new MenuItem({label: 'Save Prop', click(item) { saveProp(item.menu.pid); }}));
+loosePropMenu.append(new MenuItem({label: 'Save Prop', click(item) {
+	saveProp(item.pid);
+}}));
 loosePropMenu.append(new MenuItem({type: 'separator'}));
-loosePropMenu.append(new MenuItem({label: 'Remove Prop', click(item) { palace.sendPropDelete(item.menu.lpindex) }}));
+loosePropMenu.append(new MenuItem({label: 'Remove Prop', click(item) {
+	palace.sendPropDelete(item.lpindex);
+}}));
 
 const userMenu = new Menu();
 userMenu.append(new MenuItem({label: 'Whisper ',type: 'checkbox', click(item) {
-	var user = palace.theRoom.getUser(item.menu.userId);
+	var user = palace.theRoom.getUser(item.userId);
 	if (user) palace.theRoom.enterWhisperMode(user.id,user.name);
 }}));
 userMenu.append(new MenuItem({type: 'separator'}));
-userMenu.append(new MenuItem({label: 'Offer avatar', click(item) { palace.sendWhisper("'offer",item.menu.userId); }}));
+userMenu.append(new MenuItem({label: 'Offer avatar', click(item) { palace.sendWhisper("'offer",item.userId); }}));
 userMenu.append(new MenuItem({label: 'Accept avatar', click(item) { palace.sendXtlk("'accept"); }}));
 userMenu.append(new MenuItem({type: 'separator'}));
 userMenu.append(new MenuItem({label: 'Prop mute',type: 'checkbox', click(item) {
-	var user = palace.theRoom.getUser(item.menu.userId);
+	var user = palace.theRoom.getUser(item.userId);
 	if (user) {
 		user.propMuted = !user.propMuted;
 		palace.theRoom.reDraw();
@@ -49,7 +53,9 @@ bgEnv.addEventListener('contextmenu', (e) => {
 		var user = palace.theRoom.mouseOverUser(x,y);
 
 		if (user && user != palace.theUser) {
-			userMenu.userId = user.id;
+			userMenu.items[0].userId = user.id;
+			userMenu.items[2].userId = user.id;
+			userMenu.items[5].userId = user.id;
 			userMenu.items[0].checked = Boolean(palace.theRoom.whisperUserID);
 			userMenu.items[5].checked = Boolean(user.propMuted);
 			userMenu.items[2].enabled = palace.theUser.props.length > 0;
@@ -59,8 +65,8 @@ bgEnv.addEventListener('contextmenu', (e) => {
 			if (lpIndex != null) {
 				var lp = palace.theRoom.looseProps[lpIndex];
 				loosePropMenu.items[0].enabled = (propBagList.indexOf(lp.id) < 0);
-				loosePropMenu.pid = lp.id;
-				loosePropMenu.lpindex = lpIndex;
+				loosePropMenu.items[0].pid = lp.id;
+				loosePropMenu.items[2].lpindex = lpIndex;
 				loosePropMenu.popup(remote.getCurrentWindow(),{x:e.x,y:e.y,async:true});
 			}
 		}
@@ -348,11 +354,13 @@ class Renderer {
 
 	drawDraws(draw,foreground) {
 		if (Boolean(roomDrawConsts.front & draw.type) == foreground) {
+
 			this.context.lineWidth = draw.pensize;
 			this.context.fillStyle = draw.fillcolor;
 			this.context.strokeStyle = draw.pencolor;
 
 			if (!Boolean(draw.type & roomDrawConsts.text) && !Boolean(draw.type & roomDrawConsts.oval)) {
+				//this.context.globalCompositeOperation='destination-out'; //for potential eraser drawing tool!
 				this.context.beginPath();
 				this.context.moveTo(draw.points[0], draw.points[1]);
 
@@ -364,7 +372,7 @@ class Renderer {
 					this.context.fill();
 				}
 				this.context.stroke();
-
+				//this.context.globalCompositeOperation='source-over';
 			}
 		}
 	}
@@ -1047,7 +1055,7 @@ class PalaceRoom extends Renderer {
 		document.getElementById('chatbox').placeholder = 'Chat...';
 		var user = this.getUser(this.whisperUserID);
 		if (user) {
-			user.light = 0;
+			//user.light = 0;
 			user.poke();
 		}
 		this.whisperUserID = null;
