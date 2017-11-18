@@ -954,7 +954,7 @@ class PalaceClient extends PalaceProtocol {
 		}
 
 		if (msg) {
-			bgError(true);
+			setEnviornment(window.innerWidth-logField.offsetWidth,window.innerHeight-45,"url(img/error.png)");
 			logmsg(msg.msg);
 		}
 

@@ -1273,18 +1273,19 @@ function setBackGround(url) {
 
 	var bg = document.createElement('img');
 	bg.onload = function() {
-		if (palace.currentBG == this.src) {
+		if (palace.currentBG == this.src && palace.lastLoadedBG != this.src) {
 			if (this.naturalWidth > 0) {
 				palace.lastLoadedBG = this.src; /* to prevent reloading the image when authoring */
 				setEnviornment(this.naturalWidth,this.naturalHeight,"url("+this.src+")");
 			} else {
-				bgError();
+				this.onerror();
 			}
 		}
 	};
-	bg.onerror = function(force) {
-		if (force || palace.currentBG == this.src)
+	bg.onerror = function() {
+		if (palace.currentBG == this.src) {
 			setEnviornment(window.innerWidth-logField.offsetWidth,window.innerHeight-overLayer.offsetTop,"url(img/error.png)");
+		}
 	};
 	bg.src = url;
 
