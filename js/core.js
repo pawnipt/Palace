@@ -1262,30 +1262,39 @@ function setBackGroundVideo(url) {
 	bgVideo.src = url;
 }
 
-function bgFinished() {
-	if (palace.currentBG == this.src) {
-		if (this.naturalWidth > 0) {
-			palace.lastLoadedBG = this.src; /* to prevent reloading the image when authoring */
-			setEnviornment(this.naturalWidth,this.naturalHeight,"url("+this.src+")");
-		} else {
-			bgError();
-		}
-	}
-}
 
-function bgError(force) {
-	if (force || palace.currentBG == this.src)
-		setEnviornment(window.innerWidth-logField.offsetWidth,window.innerHeight-overLayer.offsetTop,"url(img/error.png)");
-}
+
+
 
 
 function setBackGround(url) {
 	palace.currentBG = url;
 	unloadBgVideo();
+
 	var bg = document.createElement('img');
-	bg.onload = bgFinished;
-	bg.onerror = bgError;
+	bg.onload = function() {
+		if (palace.currentBG == this.src) {
+			if (this.naturalWidth > 0) {
+				palace.lastLoadedBG = this.src; /* to prevent reloading the image when authoring */
+				setEnviornment(this.naturalWidth,this.naturalHeight,"url("+this.src+")");
+			} else {
+				bgError();
+			}
+		}
+	};
+	bg.onerror = function(force) {
+		if (force || palace.currentBG == this.src)
+			setEnviornment(window.innerWidth-logField.offsetWidth,window.innerHeight-overLayer.offsetTop,"url(img/error.png)");
+	};
 	bg.src = url;
+
+	var preCheck = setInterval(function() {
+		if (bg.naturalWidth > 0 || palace.currentBG != bg.src) {
+			bg.onload();
+			clearInterval(preCheck);
+		}
+	},20);
+
 }
 
 
