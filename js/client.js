@@ -6,10 +6,7 @@ class PalaceProtocol {
 	constructor(regi,puid) {
 		this.crypt = new PalaceCrypt(1);
 		this.regi = new PalaceRegistration(regi,puid);
-		this.soc = new net.Socket(); // node socket
-		this.soc.on('connect', function() {logmsg('Connected');});
-		this.soc.on('data', (data) => this.onData(data));
-		this.soc.on('error', (err) => this.onError(err));
+
 	}
 
 	static toArrayBuffer(b) { // node buffer to ArrayBuffer
@@ -39,15 +36,22 @@ class PalaceProtocol {
 	}
 
 	connect(ip,port) {
+
 		this.textDecoding = new TextDecoder('windows-1252'); // default server encoding
 		this.textEncoding = new TextEncoder('windows-1252', { NONSTANDARD_allowLegacyEncoding: true }); // palace default! :\
 		if (!port) port = '9998';
-		this.ip = ip;
-		this.port = port;
+		this.ip = ip.trim();
+		this.port = port.trim();
 		this.buffer = Buffer.alloc(0);
 		this.connecting();
-		this.soc.destroy(); // seems nessacery
-		this.soc.connect(port, ip); // connecting problem to dragons lair
+
+		if (this.soc) this.soc.destroy(); // seems nessacery
+		this.soc = new net.Socket(); // node socket
+		this.soc.on('connect', function() {logmsg('Connected');});
+		this.soc.on('data', (data) => this.onData(data));
+		this.soc.on('error', (err) => this.onError(err));
+
+		this.soc.connect(this.port, this.ip); // connecting problem to dragons lair
 	}
 
 	onData(data) {
