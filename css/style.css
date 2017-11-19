@@ -67,7 +67,6 @@ body {
   transition          : transform 0.3s,
                         width 0.3s,
                         height 0.3s;
-
 }
 
 #mainlayer {
@@ -600,6 +599,53 @@ body {
   transform : translateX(200px);
 }
 
+.zoompanel {
+  z-index          : 5002;
+  display          : none;
+  position         : fixed;
+  padding          : 6px;
+  opacity          : 0;
+  overflow         : hidden;
+  border-radius    : 6px;
+  background-color : RGBA(221,221,221,.95);
+  box-shadow       : 0 0 16px black;
+  font-size        : small;
+  animation        : fadeout 0.3s;
+  transform        : scale(0,0);
+}
+
+@keyframes fadeout {
+  0% {
+    opacity   : 1;
+    transform : none;
+  }
+
+  100% {
+    opacity   : 0;
+    transform : scale(0,0);
+  }
+}
+
+#authenticate[data-state='1'],
+#prefs[data-state='1'],
+#smileypicker[data-state='1'] {
+  opacity   : 1;
+  animation : fadein 0.3s;
+  transform : scale(1,1);
+}
+
+@keyframes fadein {
+  0% {
+    opacity   : 0;
+    transform : scale(0,0);
+  }
+
+  100% {
+    opacity   : 1;
+    transform : none;
+  }
+}
+
 .preflabel {
   width          : 120px;
   float          : left;
@@ -620,30 +666,6 @@ body {
   margin : 7px 12px;
 }
 
-#prefuname:before {
-  content : "Your Name";
-}
-
-#prefhpalace:before {
-  content : "Home";
-}
-
-#prefpbagsize:before {
-  content : "Prop bag tile size";
-}
-
-#prefvscales:before {
-  content : "Don't scale view";
-}
-
-#prefvscaleall:before {
-  content : "Always scale view";
-}
-
-#prefdsounds:before {
-  content : "Disable sounds";
-}
-
 #prefviewfitscale:checked ~ #prefviewscaleall,
 #prefviewfitscale:checked ~ #prefvscaleall {
   opacity        : 0.5;
@@ -651,39 +673,32 @@ body {
   pointer-events : none;
 }
 
-/* #prefs > div { width:300px; height:20px; margin:10px; } */
-
 #prefs {
+  top         : 50%;
+  left        : 50%;
   width       : 330px;
-  height      : 200px;
   margin-top  : -106px;
   margin-left : -171px;
-  /* dimensions + padding precalculated */
 }
 
-#prefs {
-  z-index          : 5002;
-  display          : none;
-  position         : fixed;
-  top              : 50%;
-  left             : 50%;
-  padding          : 6px;
-  opacity          : 0;
-  overflow         : hidden;
-  border-radius    : 6px;
-  background-color : RGBA(221,221,221,.95);
-  box-shadow       : 0 0 16px black;
-  font-size        : small;
-  transform        : scale(0,0);
-  transition       : opacity 0.3s,
-                     transform 0.3s;
-}
+#authenticate {
+  top         : 50%;
+  left        : 50%;
 
-#prefscheckbox:checked ~ #prefs {
-  opacity   : 1;
-  transform : scale(1,1);
+  margin-top  : -60px;
+  margin-left : -171px;
 }
-
+.authinput {
+    display:block;
+    margin:8px;
+}
+#submitauthenticate {
+  position    : relative;
+  left        : 50%;
+  width       : 100px;
+  margin      : 8px 0;
+  margin-left : -50px;
+}
 
 #log {
   padding                : 2px;
@@ -915,28 +930,11 @@ body {
   background-image : url(../img/audioon.png);
 }
 
-#smileypickertoggle:checked ~ #smileypicker {
-  opacity   : 1;
-  transform : none;
-}
-
 #smileypicker {
-  z-index          : 1002;
-  display          : none;
-  position         : fixed;
-  bottom           : 30px;
-  left             : 6px;
-  width            : 133px;
-  height           : 73px;
-  padding          : 6px;
-  opacity          : 0;
-  overflow         : hidden;
-  border-radius    : 6px;
-  background-color : RGBA(221,221,221,.95);
-  box-shadow       : 0 0 6px black;
-  transform        : scale(0);
-  transition       : transform 0.3s,
-                     opacity 0.3s;
+  bottom : 30px;
+  left   : 6px;
+  width  : 133px;
+  height : 73px;
 }
 
 #smileycolorpicker {
@@ -1090,3 +1088,27 @@ input[type=range]::-webkit-slider-thumb {
  *
  * input[type=range]:focus::-webkit-slider-runnable-track { background: #ccc; }
  */
+
+.playyoutube {
+  margin-left : 4px;
+  cursor      : pointer;
+}
+
+.playyoutube:hover {
+  color : red;
+}
+
+.youtubecontainer {
+  display        : block;
+  position       : relative;
+  width          : 100%;
+  padding-bottom : 56.25%;
+}
+
+.youtubeiframe {
+  position : absolute;
+  top      : 0;
+  right    : 0;
+  bottom   : 0;
+  left     : 0;
+}

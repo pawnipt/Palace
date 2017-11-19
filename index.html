@@ -66,25 +66,31 @@
 			<ul id="navlistbox"></ul>
 		</div>
 
-		<input id="smileypickertoggle" type="checkbox" class="tbcheckbox">
+
 		<label id="smileyfaces" for="smileypickertoggle"></label>
-		<div id="smileypicker" data-state=0>
+		<div id="smileypicker" class="zoompanel" data-state=0>
 			<div id="smileycolorpicker"></div>
 		</div>
 
-		<div id="prefs" data-state=0>
-			<label id="prefuname" class="preflabel" for="prefusername">:</label>
+		<div id="prefs" class="zoompanel" data-state=0>
+			<label class="preflabel" for="prefusername">Your Name:</label>
 			<input id="prefusername" type="text" class="prefinput">
-			<label id="prefhpalace" class="preflabel" for="prefhomepalace">:</label>
+			<label class="preflabel" for="prefhomepalace">Home:</label>
 			<input id="prefhomepalace" type="text" class="prefinput">
-			<label id="prefpbagsize" class="preflabel" for="prefpropbagsize">:</label>
+			<label class="preflabel" for="prefpropbagsize">Prop bag tile size:</label>
 			<input id="prefpropbagsize" type="range" class="prefinput" type="range" max="220" min="44" value=91>
-			<label id="prefvscales" class="preflabel" for="prefpropbagsize">:</label>
+			<label class="preflabel" for="prefpropbagsize">Don't scale view:</label>
 			<input id="prefviewfitscale" type="checkbox" class="prefinput">
-			<label id="prefvscaleall" class="preflabel" for="prefviewscaleall">:</label>
+			<label class="preflabel" for="prefviewscaleall">Always scale view:</label>
 			<input id="prefviewscaleall" type="checkbox" class="prefinput">
-			<label id="prefdsounds" class="preflabel" for="prefdisablesounds">:</label>
+			<label class="preflabel" for="prefdisablesounds">Disable sounds:</label>
 			<input id="prefdisablesounds" type="checkbox" class="prefinput">
+		</div>
+
+		<div id="authenticate" class="zoompanel" data-state=0>
+			<input id="authusername" type="text" class="authinput" placeholder="Name">
+			<input id="authpassword" type="text" class="authinput" placeholder="Password">
+			<button id="submitauthenticate">Submit</button>
 		</div>
 	</div>
 	<div id="container">

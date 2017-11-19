@@ -56,7 +56,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 			var smileyfaces = document.getElementById('smileyfaces');
 			smileyfaces.style.backgroundImage = src;
 			smileyfaces.onclick = function(event) {
-				toggleToolBarControl('smileypicker');
+				toggleZoomPanel('smileypicker');
 			};
 			updateDrawPreview();
 			this.onload = null;
@@ -138,6 +138,13 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	};
 	window.addEventListener("dragover",preventFileDrop);
 	window.addEventListener("drop",preventFileDrop);
+
+
+	document.getElementById('submitauthenticate').onclick = function() {
+		palace.sendAuthenticate(document.getElementById('authusername').value,
+								document.getElementById('authpassword').value);
+		toggleZoomPanel('authenticate');
+	};
 
 
 	// don't really need to call on the chatbox element much so I'm just using getElementById..
@@ -425,7 +432,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	};
 
 	document.getElementById('preferences').onclick = function() { // button to open/closoe log (should rename the id)
-		toggleToolBarControl('prefs'); // toggle preferences
+		toggleZoomPanel('prefs'); // toggle preferences
 	};
 	document.getElementById('chatlog').onclick = function() { // button to open/closoe log (should rename the id)
 		toggleToolBarControl('log'); // toggle log
@@ -970,6 +977,26 @@ function updateDrawPreview() {
 }
 
 
+function zoomPanelClose(event) {
+	event.preventDefault();
+	event.currentTarget.removeEventListener('animationend',zoomPanelClose);
+	if (event.currentTarget.dataset.state == 0) event.currentTarget.style.display = 'none';
+}
+
+function toggleZoomPanel(name,override) {
+	var control = document.getElementById(name);
+	control.removeEventListener('animationend',zoomPanelClose);
+	if (control.dataset.state == 1) {
+		control.addEventListener('animationend',zoomPanelClose);
+	}
+	if (override != undefined) {
+		control.dataset.state = override;
+	} else {
+		control.dataset.state = (control.dataset.state === '1'?0:1);
+	}
+
+	if (control.dataset.state == 1) control.style.display = 'inline-block';
+}
 
 
 function transitionalDisplayNone(event) {

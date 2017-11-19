@@ -46,7 +46,8 @@ class PalaceProtocol {
 		this.port = port;
 		this.buffer = Buffer.alloc(0);
 		this.connecting();
-		this.soc.connect(port, ip);
+		this.soc.destroy(); // seems nessacery
+		this.soc.connect(port, ip); // connecting problem to dragons lair
 	}
 
 	onData(data) {
@@ -65,6 +66,7 @@ class PalaceProtocol {
 			if (!this.retryRegistration) { //part of pserver security plugin to work around local proxies like pdrug.
 				this.retryRegistration = true;
 				this.buffer = Buffer.alloc(0);
+				this.soc.destroy(); // seems nessacery
 				this.soc.connect(this.port,this.ip);
 			}
 		} else {
@@ -181,6 +183,12 @@ class PalaceProtocol {
 			case TCPmsgConsts.BLOWTHRU:
 				this.parseBlowThru(packet);
 				break;
+			case TCPmsgConsts.AUTHENTICATE:
+				this.passData(packet);
+				break;
+			case TCPmsgConsts.SERVERDOWN:
+				this.parseServerDown(packet);
+				break;
 			case TCPmsgConsts.ASSETQUERY:
 			case TCPmsgConsts.ALTLOGONREPLY:
 			case TCPmsgConsts.ROOMDESCEND:
@@ -189,13 +197,19 @@ class PalaceProtocol {
 				//trash
 				break;
 			default:
-				console.log('unhandled packet: '+packet.slice(0,4));
+				console.log('unhandled packet: '+buffer.slice(0,4));
 				break;
 		}
 	}
 
+	parseServerDown(p) {
+		p.data = {refnum:p.reference,
+			msg:PalaceProtocol.cString(p.data, 12)};
+		this.passData(p);
+	}
+
 	parseBlowThru(p) {
-		if (p.data.readInt32LE(8) == 0x4f434e45) { // pserver plugin that sets encoding for the server
+		if (p.reference == 0x4f434e45) { // pserver plugin that sets encoding for the server
 			var encoding = p.data.toString('binary',12,p.data.readInt32LE(4) + 12);
 			this.textDecoding = new TextDecoder(encoding);
 			this.textEncoding = new TextEncoder(encoding, { NONSTANDARD_allowLegacyEncoding: true });
@@ -883,6 +897,16 @@ class PalaceProtocol {
 		this.soc.write(packet);
 	}
 
+	sendAuthenticate(name,pass) {
+		var info = Buffer.from(this.textEncoding.encode(name+':'+pass));
+		var packet = Buffer.alloc(13+info.length);
+		packet.writeInt32LE(TCPmsgConsts.AUTHRESPONSE,0);
+		packet.writeInt32LE(info.length+1,4);
+		packet.writeInt8(info.length,12);
+		this.crypt.Encrypt(info).copy(packet,13);
+		this.soc.write(packet);
+	}
+
 	sendRegistration() {
 		var reg =  Buffer.alloc(140);
 		reg.writeInt32LE(TCPmsgConsts.LOGON,0);
@@ -911,7 +935,7 @@ class PalaceProtocol {
 		reg.write('PC5'+remote.app.getVersion().replace(/\./g, ''),110,6);
 
 		reg.writeInt32LE(0x00000041,120);
-		if (this.retryRegistration) {
+		if (this.retryRegistration === true ) {
 			reg.writeInt32LE(0x00000111,124); //original value required by a security pserver plugin
 		} else {
 			reg.writeInt32LE(0x00000151,124); //a protocol required by a different security pserver plugins
@@ -935,6 +959,47 @@ class PalaceClient extends PalaceProtocol {
 		setUserInterfaceAvailability(true);
 	}
 
+	serverDownMsg(ref,msg) {
+		switch (ref) {
+			case 1:
+				return 'You\'ve logged off.';
+			case 2:
+				return 'com error.';
+			case 3:
+				return 'You\'ve been killed for flooding!';
+			case 4:
+				return 'You\'ve been killed by a Operator!';
+			case 5:
+				return 'Server has been shut down.';
+			case 6:
+				return 'Server is unresponsive.';
+			case 7:
+				return 'You\'ve been killed by the System Operator!';
+			case 8:
+				return 'The Server is full.';
+			case 9:
+				return 'The server has rejected you because you are using a invalid serial number.';
+			case 10:
+				return 'The server has rejected you because someone with the same serial number has logged on.';
+			case 11:
+				return 'Your death penalty is still active.';
+			case 12:
+				return 'You\'ve been Banished.';
+			case 13:
+				return 'You\'ve been Banished and Killed.';
+			case 14:
+				return 'This server does not allow guests.';
+			case 15:
+				return 'demo expired.';
+			case 16:
+				return msg;
+			default:
+				if (msg) return msg;
+				return 'You have been disconnected for a reason unknown.  REFNUMBER: '+ref;
+		}
+
+	}
+
 	serverDown(msg) { // still gotta implement this in the protocol lol
 		this.mediaUrl = "";
 		allProps = {};
@@ -947,9 +1012,10 @@ class PalaceClient extends PalaceProtocol {
 		this.userList = null;
 		this.lastLoadedBG = '';
 		PalaceRoom.removeAllSpotPics();
-
 		Bubble.deleteAllBubbles();
 		unloadBgVideo();
+		toggleZoomPanel('authenticate',0);
+
 		if (this.theRoom) {
 			this.theRoom.stopAllUserAnimations();
 			//delete this.theRoom;
@@ -963,8 +1029,9 @@ class PalaceClient extends PalaceProtocol {
 
 		if (msg) {
 			setEnviornment(window.innerWidth-logField.offsetWidth,window.innerHeight-45,"url(img/error.png)");
-			logmsg(msg.msg);
+			logmsg(msg);
 		}
+
 
 	}
 
@@ -1119,6 +1186,12 @@ class PalaceClient extends PalaceProtocol {
 				break;
 			case TCPmsgConsts.USERLIST:
 				this.theRoom.loadUsers(p.data);
+				break;
+			case TCPmsgConsts.AUTHENTICATE:
+				toggleZoomPanel('authenticate',1);
+				break;
+			case TCPmsgConsts.SERVERDOWN:
+				this.serverDown(this.serverDownMsg(p.data.refnum,p.data.msg));
 				break;
 			default:
 				console.log(p);
