@@ -803,8 +803,8 @@ class PalaceRoom extends Renderer {
 	spotMove(info) {
 		var spot = this.getSpot(info.spotid);
 		if (this.id == info.roomid && spot) {
-			spot.x = x;
-			spot.y = y;
+			spot.x = info.x;
+			spot.y = info.y;
 			this.setSpotImg(spot);
 			this.reDraw();
 		}
@@ -813,8 +813,8 @@ class PalaceRoom extends Renderer {
 	spotMovePic(info) {
 		var spot = this.getSpot(info.spotid);
 		if (this.id == info.roomid && spot && spot.statepics[spot.state]) {
-			spot.statepics[spot.state].x = x;
-			spot.statepics[spot.state].y = y;
+			spot.statepics[spot.state].x = info.x;
+			spot.statepics[spot.state].y = info.y;
 			this.setSpotImg(spot);
 			//palace.theRoom.reDraw();
 		}
