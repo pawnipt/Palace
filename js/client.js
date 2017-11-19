@@ -33,7 +33,7 @@ class PalaceProtocol {
 	static toString(b,start,end) {
 		return palace.textDecoding.decode(
 			PalaceProtocol.toArrayBuffer(
-				p.data.slice(start,end)
+				b.slice(start,end)
 			)
 		);
 	}
