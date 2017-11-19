@@ -264,5 +264,3 @@ function parseURL(url) {
  */
 	return parser;
 }
-function max(a, b) { return a ^ ((a ^ b) & -(a < b)); }
-function min(a, b) { return b ^ ((a ^ b) & -(a < b)); }

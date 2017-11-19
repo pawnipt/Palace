@@ -30,6 +30,14 @@ class PalaceProtocol {
 		);
 	}
 
+	static toString(b,start,end) {
+		return palace.textDecoding.decode(
+			PalaceProtocol.toArrayBuffer(
+				p.data.slice(start,end)
+			)
+		);
+	}
+
 	connect(ip,port) {
 		this.textDecoding = new TextDecoder('windows-1252'); // default server encoding
 		this.textEncoding = new TextEncoder('windows-1252', { NONSTANDARD_allowLegacyEncoding: true }); // palace default! :\
@@ -341,7 +349,7 @@ class PalaceProtocol {
 		var add = 12;
 		for (var i = 0; i < count; i++) {
 			var nameLen = p.data.readInt8(add+8);
-			list.push({name:palace.textDecoding.decode(PalaceProtocol.toArrayBuffer(p.data.slice(add+9,add+9+nameLen))),
+			list.push({name:PalaceProtocol.toString(p.data,add+9,add+9+nameLen),
 							id:p.data.readInt32LE(add),
 							flags:p.data.readInt16LE(add+4),
 							population:p.data.readInt16LE(add+6)});
@@ -357,7 +365,7 @@ class PalaceProtocol {
 		var add = 12;
 		for (var i = 0; i < count; i++) {
 			var nameLen = p.data.readInt8(add+8);
-			list.push({name:palace.textDecoding.decode(PalaceProtocol.toArrayBuffer(p.data.slice(add+9,add+9+nameLen))),
+			list.push({name:PalaceProtocol.toString(p.data,add+9,add+9+nameLen),
 							userid:p.data.readInt32LE(add),
 							flags:p.data.readInt16LE(add+4),
 							roomid:p.data.readInt16LE(add+6)});
