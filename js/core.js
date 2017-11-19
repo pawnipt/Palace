@@ -112,7 +112,7 @@ class Renderer {
 		this.drawLimboProp();
 		for (i = 0; i < this.looseProps.length; i++) {this.drawLooseProp(this.looseProps[i]);}
 		for (i = 0; i < this.users.length; i++) {this.drawAvatar(this.users[i]);}
-		for (i = 0; i < this.users.length; i++) {this.drawName(this.users[i]);}
+		if (!this.hideUserNames) for (i = 0; i < this.users.length; i++) {this.drawName(this.users[i]);}
 		for (i = 0; i < this.spots.length; i++) {this.drawSpot(this.spots[i],true);}
 		for (i = 0; i < this.spots.length; i++) {this.drawSpotName(this.spots[i],true);}
 		for (i = 0; i < this.draws.length; i++) {this.drawDraws(this.draws[i],true);}

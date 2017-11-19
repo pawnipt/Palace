@@ -282,9 +282,21 @@ let contextMenuListener = new ContextMenuListener((info) => {
 			move(x,y);
 		}
 	};
+
+	window.addEventListener('keyup', function(e) {
+		var mac = /^darwin/.test(process.platform);
+		if (palace.theRoom && palace.theRoom.hideUserNames && !((mac && e.metaKey) || (!mac && e.ctrlKey)) && !e.altKey) {
+			palace.theRoom.hideUserNames = false;
+			palace.theRoom.reDraw();
+		}
+	});
 	window.addEventListener('keydown', function(e) {
 		var mac = /^darwin/.test(process.platform);
 		if ((mac && e.metaKey) || (!mac && e.ctrlKey)) {
+			if (e.altKey && palace.theRoom) {
+				palace.theRoom.hideUserNames = true;
+				palace.theRoom.reDraw();
+			}
 			switch (e.key) {
 				case 'd':
 					document.getElementById('servers').click();
