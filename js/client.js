@@ -500,8 +500,7 @@ class PalaceProtocol {
 	}
 
 	parseUserExit(p) {
-		p.data = {id:p.reference,
-			logoff:false};
+		p.data = {id:p.reference};
 		this.passData(p);
 	}
 
@@ -1058,7 +1057,7 @@ class PalaceClient extends PalaceProtocol {
 	userLogOff(info) {
 		this.serverUserCount = info.count;
 		if (this.theRoom) {
-			info.loggoff = true; // tell removeUser that it is a logoff event.
+			info.logoff = true; // tell removeUser that it is a logoff event.
 			if (this.theRoom.removeUser(info) && !prefs.general.disableSounds) systemAudio.signoff.play();
 			this.theRoom.setUserCount();
 		}
