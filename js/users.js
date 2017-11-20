@@ -188,18 +188,14 @@ class PalaceUser {
 		}
 	}
 
-	changeUserProps(props,fromSelf) { // this function compares prop arrays to check for actual changes before sending out protocol or requesting a prop load,, i may have overdone it..
-		var wasChange = (this.props.length != props.length);
-		var i = 0;
-		var significantChange;
-		props.find(function(pid) {
-			if (this.props.indexOf(pid) < 0) significantChange = true;
-			if (!wasChange && this.props[i] != pid) wasChange = true;
-			i++;
-		},this);
+	changeUserProps(props,fromSelf) {
+		let same = (this.props.length === props.length &&
+			this.props.every( (v,i) => { return v === props[i] }));
+
 		this.props = props;
-		if (significantChange) loadProps(this.props,fromSelf);
-		if (wasChange) {
+
+		if (!same) {
+			loadProps(this.props,fromSelf);
 			if (this == palace.theUser) {
 				enablePropButtons();
 			}
