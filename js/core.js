@@ -258,12 +258,14 @@ class Renderer {
 			this.context.globalAlpha = 0.5;
 		}
 		if (user.scale != 1) {
-			var size = 1/user.scale;
+			let size = 1/user.scale;
 			this.context.scale(size,size);
 		}
 		var loc = user.nameRectBounds;
 
 		this.context.drawImage(user.nametag, loc.x, loc.y);
+
+		// resetting the canvas state manually, I think it's faster than save/restore..
 		if (this.context.shadowBlur > 0) {
 			this.context.shadowColor = 'transparent';
 			this.context.shadowBlur = 0;
@@ -271,30 +273,30 @@ class Renderer {
 		if (this.context.globalAlpha < 1) {
 			this.context.globalAlpha = 1;
 		}
-		if (user.scale != 1) {
+		if (user.scale !== 1) {
 			this.context.setTransform(1, 0, 0, 1, 0, 0); // resets transform
 		}
 
 	}
 
 	drawAvatar(user) {
-		var overUser = (this.mouseHoverUser != palace.theUser && this.mouseHoverUser == user);
+		var overUser = (this.mouseHoverUser !== palace.theUser && this.mouseHoverUser === user);
 
-		if (overUser && this.whisperUserID == user.id) {
+		if (overUser && this.whisperUserID === user.id) {
 			this.context.shadowColor = 'IndianRed';
 			this.context.shadowBlur = 6;
-		} else if (((overUser && this.whisperUserID != user.id) || this.whisperUserID == user.id) || user.light > 0) {
+		} else if (((overUser && this.whisperUserID !== user.id) || this.whisperUserID === user.id) || user.light > 0) {
 			this.context.shadowColor = 'rgba(152,251,152,'+user.light+')';
 			this.context.shadowBlur = 6;
 			this.context.filter = 'brightness('+(user.light*15+100).fastRound()+'%)';
 		}
 
-		if (user.scale != 1) {
+		if (user.scale !== 1) {
 			var size = 1/user.scale;
 			this.context.scale(size,size);
 		}
 
-		if ((this.whisperUserID != null && this.whisperUserID != user.id && user != palace.theUser)) {
+		if ((this.whisperUserID !== null && this.whisperUserID !== user.id && user !== palace.theUser)) {
 			this.context.globalAlpha = 0.5;
 		}
 		if (user.showHead !== false || user.propMuted) {
@@ -302,8 +304,8 @@ class Renderer {
 		}
 		if (!user.propMuted) {
 			for (var i = 0; i < user.props.length; i++) {
-				var aProp = allProps[user.props[i]];
-				if (aProp && (!aProp.animated || user.animatePropID === undefined || user.animatePropID == aProp.id)) {
+				let aProp = allProps[user.props[i]];
+				if (aProp && (!aProp.animated || user.animatePropID === undefined || user.animatePropID === aProp.id)) {
 					this.drawUserProp(user,aProp);
 				}
 			}
@@ -313,8 +315,12 @@ class Renderer {
 			this.context.shadowBlur = 0;
 			this.context.filter = 'none';
 		}
-		if (this.context.globalAlpha < 1) this.context.globalAlpha = 1;
-		if (user.scale != 1) this.context.setTransform(1, 0, 0, 1, 0, 0); // resets transform
+		if (this.context.globalAlpha < 1) {
+			this.context.globalAlpha = 1;
+		}
+		if (user.scale !== 1) {
+			this.context.setTransform(1, 0, 0, 1, 0, 0); // resets transform
+		}
 	}
 
 	drawSmiley(user) {
@@ -325,7 +331,7 @@ class Renderer {
 		if (aProp.isComplete) {
 			var iAlpha = this.context.globalAlpha;
 			if (aProp.ghost) this.context.globalAlpha = iAlpha/2;
-			var draggingSelfProp = (aProp.id == this.mouseSelfProp && user == palace.theUser);
+			var draggingSelfProp = (aProp.id === this.mouseSelfProp && user === palace.theUser);
 			if (draggingSelfProp) {
 				this.context.shadowColor = 'LawnGreen';
 				this.context.shadowBlur = 4;
@@ -342,7 +348,7 @@ class Renderer {
 
 
 	drawLimboProp() { /* when dragging a prop from self or another location */
-		if (this.grabbedProp && this.grabbedProp.index == -1) {
+		if (this.grabbedProp && this.grabbedProp.index === -1) {
 			var aProp = allProps[this.grabbedProp.id];
 			if (aProp && aProp.isComplete) {
 				if (aProp.ghost) this.context.globalAlpha = 0.5;
@@ -355,7 +361,7 @@ class Renderer {
 
 
 	drawDraws(draw,foreground) {
-		if (Boolean(roomDrawConsts.front & draw.type) == foreground) {
+		if (Boolean(roomDrawConsts.front & draw.type) === foreground) {
 
 			this.context.lineWidth = draw.pensize;
 			this.context.fillStyle = draw.fillcolor;
@@ -422,7 +428,7 @@ class Renderer {
 	}
 	static drawing(event) {
 		var offset = 0;
-		if (prefs.draw.type == 0) offset = Math.floor(prefs.draw.size/2);
+		if (prefs.draw.type === 0) offset = Math.floor(prefs.draw.size/2);
 		var x = ((event.x+document.body.scrollLeft-overLayer.offsetLeft)/viewScale).fastRound()-offset;
 		var y = ((event.y+document.body.scrollTop-overLayer.offsetTop)/viewScale).fastRound()-offset; //45 get new toolbar height if zooming
 		if (event.shiftKey && drawPoints.length > 3) {
