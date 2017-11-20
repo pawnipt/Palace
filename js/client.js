@@ -41,12 +41,19 @@ class PalaceProtocol {
 		if (!port) port = '9998';
 		this.ip = ip.trim();
 		this.port = port.trim();
-		this.buffer = Buffer.alloc(0);
+
 		this.connecting();
 
-		if (this.soc) this.soc.destroy(); // seems nessacery
+		if (this.soc) {
+			this.sendLogOff(); // politely disconnect
+			this.soc.destroy();
+		}
+
+		this.buffer = Buffer.alloc(0);
 		this.soc = new net.Socket(); // node socket
-		this.soc.on('connect', function() {logmsg('Connected');});
+		this.soc.on('connect', () => {
+			logmsg('Connected');
+		});
 		this.soc.on('data', (data) => this.onData(data));
 		this.soc.on('error', (err) => this.onError(err));
 
@@ -668,7 +675,11 @@ class PalaceProtocol {
 	}
 
 
-
+	sendLogOff() {
+		var packet = Buffer.alloc(12);
+		packet.writeInt32LE(TCPmsgConsts.LOGOFF,0);
+		this.soc.write(packet);
+	}
 
 	sendDraw(draw) {
 
