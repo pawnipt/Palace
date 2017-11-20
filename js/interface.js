@@ -1171,7 +1171,10 @@ function loadUserList(ulist) {
 	palace.userList = ulist;
 	if (navframe.dataset.ctrlname == 'users') {
 		clearListBox(listbox);
-		var word = document.getElementById('navsearch').value.toLowerCase();
+		let word = document.getElementById('navsearch').value.toLowerCase();
+		let redSmile = smileys[5+',0'];
+		let blueSmile = smileys[5+',10'];
+		let yellowSmile = smileys[5+',3'];
 
 		for (var i = 0; i < ucount; i++) {
 			userInfo = ulist[i];
@@ -1181,12 +1184,23 @@ function loadUserList(ulist) {
 				cl = li.classList;
 				cl.add('uListItem');
 
+				let isOwner = Boolean(userInfo.flags & 2);
+				let isOperator = Boolean(userInfo.flags & 1);
+
 				if (userInfo.flags & 0x1000) cl.add('propgag');
 				if (userInfo.flags & 0x0100) cl.add('pinned');
 				if (userInfo.flags & 0x0080) cl.add('gagged');
-				if (userInfo.flags & 2) cl.add('owner');
-				if (userInfo.flags & 1) cl.add('operator');
+				if (isOwner) cl.add('owner');
+				if (isOperator) cl.add('operator');
 				if (userInfo.userid == palace.theRoom.whisperUserID) cl.add('whisperingTo');
+
+				if (isOwner) {
+					li.style.backgroundImage = 'url('+redSmile.src+')'; // not sure if using data url is most efficient...
+				} else if (isOperator) {
+					li.style.backgroundImage = 'url('+blueSmile.src+')';
+				} else {
+					li.style.backgroundImage = 'url('+yellowSmile.src+')';
+				}
 
 				s = document.createElement('div');
 				s.className = 'listName';
