@@ -6,7 +6,6 @@ class PalaceProtocol {
 	constructor(regi,puid) {
 		this.crypt = new PalaceCrypt(1);
 		this.regi = new PalaceRegistration(regi,puid);
-
 	}
 
 	static toArrayBuffer(b) { // node buffer to ArrayBuffer

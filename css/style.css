@@ -247,23 +247,16 @@ body {
   background-color : RGBA(0,0,0,0);
 }
 
-.uListItem {
-  background-image : url(../img/user.png);
+.uListItem.gagged {
+  filter    : grayscale(100%);
 }
 
-.uListItem.operator {
-  background-image : url(../img/operator.png);
-}
 
-.uListItem.owner {
-  background-image : url(../img/owner.png);
-}
 
 .uListItem.propgag {}
 
 .uListItem.pinned {}
 
-.uListItem.gagged {}
 
 .sListItem {
   height : 50px;
@@ -762,16 +755,6 @@ body {
   text-indent : 6px;
   font-size   : smaller;
   /* text-align: center; */
-}
-
-.logmsgdoorlocked:before {
-  content : "Sorry the door is locked";
-  color   : #546078;
-}
-
-.logmsgconnected:before {
-  content : "Connected";
-  color   : #546078;
 }
 
 #colorselector {

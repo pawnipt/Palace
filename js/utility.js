@@ -226,15 +226,16 @@ function calculateAspectRatio(w,h,newSize) {
 function httpPostAsync(theUrl, callback, postContent) {
 	var xmlHttp = new XMLHttpRequest();
 	xmlHttp.onerror = function() {
-		logmsg('Error '+xmlHttp.status+' with http post request: '+xmlHttp.responseText);
+		console.log('Error with http post request: '+this.url);
 	};
 	xmlHttp.onload = function() {
 		if (xmlHttp.status == 200) {
 			callback(xmlHttp.responseText);
 		} else {
-			logmsg('Error '+xmlHttp.status+' with http post request: '+xmlHttp.responseText);
+			logmsg('Error '+xmlHttp.status+' with http post request: '+this.url);
 		}
 	};
+	xmlHttp.url = theUrl;
 	xmlHttp.open("POST", theUrl, true);
 	xmlHttp.send(postContent);
 }
@@ -243,18 +244,37 @@ function httpGetAsync(theUrl, callback, rtype) {
 	var xmlHttp = new XMLHttpRequest();
 	if (rtype) xmlHttp.responseType = rtype;
 	xmlHttp.onerror = function() {
-		logmsg('Error '+xmlHttp.status+' with http get request: '+xmlHttp.responseText);
+		console.log('Error with http get request: '+this.url);
 	};
 	xmlHttp.onload = function() {
 		if (xmlHttp.status == 200) {
 			callback(xmlHttp.responseText);
 		} else {
-			logmsg('Error '+xmlHttp.status+' with http post request: '+xmlHttp.responseText);
+			logmsg('Error '+xmlHttp.status+' with http post request: '+this.url);
 		}
 	};
+	xmlHttp.url = theUrl;
 	xmlHttp.open("GET", theUrl, true);
 	xmlHttp.send();
 }
+
+function httpHeadAsync(theUrl, callback) {
+	var xmlHttp = new XMLHttpRequest();
+	xmlHttp.onerror = function() {
+		console.log('Error with http get request: '+this.url);
+	};
+	xmlHttp.onload = function() {
+		if (xmlHttp.status == 200) {
+			callback(xmlHttp.getResponseHeader("Content-Type").trim());
+		} else {
+			logmsg('Error '+xmlHttp.status+' with http head request: '+this.url);
+		}
+	};
+	xmlHttp.url = theUrl;
+	xmlHttp.open("HEAD", theUrl, true);
+	xmlHttp.send();
+}
+
 function getImageData(img) {
 	if (img.length > 0) return img;
 	if (/^data/.test(img.src)) return img.src; // if img is already a data url pass it along!

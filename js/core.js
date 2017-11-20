@@ -243,18 +243,18 @@ class Renderer {
 	}
 
 	drawName(user) {
-		var overUser = (this.mouseHoverUser != palace.theUser && this.mouseHoverUser == user);
+		var overUser = (this.mouseHoverUser !== palace.theUser && this.mouseHoverUser === user);
 
 		if (overUser && this.whisperUserID == user.id) {
 			this.context.shadowColor = 'IndianRed';
 			this.context.shadowBlur = 6;
-		} else if (((overUser && this.whisperUserID != user.id) || this.whisperUserID == user.id) || user.light > 0) {
+		} else if (((overUser && this.whisperUserID !== user.id) || this.whisperUserID === user.id) || user.light > 0) {
 			this.context.shadowColor = 'rgba(152,251,152,'+user.light+')';
 			this.context.shadowBlur = 6;
 		}
 
 
-		if (this.whisperUserID != null && this.whisperUserID != user.id && user != palace.theUser) {
+		if (this.whisperUserID !== null && this.whisperUserID !== user.id && user !== palace.theUser) {
 			this.context.globalAlpha = 0.5;
 		}
 		if (user.scale != 1) {
@@ -457,7 +457,7 @@ class PalaceRoom extends Renderer {
 		this.mouseLooseProp = null;
 		this.mouseSelfProp = null;
 
-		var mCanvas = document.createElement('canvas'); /* offscreen buffer for prop pixel detection */
+		let mCanvas = document.createElement('canvas'); /* offscreen buffer for prop pixel detection */
 		mCanvas.width = 220;
 		mCanvas.height = 220;
 		this.mCtx = mCanvas.getContext('2d');
@@ -467,17 +467,28 @@ class PalaceRoom extends Renderer {
 
 		document.getElementById('palaceroom').innerText = this.name;
 
-		var media = passUrl(this.background);
-		var ext = parseURL(media).pathname.split('.').pop();
+		let media = passUrl(this.background);
+
 		if (media != palace.lastLoadedBG) {	/* prevent reloading of background media when room is authored */
-			//setEnviornment(window.innerWidth-logField.offsetWidth,window.innerHeight-overLayer.offsetTop,'');
 			setEnviornment(bgEnv.width,bgEnv.height,'');
 			toggleLoadingBG(true);
-			if (ext == 'mp4' || ext == 'ogg' || ext == 'webm' || ext == 'm4v') {	/* eventually use http request as well, to determine resource type */
-				setBackGroundVideo(media);
-			} else {
+
+			palace.currentBG = media; // prevent loading of the media later on, if it has changed before it completed downloading
+			let ext = parseURL(media).pathname.split('.').pop();
+			if (['jpg','jpeg','bmp','png','apng','gif','svg','webp','pdf','ico'].indexOf(ext) > -1) { // valid img file extension takes the cake
 				setBackGround(media);
+			} else {
+				httpHeadAsync(media,function(info) {
+					// video content-type or valid video file extension
+					if (info.indexOf('video') > -1 || ['mp4','ogg','webm','m4v'].indexOf(ext) > -1) {	/* eventually use http request as well, to determine resource type */
+						setBackGroundVideo(media);
+					} else {
+						setBackGround(media); // fallback
+					}
+				});
 			}
+
+
 		}
 
 		PalaceRoom.removeAllSpotPics();
@@ -485,7 +496,7 @@ class PalaceRoom extends Renderer {
 		this.pics = [];
 
 		info.pictures.forEach((pict) => {
-			var newImg = document.createElement('img');
+			let newImg = document.createElement('img');
 			newImg.onload = () => {
 				this.spots.forEach((spot) => {
 					if (!spot.img) {
@@ -528,7 +539,7 @@ class PalaceRoom extends Renderer {
 	}
 
 	mouseMove(event) {
-		if (palace.theRoom) {
+		if (palace.theRoom && palace.theUser) {
 			var isDrawing = document.getElementById('drawcheckbox').checked;
 
 			if (isDrawing) {
@@ -539,7 +550,6 @@ class PalaceRoom extends Renderer {
 				bgEnv.dataset.cursorName = '';
 				return true;
 			}
-			if (palace.theUser == null) return false;
 
 			var x = (event.layerX/viewScale).fastRound();
 			var y = ((event.layerY+(45*webFrame.getZoomFactor() - 45))/viewScale).fastRound();
@@ -655,56 +665,70 @@ class PalaceRoom extends Renderer {
 		}
 	}
 
+	clickSpotInfo(x,y) {
+		var ai = {};
+		var spot;
+		for (var i = this.spots.length; --i >= 0;) {
+			spot = this.spots[i];
+			this.makeHotSpot(spot);
+			if (this.context.isPointInPath(x,y)) {
+				if (ai.spot == null) ai.spot = spot;
+				if (spotConsts.DontMoveHere & spot.flags) ai.dontMove = true;
+			}
+		}
+		return ai;
+	}
+
+	static setRoomFocus() {
+		if (document.activeElement !== document.body) {
+			var items = document.getElementsByTagName('input');
+			for (var i = 0; i < items.length; i++) {
+				items[i].blur();
+			}
+		}
+	}
+
 	mouseDown(event) {
-		document.getElementById('chatbox').blur();
+		PalaceRoom.setRoomFocus();
 		if (palace.theUser && event.button == 0) {
 			event.preventDefault();
-			var isDrawing = document.getElementById('drawcheckbox').checked;
-			var x = (event.layerX/viewScale).fastRound();
-			var y = ((event.layerY + (45*webFrame.getZoomFactor() - 45)) /viewScale).fastRound(); // get excess toolbar height if windows is scaling
+			let isDrawing = document.getElementById('drawcheckbox').checked;
+			let x = (event.layerX/viewScale).fastRound();
+			let y = ((event.layerY + (45*webFrame.getZoomFactor() - 45)) /viewScale).fastRound(); // get excess toolbar height if windows is scaling
 			if (isDrawing) {
-				var offset = 0;
+				let offset = 0;
 				if (prefs.draw.type == 0) offset = Math.floor(prefs.draw.size/2);
 				this.drawPoints = [x-offset,y-offset];
 				window.addEventListener('mousemove',Renderer.drawing);
 				window.addEventListener('mouseup',Renderer.drawingEnd);
 			} else {
-				var lpIndex = null;
-				var pid = null;
 
-				var mUser = this.mouseOverUser(x,y);
-				if (!event.shiftKey && mUser != palace.theUser && mUser != null) {
+
+				let mUser = this.mouseOverUser(x,y);
+				if (!event.shiftKey && mUser != palace.theUser && mUser) {
 					this.enterWhisperMode(mUser.id,mUser.name);
 				} else {
-					if (event.shiftKey) pid = this.mouseOverSelfProp(x,y);
-					if (pid == null) lpIndex = this.mouseOverLooseProp(x,y);
+					let lpIndex = null;
+					let pid;
 
-					if (pid != null) {
-						var aProp = allProps[pid];
+					if (event.shiftKey) {
+						pid = this.mouseOverSelfProp(x,y);
+					}
+					if (!pid) {
+						lpIndex = this.mouseOverLooseProp(x,y);
+					}
+
+					if (pid) {
+						let aProp = allProps[pid];
 						this.makeDragProp(-1, pid, x, y, x-aProp.x-palace.theUser.x+22, y-aProp.y-palace.theUser.y+22);
 					} else if (lpIndex != null) {
-						var lProp = this.looseProps[lpIndex];
+						let lProp = this.looseProps[lpIndex];
 						this.makeDragProp(lpIndex, lProp.id, x, y, x-lProp.x, y-lProp.y);
-					} else if (mUser == null || mUser == palace.theUser) { /* if not clicking another user */
-
-						var clickSpotInfo = (x,y) => {
-							var ai = {};
-							var spot;
-							for (var i = this.spots.length; --i >= 0;) {
-								spot = this.spots[i];
-								this.makeHotSpot(spot);
-								if (this.context.isPointInPath(x,y)) {
-									if (ai.spot == null) ai.spot = spot;
-									if (spotConsts.DontMoveHere & spot.flags) ai.dontMove = true;
-								}
-							}
-							return ai;
-						};
-
-						var areaInfo = clickSpotInfo(x,y);
+					} else if (!mUser || mUser == palace.theUser) { /* if not clicking another user */
+						let areaInfo = this.clickSpotInfo(x,y);
 						if (areaInfo.dontMove !== true) setpos(x,y);
-						if (areaInfo.spot != null) {
-							var dest = areaInfo.spot.dest;
+						if (areaInfo.spot) {
+							let dest = areaInfo.spot.dest;
 							switch(areaInfo.spot.type) {
 								case spotConsts.types.passage:
 									if (dest > 0) gotoroom(dest);
@@ -714,12 +738,12 @@ class PalaceRoom extends Renderer {
 									if (areaInfo.spot.state == 0) {
 										gotoroom(dest);
 									} else {
-										logspecial('logmsgdoorlocked');
+										logmsg('Sorry the door is locked.');
 									}
 									break;
 								case spotConsts.types.deadBolt:
-									var d = this.getSpot(dest);
-									if (d != null) {
+									let d = this.getSpot(dest);
+									if (d) {
 										if (d.state == 0) {
 											palace.sendLockRoom(dest)
 										} else {
@@ -1055,7 +1079,9 @@ class PalaceRoom extends Renderer {
 		document.getElementById('chatbox').placeholder = 'Chat...';
 		var user = this.getUser(this.whisperUserID);
 		if (user) {
-			//user.light = 0;
+			if (this.mouseHoverUser != user) {
+				user.light = 0;
+			}
 			user.poke();
 		}
 		this.whisperUserID = null;
@@ -1268,7 +1294,6 @@ function setBackGroundVideo(url) {
 
 
 function setBackGround(url) {
-	palace.currentBG = url;
 	unloadBgVideo();
 
 	var bg = document.createElement('img');
