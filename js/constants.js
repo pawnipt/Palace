@@ -39,14 +39,14 @@ const bubbleConsts = {
 	sound : /([a-zA-Z0-9\._-]*)(\s?)/i
 };
 
-const roomDrawConsts = {
-	oval : 0x4000,
-	text : 0x2000,
-	shape : 0x0100,
-	front : 0x8000,
-	undo : 0x0004,
-	clean : 0x0002,
-	pen : 0
+const drawType = {
+OVAL : 0x4000,
+TEXT : 0x2000,
+ERASER : 0x1000,
+SHAPE : 0x0100,
+PENFRONT : 0x8000,
+CLEAN : 0x0002,
+UNDO : 0x0004
 };
 
 const TCPmsgConsts = {
@@ -114,14 +114,4 @@ SMSG : 0x736d7367,
 ALTLOGONREPLY : 0x72657032,
 JSON : 0x6a736f6e,
 IPTSIGNAL : 0x69707473
-};
-
-
-const drawType = {
-OVAL : 0x4000,
-TEXT : 0x2000,
-SHAPE : 0x0100,
-PENFRONT : 0x8000,
-CLEAN : 0x0002,
-UNDO : 0x0004
 };

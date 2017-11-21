@@ -477,11 +477,14 @@ let contextMenuListener = new ContextMenuListener((info) => {
 		updateDrawPreview();
 	};
 	document.getElementById('drawtype').onclick = function() { // toggle draw type
-		prefs.draw.type = Number(!prefs.draw.type);
+		prefs.draw.type++;
+		if (prefs.draw.type > 2) {
+			prefs.draw.type = 0;
+		}
 		setDrawType();
 		updateDrawPreview();
 	};
-	var drawEraser = document.getElementById('drawerase');
+	var drawEraser = document.getElementById('drawundo');
 	drawEraser.ondblclick = function() { //or clearing room of all draws
 		palace.sendDrawClear(3);
 	};
@@ -924,6 +927,9 @@ function setDrawType() {
 		case 1:
 			dt.style.backgroundImage = 'url(img/bucket.png)';
 			break;
+		case 2:
+			dt.style.backgroundImage = 'url(img/eraser.png)';
+			break;
 		default:
 			dt.style.backgroundImage = 'url(img/pen.png)';
 	}
@@ -949,13 +955,22 @@ function updateDrawPreview() {
 	drawCxt.strokeStyle = prefs.draw.color;
 
 
-	if (prefs.draw.front == true) {
+
+
+	if (prefs.draw.front === true) {
+		drawCxt.globalCompositeOperation = 'source-over';
 		drawCxt.filter = 'grayscale(100%)';
 		drawCxt.drawImage(genericSmiley,0,0,42,42,w/2-sw,h/2-sh,21,21);
 		drawCxt.filter = 'none';
 	}
 
-	if (prefs.draw.type == 0 || prefs.draw.type == 1) {
+	if (prefs.draw.type === 2) {
+		drawCxt.globalCompositeOperation = 'destination-out';
+	} else {
+		drawCxt.globalCompositeOperation = 'source-over';
+	}
+
+	if (prefs.draw.type < 3) {
 		drawCxt.beginPath();
 		drawCxt.moveTo(12,h-12);
 		drawCxt.lineTo(w/2,12);
@@ -969,6 +984,7 @@ function updateDrawPreview() {
 	}
 
 	if (prefs.draw.front == false) {
+		drawCxt.globalCompositeOperation = 'source-over';
 		drawCxt.filter = 'grayscale(100%)';
 		drawCxt.drawImage(genericSmiley,0,0,42,42,w/2-sw,h/2-sh,21,21);
 		drawCxt.filter = 'none';

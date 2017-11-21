@@ -112,11 +112,12 @@ class Renderer {
 		this.drawLimboProp();
 		for (i = 0; i < this.looseProps.length; i++) {this.drawLooseProp(this.looseProps[i]);}
 		for (i = 0; i < this.users.length; i++) {this.drawAvatar(this.users[i]);}
-		if (!this.hideUserNames) for (i = 0; i < this.users.length; i++) {this.drawName(this.users[i]);}
-		for (i = 0; i < this.spots.length; i++) {this.drawSpot(this.spots[i],true);}
-		for (i = 0; i < this.spots.length; i++) {this.drawSpotName(this.spots[i],true);}
 		for (i = 0; i < this.draws.length; i++) {this.drawDraws(this.draws[i],true);}
 		if (prefs.draw.front) this.preDrawDrawing();
+		if (!this.hideUserNames) for (i = 0; i < this.users.length; i++) {this.drawName(this.users[i]);}
+		for (i = 0; i < this.spots.length; i++) {this.drawSpot(this.spots[i],true);} // need to make clicking a spot work if they are above a user and loose props
+		for (i = 0; i < this.spots.length; i++) {this.drawSpotName(this.spots[i],true);}
+
 		for (i = 0; i < chatBubs.length; i++) {this.drawBubble(chatBubs[i]);} // add chat bubbles to PalaceRoom..
 
 		if (this.context.shadowBlur > 0) {	//intelligently and efficiently restore state machine.
@@ -361,26 +362,26 @@ class Renderer {
 
 
 	drawDraws(draw,foreground) {
-		if (Boolean(roomDrawConsts.front & draw.type) === foreground) {
+		if (Boolean(drawType.PENFRONT & draw.type) === foreground) {
 
 			this.context.lineWidth = draw.pensize;
 			this.context.fillStyle = draw.fillcolor;
 			this.context.strokeStyle = draw.pencolor;
 
-			if (!Boolean(draw.type & roomDrawConsts.text) && !Boolean(draw.type & roomDrawConsts.oval)) {
-				//this.context.globalCompositeOperation='destination-out'; //for potential eraser drawing tool!
+			if (!Boolean(draw.type & drawType.TEXT) && !Boolean(draw.type & drawType.OVAL)) {
+				if (draw.type & drawType.ERASER) this.context.globalCompositeOperation='destination-out'; //for potential eraser drawing tool!
 				this.context.beginPath();
 				this.context.moveTo(draw.points[0], draw.points[1]);
 
 				for (var item = 2; item < draw.points.length-1; item += 2)
 					this.context.lineTo(draw.points[item], draw.points[item+1]);
 
-				if (roomDrawConsts.shape & draw.type) {
+				if (drawType.SHAPE & draw.type) {
 					this.context.closePath();
 					this.context.fill();
 				}
 				this.context.stroke();
-				//this.context.globalCompositeOperation='source-over';
+				if (draw.type & drawType.ERASER) this.context.globalCompositeOperation='source-over';
 			}
 		}
 	}
@@ -395,25 +396,27 @@ class Renderer {
 			this.context.beginPath();
 
 			var offset = 0;
-			if (prefs.draw.type == 0) offset = Math.floor(prefs.draw.size/2);
+			if (prefs.draw.type !== 1) offset = Math.floor(prefs.draw.size/2);
 
 			this.context.moveTo(this.drawPoints[0]+offset, this.drawPoints[1]+offset);
 
 			for (var item = 2; item < l-1; item += 2)
 				this.context.lineTo(this.drawPoints[item]+offset, this.drawPoints[item+1]+offset);
 
-			if (prefs.draw.type == 1) {
+			if (prefs.draw.type === 2) this.context.globalCompositeOperation='destination-out';
+			if (prefs.draw.type === 1) {
 				this.context.closePath();
 				this.context.fill();
 			}
 			this.context.stroke();
+			if (prefs.draw.type === 2) this.context.globalCompositeOperation='source-over';
 		}
 	}
 
 
 	static drawingEnd() { // might redo these functions, don't like it like that
 		palace.sendDraw({
-			type:(prefs.draw.type == 1),
+			type:prefs.draw.type,
 			front:prefs.draw.front,
 			color:prefs.draw.color.getNbrs(),
 			fill:prefs.draw.fill.getNbrs(),
@@ -428,7 +431,7 @@ class Renderer {
 	}
 	static drawing(event) {
 		var offset = 0;
-		if (prefs.draw.type === 0) offset = Math.floor(prefs.draw.size/2);
+		if (prefs.draw.type !== 1) offset = Math.floor(prefs.draw.size/2);
 		var x = ((event.x+document.body.scrollLeft-overLayer.offsetLeft)/viewScale).fastRound()-offset;
 		var y = ((event.y+document.body.scrollTop-overLayer.offsetTop)/viewScale).fastRound()-offset; //45 get new toolbar height if zooming
 		if (event.shiftKey && drawPoints.length > 3) {
@@ -551,6 +554,7 @@ class PalaceRoom extends Renderer {
 			if (isDrawing) {
 				switch(prefs.draw.type) {
 					case 1: bgEnv.style.cursor = 'url(img/bucket.cur) 16 13,crosshair'; break;
+					case 2: bgEnv.style.cursor = 'url(img/eraser.cur) 5 15,crosshair'; break;
 					default: bgEnv.style.cursor = 'url(img/pen.cur) 1 14,crosshair';
 				}
 				bgEnv.dataset.cursorName = '';
@@ -694,6 +698,10 @@ class PalaceRoom extends Renderer {
 		}
 	}
 
+	get noPainting() {
+		return Boolean(this.flags & 0x0004);
+	}
+
 	mouseDown(event) {
 		PalaceRoom.setRoomFocus();
 		if (palace.theUser && event.button == 0) {
@@ -702,8 +710,15 @@ class PalaceRoom extends Renderer {
 			let x = (event.layerX/viewScale).fastRound();
 			let y = ((event.layerY + (45*webFrame.getZoomFactor() - 45)) /viewScale).fastRound(); // get excess toolbar height if windows is scaling
 			if (isDrawing) {
-				let offset = 0;
-				if (prefs.draw.type == 0) offset = Math.floor(prefs.draw.size/2);
+				if (!palace.allowPainting && !palace.isOperator) {
+					logmsg('Painting is not allowed on this server.');
+					return false;
+				}
+				if (this.noPainting && !palace.isOperator) {
+					logmsg('Painting is not allowed in this room.');
+					return false;
+				}
+				let offset = (prefs.draw.type !== 2?Math.floor(prefs.draw.size/2):0);
 				this.drawPoints = [x-offset,y-offset];
 				window.addEventListener('mousemove',Renderer.drawing);
 				window.addEventListener('mouseup',Renderer.drawingEnd);
@@ -780,14 +795,14 @@ class PalaceRoom extends Renderer {
 	}
 
 	draw(draw) {
-		if (roomDrawConsts.clean & draw.type) {
+		if (drawType.CLEAN & draw.type) {
 			this.draws = [];
-		} else if (roomDrawConsts.undo & draw.type) {
+		} else if (drawType.UNDO & draw.type) {
 			this.draws.pop();
 		} else {
 			this.draws.push(draw);
 		}
-		palace.theRoom.reDraw();
+		this.reDraw();
 	}
 
 	setSpotImg(spot) {
@@ -850,8 +865,8 @@ class PalaceRoom extends Renderer {
 		}
 	}
 
-	getSpot(spotid) {
-		return this.spots.find(function(spot){return spotid == spot.id;});
+	getSpot(id) {
+		return this.spots.find(function(spot){return id == spot.id;});
 	}
 
 

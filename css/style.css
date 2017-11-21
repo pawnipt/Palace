@@ -390,12 +390,12 @@ body {
                         transform;
 }
 
-#drawerase {
+#drawundo {
   bottom           : 2px;
   left             : 24px;
   width            : 19px;
   height           : 19px;
-  background-image : url(../img/eraser.png);
+  background-image : url(../img/undo.png);
 }
 
 #drawtype {

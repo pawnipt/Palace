@@ -685,8 +685,13 @@ class PalaceProtocol {
 
 		var drawCmd = 0,i,x = 0,y = 0,x1,y1;
 
-		if (draw.type) drawCmd = 0x0100;
-		if (draw.front) drawCmd = drawCmd ^ 0x8000;
+		if (draw.type === 1) {
+			drawCmd = drawType.SHAPE;
+		} else if (draw.type === 2) {
+			drawCmd = drawType.ERASER;
+		}
+
+		if (draw.front) drawCmd = drawCmd ^ drawType.PENFRONT;
 		var n = draw.points.length;
 		var packet = Buffer.alloc((n*2)+40);
 
@@ -1056,8 +1061,17 @@ class PalaceClient extends PalaceProtocol {
 		if (addressBar != document.activeElement) addressBar.innerText = this.servername;
 	}
 
+	get allowPainting() {
+		return Boolean(this.serverflags & 0x0004);
+	}
 
+	get isOperator() {
+		return Boolean(this.theUserStatus & 0x0001);
+	}
 
+	get isOwner() {
+		return Boolean(this.theUserStatus & 0x0002);
+	}
 
 	userLogOn(info) {
 		this.lastUserLogOnID = info.id;
