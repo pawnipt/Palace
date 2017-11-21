@@ -395,8 +395,7 @@ class Renderer {
 
 			this.context.beginPath();
 
-			var offset = 0;
-			if (prefs.draw.type !== 1) offset = Math.floor(prefs.draw.size/2);
+			let offset = (prefs.draw.type !== 1?Math.floor(prefs.draw.size/2):0);
 
 			this.context.moveTo(this.drawPoints[0]+offset, this.drawPoints[1]+offset);
 
@@ -430,8 +429,7 @@ class Renderer {
 		palace.theRoom.drawPoints = [];
 	}
 	static drawing(event) {
-		var offset = 0;
-		if (prefs.draw.type !== 1) offset = Math.floor(prefs.draw.size/2);
+		let offset = (prefs.draw.type !== 1?Math.floor(prefs.draw.size/2):0);
 		var x = ((event.x+document.body.scrollLeft-overLayer.offsetLeft)/viewScale).fastRound()-offset;
 		var y = ((event.y+document.body.scrollTop-overLayer.offsetTop)/viewScale).fastRound()-offset; //45 get new toolbar height if zooming
 		if (event.shiftKey && drawPoints.length > 3) {
@@ -718,7 +716,7 @@ class PalaceRoom extends Renderer {
 					logmsg('Painting is not allowed in this room.');
 					return false;
 				}
-				let offset = (prefs.draw.type !== 2?Math.floor(prefs.draw.size/2):0);
+				let offset = (prefs.draw.type !== 1?Math.floor(prefs.draw.size/2):0);
 				this.drawPoints = [x-offset,y-offset];
 				window.addEventListener('mousemove',Renderer.drawing);
 				window.addEventListener('mouseup',Renderer.drawingEnd);
