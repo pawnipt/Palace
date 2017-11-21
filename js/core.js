@@ -780,14 +780,18 @@ class PalaceRoom extends Renderer {
 
 	static createSpotPicPlaceholder() {
 		var ph = document.createElement('span');
-		ph.className = 'spholder';
+		ph.className = 'spotholder';
 		return ph;
 	}
 	static removeAllSpotPics() {
 		var childs = overLayer.children;
 		for (var i = childs.length; --i >= 0;) {
-			if (childs[i].className.substr(0,7) == 'spotpic' || childs[i].className == 'spholder') {
-				overLayer.removeChild(childs[i]);
+			let child = childs[i];
+			if (child.className.indexOf('spot') === 0) {
+				if (child.constructor === window.HTMLImageElement) {
+					child.onload = null;
+				}
+				overLayer.removeChild(child);
 			}
 		}
 	}
@@ -823,7 +827,7 @@ class PalaceRoom extends Renderer {
 					spot.img.style.top = spot.y+statepic.y-(spot.img.naturalHeight/2).fastRound()+'px';
 				}
 			}
-		} else if (spot.img && spot.img.className != 'spholder') { /* spot is not displaying a pic so put in placeholder */
+		} else if (spot.img && spot.img.className != 'spotholder') { /* spot is not displaying a pic so put in placeholder */
 			var img = PalaceRoom.createSpotPicPlaceholder();
 			overLayer.replaceChild(img,spot.img);
 			spot.img = img;
