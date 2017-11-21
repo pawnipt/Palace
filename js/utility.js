@@ -118,7 +118,7 @@ function matchYoutubeUrl(url) {
     }
     return false;
 }
-function makeHyperLinks(str) { /* fix this, oddly; numbers fail! */
+function makeHyperLinks(str,parent) { /* fix this, oddly; numbers fail! */
 	var parts = str.split(linkSearch);
 	var l = parts.length;
 	var s = document.createElement('span');
@@ -126,9 +126,9 @@ function makeHyperLinks(str) { /* fix this, oddly; numbers fail! */
 		for (var i = 0; i < l; i++) {
 			var part = parts[i];
 			if (part.length > 0) {
-				var txt = document.createTextNode(part);
+				let txt = document.createTextNode(part);
 				if (linkSearch.test(part)) {
-					var a = document.createElement('a');
+					let a = document.createElement('a');
 					a.tabIndex = -1;
 					a.onfocus=function(){this.blur()};
 					a.addEventListener('click', function (e) {
@@ -139,22 +139,41 @@ function makeHyperLinks(str) { /* fix this, oddly; numbers fail! */
 					a.href = part;
 					s.appendChild(a);
 
-					//<iframe width="560" height="315" src="https://www.youtube.com/embed/USiZ6dUGUt8?rel=0" frameborder="0" allowfullscreen></iframe>
-					var youTube = matchYoutubeUrl(part);
+					let youTube = matchYoutubeUrl(part);
 					if (youTube) {
-						var pb = document.createElement('span');
-						pb.className = 'playyoutube';
-						pb.innerHTML = '&#9658;';
+						let pb = document.createElement('div');
+						pb.className = 'youtubecontainer';
+						httpGetAsync('https://www.googleapis.com/youtube/v3/videos?part=snippet&key=AIzaSyAHk4QfatpeEcQg-CPDrTqi9ozoJ55w5GE&id='+youTube, function(j) {
+							let yt = JSON.parse(j);
+							let bg = yt.items[0].snippet.thumbnails.high.url;
+							pb.innerText = yt.items[0].snippet.title;
+							pb.style.backgroundImage = 'url(img/youtube-play.svg), url('+bg+')';
+						});
+
 						pb.onclick = function() {
-							var frame = document.createElement('iframe');
+							let frame = document.createElement('iframe');
+							let closeyt = document.createElement('div');
+							closeyt.className = 'closeyoutube';
+							closeyt.onclick = function(event) {
+								parent.style.position = 'static';
+								s.className = '';
+								s.replaceChild(pb,frame);
+								s.insertBefore(a,pb);
+								s.removeChild(this);
+							};
+							frame.tabIndex = -1;
 							frame.frameBorder = '0';
 							frame.className = 'youtubeiframe';
 							s.className = 'youtubecontainer';
 							frame.width = '100%';
 							frame.height = '100%';
-							frame.src = 'https://www.youtube.com/embed/'+youTube+'?rel=0&autoplay=1&fs=0';
+							frame.src = 'https://www.youtube.com/embed/'+youTube+'?rel=0&disablekb=1&autoplay=1&fs=0';
 							s.replaceChild(frame,this);
 							s.removeChild(a);
+							s.appendChild(closeyt);
+
+							parent.style.position = 'sticky';
+							parent.style.top = -(s.offsetTop+2)+'px';
 						};
 						s.appendChild(pb);
 
@@ -169,6 +188,7 @@ function makeHyperLinks(str) { /* fix this, oddly; numbers fail! */
 	}
 	return s;
 };
+
 function roundRect(ctx, x, y, width, height, radius, fill, stroke) { /* optimize me please */
 	if (typeof stroke == 'undefined') {
 		stroke = true;

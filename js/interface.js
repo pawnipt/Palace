@@ -231,7 +231,12 @@ let contextMenuListener = new ContextMenuListener((info) => {
 			}
 		} else if (event.x-propBag.offsetLeft < 2) {
 			event.preventDefault();
-			window.addEventListener('mouseup',resizePropBagEnd);
+			let mouseUpPropBag = (event) => {
+				event.preventDefault();
+				resizingPropBag = null;
+				window.removeEventListener('mouseup',mouseUpPropBag);
+			};
+			window.addEventListener('mouseup',mouseUpPropBag,true);
 			resizingPropBag = {x:event.x,w:propBag.offsetWidth};
 		}
 	};
@@ -406,6 +411,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 		} else {
 			logField.style.cursor = 'auto';
 		}
+
 		if (resizingChatLog) {
 			event.preventDefault();
 			var w = restrictSidePanelSize(resizingChatLog.x-event.x+resizingChatLog.w);
@@ -413,6 +419,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 			setBodyWidth();
 			setGeneralPref('chatLogWidth',w);
 			scale2Fit();
+			return false;
 		} else if (resizingPropBag) {
 			event.preventDefault();
 			var w = restrictSidePanelSize(resizingPropBag.x-event.x+resizingPropBag.w);
@@ -420,13 +427,19 @@ let contextMenuListener = new ContextMenuListener((info) => {
 			setBodyWidth();
 			setGeneralPref('propBagWidth',w);
 			refreshPropBagView();
+			return false;
 		}
-	});
+	},true);
 
 	document.getElementById('log').onmousedown = function(event) { // trigger for log resizing
 		if (event.x-logField.offsetLeft < 2) {
 			event.preventDefault();
-			window.addEventListener('mouseup',resizeChatLogEnd);
+			let mouseUpLog = (event) => {
+				event.preventDefault();
+				resizingChatLog = null;
+				window.removeEventListener('mouseup',mouseUpLog);
+			};
+			window.addEventListener('mouseup',mouseUpLog,true);
 			resizingChatLog = {x:event.x,w:logField.offsetWidth};
 		}
 	};
@@ -701,15 +714,9 @@ function refreshPropBagView(refresh) {
 
 
 
-function resizeChatLogEnd(event) {
-	resizingChatLog = null;
-	window.removeEventListener('mouseup',resizeChatLogEnd);
-}
 
-function resizePropBagEnd(event) {
-	resizingPropBag = null;
-	window.removeEventListener('mouseup',resizePropBagEnd);
-}
+
+
 
 
 function wearSelectedProps() {

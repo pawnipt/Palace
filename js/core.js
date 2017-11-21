@@ -462,7 +462,6 @@ class PalaceRoom extends Renderer {
 		this.whisperUserID = null; // redo code so this isn't needed
 		this.mouseHoverUser = null;
 		this.mouseLooseProp = null;
-		this.mouseSelfProp = null;
 
 		let mCanvas = document.createElement('canvas'); /* offscreen buffer for prop pixel detection */
 		mCanvas.width = 220;
@@ -562,69 +561,69 @@ class PalaceRoom extends Renderer {
 			var x = (event.layerX/viewScale).fastRound();
 			var y = ((event.layerY+(45*webFrame.getZoomFactor() - 45))/viewScale).fastRound();
 
-			if (!palace.theRoom.grabbedProp) {
+			if (!this.grabbedProp) {
 
 				if (!event.shiftKey) { /* shift toggles between user and props */
-					var mUser = palace.theRoom.mouseOverUser(x,y);
-					if (palace.theRoom.mouseHoverUser != mUser) {
+					var mUser = this.mouseOverUser(x,y);
+					if (this.mouseHoverUser !== mUser) {
 						if (mUser != null) {
-							palace.theRoom.mouseEnterUser(mUser);
+							this.mouseEnterUser(mUser);
 						} else {
-							palace.theRoom.mouseExitUser();
+							this.mouseExitUser();
 						}
 					}
 				} else {
-					palace.theRoom.mouseExitUser();
+					this.mouseExitUser();
 				}
 
 				if (event.shiftKey) { /* for efficiency sake, check shiftkey before bothering to scan */
-					var pid = palace.theRoom.mouseOverSelfProp(x,y);
-					if (palace.theRoom.mouseSelfProp != pid) {
-						if (pid != null) {
-							palace.theRoom.mouseEnterSelfProp(pid);
+					var pid = this.mouseOverSelfProp(x,y);
+					if (this.mouseSelfProp !== pid) {
+						if (pid) {
+							this.mouseEnterSelfProp(pid);
 						} else {
-							palace.theRoom.mouseExitSelfProp();
+							this.mouseExitSelfProp();
 						}
 					}
 				} else {
-					palace.theRoom.mouseExitSelfProp();
+					this.mouseExitSelfProp();
 				}
 
-				var lpIndex = palace.theRoom.mouseOverLooseProp(x,y);
-				if (lpIndex != palace.theRoom.mouseLooseProp) {
-					if (lpIndex != null) {
-						palace.theRoom.mouseEnterLooseProp(lpIndex);
+				var lpIndex = this.mouseOverLooseProp(x,y);
+				if (lpIndex != this.mouseLooseProp) {
+					if (lpIndex !== undefined) {
+						this.mouseEnterLooseProp(lpIndex);
 					} else {
-						palace.theRoom.mouseExitLooseProp();
+						this.mouseExitLooseProp();
 					}
 				}
 			} else {
-				palace.theRoom.mouseExitLooseProp();
-				palace.theRoom.mouseExitSelfProp();
+				this.mouseExitLooseProp();
+				this.mouseExitSelfProp();
 
 				if (palace.theUser.x-22 < x && palace.theUser.x+22 > x && palace.theUser.y-22 < y && palace.theUser.y+22 > y) {
-					palace.addSelfProp(palace.theRoom.grabbedProp.id);
-					palace.theRoom.grabbedProp.mx = -999; /* temp vanishing */
-					palace.theRoom.grabbedProp.my = -999;
+					palace.addSelfProp(this.grabbedProp.id);
+					this.grabbedProp.mx = -999; /* temp vanishing */
+					this.grabbedProp.my = -999;
 				} else {
-					if (event.altKey == false && (palace.theUser.propsChanged == true || palace.theRoom.grabbedProp.index < 0))
-						palace.removeSelfProp(palace.theRoom.grabbedProp.id);
+					if (event.altKey === false && (palace.theUser.propsChanged === true || this.grabbedProp.index < 0))
+						palace.removeSelfProp(this.grabbedProp.id);
 
-					palace.theRoom.grabbedProp.mx = (x-palace.theRoom.grabbedProp.offsetX);
-					palace.theRoom.grabbedProp.my = (y-palace.theRoom.grabbedProp.offsetY);
+					this.grabbedProp.mx = (x-this.grabbedProp.offsetX);
+					this.grabbedProp.my = (y-this.grabbedProp.offsetY);
 				}
-				palace.theRoom.reDraw();
+				this.reDraw();
 			}
 
-			if (palace.theRoom.grabbedProp && event.altKey) {
+			if (this.grabbedProp && event.altKey) {
 				setEnvCursor('copy');
-			} else if (palace.theRoom.mouseLooseProp != null || palace.theRoom.mouseSelfProp != null || palace.theRoom.grabbedProp) {
+			} else if (this.mouseLooseProp !== null || this.mouseSelfProp || this.grabbedProp) {
 				setEnvCursor('move');
-			} else if (palace.theRoom.mouseHoverUser == palace.theUser && event.ctrlKey) {
+			} else if (this.mouseHoverUser === palace.theUser && event.ctrlKey) {
 				setEnvCursor('context-menu');
 			} else {
-				var spot = palace.theRoom.mouseInSpot(x,y);
-				if ((palace.theRoom.mouseHoverUser != null && palace.theRoom.mouseHoverUser != palace.theUser) || (spot && spot.type > 0)) {
+				var spot = this.mouseInSpot(x,y);
+				if ((this.mouseHoverUser && this.mouseHoverUser !== palace.theUser) || (spot && spot.type > 0)) {
 					setEnvCursor('pointer');
 				} else {
 					setEnvCursor('default');
@@ -827,7 +826,7 @@ class PalaceRoom extends Renderer {
 					spot.img.style.top = spot.y+statepic.y-(spot.img.naturalHeight/2).fastRound()+'px';
 				}
 			}
-		} else if (spot.img && spot.img.className != 'spotholder') { /* spot is not displaying a pic so put in placeholder */
+		} else if (spot.img && spot.img.className !== 'spotholder') { /* spot is not displaying a pic so put in placeholder */
 			var img = PalaceRoom.createSpotPicPlaceholder();
 			overLayer.replaceChild(img,spot.img);
 			spot.img = img;
@@ -836,7 +835,7 @@ class PalaceRoom extends Renderer {
 
 	spotStateChange(info) {
 		var spot = this.getSpot(info.spotid);
-		if (this.id == info.roomid && spot) {
+		if (this.id === info.roomid && spot) {
 			spot.state = info.state;
 			this.setSpotImg(spot);
 			if (info.lock === false) {
@@ -849,7 +848,7 @@ class PalaceRoom extends Renderer {
 
 	spotMove(info) {
 		var spot = this.getSpot(info.spotid);
-		if (this.id == info.roomid && spot) {
+		if (this.id === info.roomid && spot) {
 			spot.x = info.x;
 			spot.y = info.y;
 			this.setSpotImg(spot);
@@ -859,7 +858,7 @@ class PalaceRoom extends Renderer {
 
 	spotMovePic(info) {
 		var spot = this.getSpot(info.spotid);
-		if (this.id == info.roomid && spot && spot.statepics[spot.state]) {
+		if (this.id === info.roomid && spot && spot.statepics[spot.state]) {
 			spot.statepics[spot.state].x = info.x;
 			spot.statepics[spot.state].y = info.y;
 			this.setSpotImg(spot);
@@ -868,7 +867,7 @@ class PalaceRoom extends Renderer {
 	}
 
 	getSpot(id) {
-		return this.spots.find(function(spot){return id == spot.id;});
+		return this.spots.find(function(spot){return id === spot.id;});
 	}
 
 
@@ -877,7 +876,7 @@ class PalaceRoom extends Renderer {
 
 		/* corrects index of currently dragged loose prop to prevent moving the wrong one */
 		if (this.grabbedProp && this.grabbedProp.index > -1) this.grabbedProp.index++;
-		if (this.mouseLooseProp != null) this.mouseLooseProp++;
+		if (this.mouseLooseProp !== null) this.mouseLooseProp++;
 
 		loadProps([data.id]);
 		this.reDraw();
@@ -886,7 +885,7 @@ class PalaceRoom extends Renderer {
 	loosePropMove(info) {
 		if (info.index >= 0 && this.looseProps.length > info.index) {
 			var lp = this.looseProps[info.index];
-			if (lp && (lp.x != info.x || lp.y != info.y)) {
+			if (lp && (lp.x !== info.x || lp.y !== info.y)) {
 				lp.x = info.x;
 				lp.y = info.y;
 				this.reDraw();
@@ -904,7 +903,7 @@ class PalaceRoom extends Renderer {
 
 			var adjustIndex = function(idx) {
 				if (idx > -1) {
-					if (index == idx) {
+					if (index === idx) {
 						return null;
 					} else if (index < idx) {
 						return --idx;
@@ -914,7 +913,7 @@ class PalaceRoom extends Renderer {
 			};
 
 			if (this.grabbedProp) this.grabbedProp.index = adjustIndex(this.grabbedProp.index);
-			if (this.mouseLooseProp != null) this.mouseLooseProp = adjustIndex(this.mouseLooseProp);
+			if (this.mouseLooseProp !== null) this.mouseLooseProp = adjustIndex(this.mouseLooseProp);
 
 			change = true
 			this.looseProps.splice(index,1);
@@ -927,7 +926,7 @@ class PalaceRoom extends Renderer {
 	removeUser(info) {
 		var user = this.getUser(info.id);
 		if (user) {
-			if (user == palace.theUser) {
+			if (user === palace.theUser) {
 				user.remove();
 			} else {
 				logmsg(user.name+' has '+(info.logoff?'signed off.':'left the room.'));
@@ -942,18 +941,18 @@ class PalaceRoom extends Renderer {
 
 	addUser(info) {
 		var dude = new PalaceUser(info);
-		var loggedOn = (palace.lastUserLogOnID == dude.id && ticks()-palace.lastUserLogOnTime < 900);
+		var loggedOn = (palace.lastUserLogOnID === dude.id && ticks()-palace.lastUserLogOnTime < 900);
 		if (loggedOn) { // if under 15 seconds
 			palace.lastUserLogOnID = 0;
 			palace.lastUserLogOnTime = 0;
 			if (!prefs.general.disableSounds) systemAudio.signon.play();
 		}
-		if (palace.theUserID == dude.id && palace.theUser != dude) {
+		if (palace.theUserID === dude.id && palace.theUser !== dude) {
 			setUserInterfaceAvailability(false);
 			palace.theUser = dude;
 		}
 
-		if (dude != palace.theUser) {
+		if (dude !== palace.theUser) {
 			logmsg(dude.name+' has '+(loggedOn?'signed on.':'entered the room.'));
 		}
 
@@ -994,7 +993,7 @@ class PalaceRoom extends Renderer {
 
 	userColorChange(info) {
 		var user = this.getUser(info.id);
-		if (user && user.color != info.color) {
+		if (user && user.color !== info.color) {
 			user.color = info.color;
 			user.preRenderNametag();
 			this.reDraw();
@@ -1003,7 +1002,7 @@ class PalaceRoom extends Renderer {
 	}
 	userFaceChange(info) {
 		var user = this.getUser(info.id);
-		if (user && user.face != info.face) {
+		if (user && user.face !== info.face) {
 			user.face = info.face;
 			this.reDraw();
 			return true;
@@ -1034,7 +1033,7 @@ class PalaceRoom extends Renderer {
 	}
 	userMove(info) {
 		var user = this.getUser(info.id);
-		if (user && (user.x != info.x || user.y != info.y)) {
+		if (user && (user.x !== info.x || user.y !== info.y)) {
 			user.popBubbles();
 			user.x = info.x;
 			user.y = info.y;
@@ -1070,7 +1069,7 @@ class PalaceRoom extends Renderer {
 			if (!document.hasFocus() && !prefs.general.disableSounds) systemAudio.whisper.play();
 		}
 		chatspan.appendChild(namespan);
-		chatspan.appendChild(makeHyperLinks(chat.chatstr));
+		chatspan.appendChild(makeHyperLinks(chat.chatstr,chatspan));
 
 		logAppend(chatspan);
 	}
@@ -1082,8 +1081,8 @@ class PalaceRoom extends Renderer {
 
 
 	enterWhisperMode(userid,name) {
-		var cancel = (this.whisperUserID == userid);
-		if (this.whisperUserID != null || cancel) {
+		var cancel = (this.whisperUserID === userid);
+		if (this.whisperUserID !== null || cancel) {
 			this.exitWhisperMode(); /* whisper toggle */
 		}
 		if (!cancel) {
@@ -1102,7 +1101,7 @@ class PalaceRoom extends Renderer {
 		document.getElementById('chatbox').placeholder = 'Chat...';
 		var user = this.getUser(this.whisperUserID);
 		if (user) {
-			if (this.mouseHoverUser != user) {
+			if (this.mouseHoverUser !== user) {
 				user.light = 0;
 			}
 			user.poke();
@@ -1175,12 +1174,14 @@ class PalaceRoom extends Renderer {
 	mouseExitUser() {
 		if (this.mouseHoverUser) {
 			var target = this.mouseHoverUser;
-			if (this.whisperUserID != this.mouseHoverUser.id && target != palace.theUser) {
+			if (this.whisperUserID !== this.mouseHoverUser.id && target !== palace.theUser) {
 				target.light = 1;
 				var fadeTimer = setInterval(() => {
 					var user = this.getUser(target.id);
-					if (target.light - 0.1 <= 0 || user == this.mouseHoverUser || !user) {
-						if (!this.mouseHoverUser || user != this.mouseHoverUser) target.light = 0;
+					if (target.light - 0.1 <= 0 || user === this.mouseHoverUser || !user) {
+						if (!this.mouseHoverUser || user !== this.mouseHoverUser) {
+							target.light = 0;
+						}
 						clearInterval(fadeTimer);
 					} else {
 						target.light -= 0.09;
@@ -1196,7 +1197,7 @@ class PalaceRoom extends Renderer {
 
 
 	mouseEnterLooseProp(lpIndex) {
-		if (this.mouseHoverUser == null && this.mouseSelfProp == null) {
+		if (!this.mouseHoverUser && !this.mouseSelfProp) {
 			this.mouseExitLooseProp();
 			this.mouseLooseProp = lpIndex;
 			this.looseProps[this.mouseLooseProp].light = 1;
@@ -1205,7 +1206,7 @@ class PalaceRoom extends Renderer {
 	}
 
 	mouseExitLooseProp() {
-		if (this.mouseLooseProp != null) {
+		if (this.mouseLooseProp !== null) {
 			var target = this.looseProps[this.mouseLooseProp];
 			if (target) {
 				target.light = 1;
@@ -1236,7 +1237,7 @@ class PalaceRoom extends Renderer {
 		}
 	}
 	mouseExitSelfProp() {
-		if (this.mouseSelfProp != null) {
+		if (this.mouseSelfProp) {
 			this.mouseSelfProp = null;
 			this.reDraw();
 		}
