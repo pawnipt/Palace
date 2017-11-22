@@ -111,13 +111,7 @@ function toHex(str) {
 	}
 	return hex;
 }
-function matchYoutubeUrl(url) {
-    var p = /^(?:https?:\/\/)?(?:m\.|www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})(?:\S+)?$/;
-    if(url.match(p)){
-        return url.match(p)[1];
-    }
-    return false;
-}
+
 function makeHyperLinks(str,parent) { /* fix this, oddly; numbers fail! */
 	var parts = str.split(linkSearch);
 	var l = parts.length;
@@ -141,42 +135,7 @@ function makeHyperLinks(str,parent) { /* fix this, oddly; numbers fail! */
 
 					let youTube = matchYoutubeUrl(part);
 					if (youTube) {
-						let pb = document.createElement('div');
-						pb.className = 'youtubecontainer';
-						httpGetAsync('https://www.googleapis.com/youtube/v3/videos?part=snippet&key=AIzaSyAHk4QfatpeEcQg-CPDrTqi9ozoJ55w5GE&id='+youTube, function(j) {
-							let yt = JSON.parse(j);
-							let bg = yt.items[0].snippet.thumbnails.high.url;
-							pb.innerText = yt.items[0].snippet.title;
-							pb.style.backgroundImage = 'url(img/youtube-play.svg), url('+bg+')';
-						});
-
-						pb.onclick = function() {
-							let frame = document.createElement('iframe');
-							let closeyt = document.createElement('div');
-							closeyt.className = 'closeyoutube';
-							closeyt.onclick = function(event) {
-								parent.style.position = 'static';
-								s.className = '';
-								s.replaceChild(pb,frame);
-								s.insertBefore(a,pb);
-								s.removeChild(this);
-							};
-							frame.tabIndex = -1;
-							frame.frameBorder = '0';
-							frame.className = 'youtubeiframe';
-							s.className = 'youtubecontainer';
-							frame.width = '100%';
-							frame.height = '100%';
-							frame.src = 'https://www.youtube.com/embed/'+youTube+'?rel=0&disablekb=1&autoplay=1&fs=0';
-							s.replaceChild(frame,this);
-							s.removeChild(a);
-							s.appendChild(closeyt);
-
-							parent.style.position = 'sticky';
-							parent.style.top = -(s.offsetTop+2)+'px';
-						};
-						s.appendChild(pb);
-
+						createYoutubePlayer(youTube,a,s,parent);
 					}
 				} else {
 					s.appendChild(txt);
@@ -188,6 +147,58 @@ function makeHyperLinks(str,parent) { /* fix this, oddly; numbers fail! */
 	}
 	return s;
 };
+
+function createYoutubePlayer(id,anchor,container,parent) {
+	httpGetAsync('https://www.googleapis.com/youtube/v3/videos?part=snippet&key=AIzaSyAHk4QfatpeEcQg-CPDrTqi9ozoJ55w5GE&id='+id, function(j) {
+		let yt = JSON.parse(j);
+		if (yt && yt.items && yt.items.length > 0) {
+			let pb = document.createElement('div');
+			pb.onclick = function() {
+				let frame = document.createElement('iframe');
+				let closeyt = document.createElement('div');
+				closeyt.className = 'closeyoutube';
+				closeyt.onclick = function(event) {
+					parent.style.position = 'static';
+					container.className = '';
+					container.replaceChild(pb,frame);
+					container.insertBefore(anchor,pb);
+					container.removeChild(this);
+				};
+				frame.setAttribute('allowFullScreen', '');
+				frame.tabIndex = -1;
+				frame.frameBorder = '0';
+				frame.className = 'youtubeiframe';
+				container.className = 'youtubecontainer';
+				frame.width = '100%';
+				frame.height = '100%';
+				frame.src = 'https://www.youtube.com/embed/'+id+'?rel=0&disablekb=1&autoplay=1';
+				container.replaceChild(frame,this);
+				container.removeChild(anchor);
+				container.appendChild(closeyt);
+
+				parent.style.position = 'sticky';
+				parent.style.top = -(container.offsetTop+2)+'px';
+			};
+			container.appendChild(pb);
+
+			let bg = yt.items[0].snippet.thumbnails.high.url;
+			// quick hack for log scrolling (should make it a function a part of an interface class i haven't coded yet!)
+			let scrollLock = Math.abs((logField.scrollHeight - logField.clientHeight) - logField.scrollTop.fastRound()) < 2;
+			pb.className = 'youtubecontainer';
+			pb.innerText = yt.items[0].snippet.title;
+			pb.style.backgroundImage = 'url(img/youtube-play.svg), url('+bg+')';
+			if (scrollLock) logField.scrollTop = logField.scrollHeight - logField.clientHeight;
+		} // else display error probably...
+	});
+}
+function matchYoutubeUrl(url) {
+    let p = /^(?:https?:\/\/)?(?:m\.|www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})(?:\S+)?$/;
+	let m = url.match(p);
+	if(m){
+        return m[1];
+    }
+    return false;
+}
 
 function roundRect(ctx, x, y, width, height, radius, fill, stroke) { /* optimize me please */
 	if (typeof stroke == 'undefined') {
