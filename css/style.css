@@ -764,21 +764,21 @@ body {
   color : red;
 }
 
-.youtubecontainer:hover {
+.chatvideocontainer:hover {
   background-size : 23%,
                     cover;
   cursor          : pointer;
 }
 
-.youtubecontainer:hover .closeyoutube {
+.chatvideocontainer:hover .closechatvideo {
   opacity : 0.5;
 }
 
-.closeyoutube:hover {
+.closechatvideo:hover {
   opacity : 1 !important;
 }
 
-.closeyoutube {
+.closechatvideo {
   z-index             : 1000;
   position            : absolute;
   top                 : calc(50% - 16px);
@@ -792,7 +792,7 @@ body {
   transition          : opacity 0.3s;
 }
 
-.youtubecontainer {
+.chatvideocontainer {
   display             : block;
   position            : relative;
   left                : -2px;
@@ -813,7 +813,7 @@ body {
   white-space         : nowrap;
 }
 
-.youtubeiframe {
+.chatvideoiframe {
   position : absolute;
   top      : 0;
   right    : 0;

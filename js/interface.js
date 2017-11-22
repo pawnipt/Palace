@@ -595,6 +595,130 @@ function logspecial(name) {
 }
 
 
+function makeHyperLinks(str,parent) { /* fix this, oddly; numbers fail! */
+	var parts = str.split(linkSearch);
+	var l = parts.length;
+	var s = document.createElement('span');
+	if (l > 1) {
+		for (var i = 0; i < l; i++) {
+			var part = parts[i];
+			if (part.length > 0) {
+				let txt = document.createTextNode(part);
+				if (linkSearch.test(part)) {
+					let a = document.createElement('a');
+					a.tabIndex = -1;
+					a.onfocus=function(){this.blur()};
+					a.addEventListener('click', function (e) {
+						e.preventDefault();
+						shell.openExternal(this.href);
+					});
+					a.appendChild(txt);
+					a.href = part;
+					s.appendChild(a);
+
+					let youTube = matchYoutubeUrl(part);
+					if (youTube) {
+						createYoutubePlayer({id:youTube,anchor:a,container:s,parent:parent});
+					} else {
+						let faceBook = matchFacebookUrl(part);
+						if (faceBook) {
+							createFacebookPlayer({id:faceBook,anchor:a,container:s,parent:parent});
+						}
+					}
+
+				} else {
+					s.appendChild(txt);
+				}
+			}
+		}
+	} else {
+		s.textContent = str;
+	}
+	return s;
+};
+
+function createYoutubePlayer(info) {
+	httpGetAsync('https://www.googleapis.com/youtube/v3/videos?part=snippet&key=AIzaSyAHk4QfatpeEcQg-CPDrTqi9ozoJ55w5GE&id='+info.id, function(j) {
+		let yt = JSON.parse(j);
+		if (yt && yt.items && yt.items.length > 0) {
+			info.icon = yt.items[0].snippet.thumbnails.high.url;
+			info.title = yt.items[0].snippet.title;
+			createChatVideoPlayer('youtube',info,'https://www.youtube.com/embed/'+info.id+'?rel=0&disablekb=1&autoplay=1')
+		} // else display error probably...
+	});
+}
+
+function createFacebookPlayer(info) {
+	httpGetAsync('https://graph.facebook.com/'+info.id+'?fields=title,picture,embeddable,embed_html&access_token=872564939584635|cc4b23aa93ddd3413884ab3e9875dd73', function(j) {
+		let fb = JSON.parse(j);
+		if (fb && fb.embeddable) {
+			info.icon = fb.picture;
+			info.title = fb.title;
+			let source = (fb.embed_html.match(/^.*src="(.*?)"/))[1]+'&autoplay=true&mute=0';
+			createChatVideoPlayer('facebook',info,source);
+		} // else display error probably...
+	});
+}
+
+function createChatVideoPlayer(type,info,source) {
+	let pb = document.createElement('div');
+	pb.onclick = function() {
+		let frame = document.createElement('iframe');
+		let closeyt = document.createElement('div');
+		closeyt.className = 'closechatvideo';
+		closeyt.onclick = function(event) {
+			info.parent.style.position = 'static';
+			info.container.className = '';
+			info.container.replaceChild(pb,frame);
+			info.container.insertBefore(info.anchor,pb);
+			info.container.removeChild(this);
+		};
+		frame.setAttribute('allowFullScreen', '');
+		frame.setAttribute('allowTransparency', '');
+		frame.tabIndex = -1;
+		frame.frameBorder = '0';
+		frame.className = 'chatvideoiframe';
+		frame.width = '100%';
+		frame.height = '100%';
+		frame.src = source;
+
+		info.container.className = 'chatvideocontainer';
+		info.container.replaceChild(frame,this);
+		info.container.removeChild(info.anchor);
+		info.container.appendChild(closeyt);
+
+		info.parent.style.position = 'sticky';
+		info.parent.style.top = -(info.container.offsetTop+2)+'px';
+	};
+	info.container.appendChild(pb);
+
+
+	// quick hack for log scrolling (should make it a function a part of an interface class i haven't coded yet!)
+	let scrollLock = Math.abs((logField.scrollHeight - logField.clientHeight) - logField.scrollTop.fastRound()) < 2;
+	pb.className = 'chatvideocontainer';
+	pb.innerText = info.title;
+	pb.style.backgroundImage = 'url(img/'+type+'-play.svg), url('+info.icon+')';
+	if (scrollLock) logField.scrollTop = logField.scrollHeight - logField.clientHeight;
+}
+
+function matchFacebookUrl(url) {
+    let p = /^https:\/\/www\.facebook\.com\/.*\/videos\/([0-9]+)/;
+	let m = url.match(p);
+	if (m) {
+        return m[1];
+    }
+    return false;
+}
+
+function matchYoutubeUrl(url) {
+    let p = /^(?:https?:\/\/)?(?:m\.|www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})(?:\S+)?$/;
+	let m = url.match(p);
+	if (m) {
+        return m[1];
+    }
+    return false;
+}
+
 // add more elements perhaps.
 function setUserInterfaceAvailability(disable) {
 	document.getElementById('users').disabled = disable;
