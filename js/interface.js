@@ -643,17 +643,18 @@ function createYoutubePlayer(info) {
 		if (yt && yt.items && yt.items.length > 0) {
 			info.icon = yt.items[0].snippet.thumbnails.high.url;
 			info.title = yt.items[0].snippet.title;
-			createChatVideoPlayer('youtube',info,'https://www.youtube.com/embed/'+info.id+'?rel=0&disablekb=1&autoplay=1')
+			 // direct youtube embeds in the app doesn't play restricted embeds, so I used pchat.org
+			createChatVideoPlayer('youtube',info,'http://pchat.org/api/youtube/?id='+info.id);
 		} // else display error probably...
 	});
 }
 
 function createFacebookPlayer(info) {
-	httpGetAsync('https://graph.facebook.com/'+info.id+'?fields=title,picture,embeddable,embed_html&access_token=872564939584635|cc4b23aa93ddd3413884ab3e9875dd73', function(j) {
+	httpGetAsync('https://graph.facebook.com/'+info.id+'?fields=title,picture,embeddable,embed_html,description&access_token=872564939584635|cc4b23aa93ddd3413884ab3e9875dd73', function(j) {
 		let fb = JSON.parse(j);
 		if (fb && fb.embeddable) {
 			info.icon = fb.picture;
-			info.title = fb.title;
+			info.title = fb.title || fb.description || '';
 			let source = (fb.embed_html.match(/^.*src="(.*?)"/))[1]+'&autoplay=true&mute=0';
 			createChatVideoPlayer('facebook',info,source);
 		} // else display error probably...
@@ -674,7 +675,7 @@ function createChatVideoPlayer(type,info,source) {
 			info.container.removeChild(this);
 		};
 		frame.setAttribute('allowFullScreen', '');
-		frame.setAttribute('allowTransparency', '');
+		//frame.setAttribute('allowTransparency', '');
 		frame.tabIndex = -1;
 		frame.frameBorder = '0';
 		frame.className = 'chatvideoiframe';
@@ -702,7 +703,7 @@ function createChatVideoPlayer(type,info,source) {
 }
 
 function matchFacebookUrl(url) {
-    let p = /^https:\/\/www\.facebook\.com\/.*\/videos\/([0-9]+)/;
+    let p = /^https:\/\/www\.facebook\.com\/.*\/videos\/.*?\/?([0-9]+)/;
 	let m = url.match(p);
 	if (m) {
         return m[1];
