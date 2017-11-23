@@ -179,13 +179,6 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	};
 
 
-	let restrictSidePanelSize = function(w) {
-		if (w > window.innerWidth/1.5) w = (window.innerWidth/1.5).fastRound();
-		if (w < 50) w = 50;
-		return w;
-	};
-
-
 	propBag.onscroll = function() {
 		refreshPropBagView();
 	};
@@ -246,18 +239,17 @@ let contextMenuListener = new ContextMenuListener((info) => {
 			var mouseMovePropBag = (event) => {
 				this.style.cursor = 'col-resize';
 				event.stopImmediatePropagation();
-				var w = restrictSidePanelSize(initialX-event.x+initialW);
+				var w = initialX-event.x+initialW;
 				this.style.width = w+'px';
 				setBodyWidth();
 				setGeneralPref('propBagWidth',w);
 				refreshPropBagView();
 				return false;
 			};
-			var mouseUpPropBag = (event) => {
+			var mouseUpPropBag = function(event) {
 				event.stopImmediatePropagation();
 				window.removeEventListener('mouseup',mouseUpPropBag,true);
 				window.removeEventListener('mousemove',mouseMovePropBag,true);
-				this.style.cursor = 'auto';
 			};
 
 			window.addEventListener('mouseup',mouseUpPropBag,true);
@@ -326,7 +318,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 			palace.theRoom.hideUserNames = false;
 			palace.theRoom.reDraw();
 		}
-	});
+	},true);
 	window.addEventListener('keydown', function(e) {
 		var mac = /^darwin/.test(process.platform);
 		if ((mac && e.metaKey) || (!mac && e.ctrlKey)) {
@@ -350,18 +342,19 @@ let contextMenuListener = new ContextMenuListener((info) => {
 
 	document.getElementById('muteaudio').onclick = function() {
 		bgVideo.muted = !bgVideo.muted;
-		var muteaudio = document.getElementById('muteaudio');
+		let muteaudio = document.getElementById('muteaudio');
 		muteaudio.style.backgroundImage = 'url(img/audio' + (bgVideo.muted?'off':'on') + '.png)';
 	};
 
 
 	// setup the little connect bar functionality (should add a go button to indicte that there is a connect action)
-	var serverConnectField = document.getElementById('palaceserver');
+	let serverConnectField = document.getElementById('palaceserver');
 	serverConnectField.onfocus = function() {
 		this.contentEditable = true;
 		this.innerText = (palace.ip + ':' + palace.port).replace(':9998','');
-		var selection = window.getSelection();
-		var range = document.createRange();
+
+		let selection = window.getSelection();
+		let range = document.createRange();
 		range.selectNodeContents(this);
 		selection.removeAllRanges();
 		selection.addRange(range);
@@ -426,20 +419,20 @@ let contextMenuListener = new ContextMenuListener((info) => {
 			var initialX = event.pageX;
 			var initialW = this.offsetWidth;
 
-			let mouseMoveLog = function(event) {
-				logField.style.cursor = 'col-resize';
+			let mouseMoveLog = (event) => {
+				this.style.cursor = 'col-resize';
 
 				event.stopImmediatePropagation();
-				var w = restrictSidePanelSize(initialX-event.x+initialW);
+				var w = initialX-event.x+initialW;
 				chatLogScrollLock(() => {
-					logField.style.width = w+'px';
+					this.style.width = w+'px';
 				});
 				setBodyWidth();
 				setGeneralPref('chatLogWidth',w);
 				scale2Fit();
 				return false;
 			};
-			let mouseUpLog = (event) => {
+			let mouseUpLog = function(event) {
 				event.preventDefault();
 				window.removeEventListener('mouseup',mouseUpLog,true);
 				window.removeEventListener('mousemove',mouseMoveLog,true);
@@ -668,7 +661,7 @@ function createFacebookPlayer(info) {
 		}
 	},'',function (error) {
 		info.icon = ''; //generic facebook icon
-		info.title = '';
+		info.title = 'Not supported';
 		source = source + encodeURIComponent('https://www.facebook.com/'+info.id[1]+'/videos/'+info.id[3]+'/')+'&autoplay=true&mute=0';
 		createChatVideoPlayer('facebook',info,source);
 	});
@@ -691,7 +684,6 @@ function createChatVideoPlayer(type,info,source) {
 		closeyt.className = 'closechatvideo';
 		closeyt.onclick = function(event) {
 			chatLogScrollLock(() => {
-				info.container.style.paddingBottom = ''; // remove possible custom ratio
 				info.parent.style.position = 'static';
 				info.parent.style.zIndex = '';
 				info.container.className = '';
@@ -702,20 +694,26 @@ function createChatVideoPlayer(type,info,source) {
 		};
 		frame.setAttribute('allowFullScreen', '');
 		frame.setAttribute('scrolling', 'no');
-		//frame.setAttribute('allowTransparency', '');
-		frame.onmessage = function(msg) {
-			logmsg('test '+msg);
-		};
 		frame.tabIndex = -1;
 		frame.frameBorder = '0';
 		frame.className = 'chatvideoiframe';
 		frame.width = '100%';
 		frame.height = '100%';
+
+		frame.onload = function() { // find useful info from the iframe if possible.
+			let vid = this.contentWindow.document.getElementsByTagName('video');
+			if (vid && vid.length > 0) {
+				vid = vid[0];
+				chatLogScrollLock(() => {
+					let ratio = ((vid.height / vid.width) * 100);
+					info.container.style.paddingBottom = ratio+'%';
+					pb.style.paddingBottom = ratio+'%';
+				});
+			}
+		};
+
 		frame.src = source;
 		chatLogScrollLock(() => {
-			if (info.ratio) {
-				info.container.style.paddingBottom = info.ratio+'%';
-			}
 			info.container.className = 'chatvideocontainer';
 			info.container.replaceChild(frame,this);
 			info.container.removeChild(info.anchor);
@@ -734,6 +732,10 @@ function createChatVideoPlayer(type,info,source) {
 	pb.style.backgroundImage = 'url(img/'+type+'-play.svg), url('+info.icon+')';
 
 	chatLogScrollLock(() => {
+		if (info.ratio) {
+			info.container.style.paddingBottom = info.ratio+'%';
+			pb.style.paddingBottom = info.ratio+'%';
+		}
 		info.container.appendChild(pb);
 	});
 }

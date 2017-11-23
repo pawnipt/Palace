@@ -692,6 +692,8 @@ body {
 }
 
 #log {
+  min-width              : 50px;
+  max-width              : 90%;
   padding                : 2px;
   padding-right          : 0px;
   padding-left           : 0px;
@@ -819,7 +821,12 @@ body {
   white-space   : nowrap;
 }
 
+.chatvideocontainer:hover .chatvideoiframe {
+  z-index : 0;
+}
+
 .chatvideoiframe {
+  z-index  : -1;
   position : absolute;
   top      : 0;
   right    : 0;
@@ -1060,6 +1067,8 @@ body {
 
 #props {
   display    : none;
+  min-width  : 50px;
+  max-width  : 90%;
   opacity    : 0;
   overflow-y : scroll;
 }
