@@ -621,6 +621,11 @@ function makeHyperLinks(str,parent) { /* fix this, oddly; numbers fail! */
 						let faceBook = matchFacebookUrl(link);
 						if (faceBook) {
 							createFacebookPlayer({id:faceBook,anchor:a,container:s,parent:parent});
+						} else {
+							let vimeo = matchVimeoUrl(link);
+							if (vimeo) {
+								createVimeoPlayer({id:vimeo,anchor:a,container:s,parent:parent});
+							}
 						}
 					}
 
@@ -660,10 +665,23 @@ function createFacebookPlayer(info) {
 			createChatVideoPlayer('facebook',info,source);
 		}
 	},'',function (error) {
-		info.icon = ''; //generic facebook icon
-		info.title = 'Not supported';
+		info.icon = ''; //generic facebook icon perhaps
+		info.title = 'Not facebook supported';
 		source = source + encodeURIComponent('https://www.facebook.com/'+info.id[1]+'/videos/'+info.id[3]+'/')+'&autoplay=true&mute=0';
 		createChatVideoPlayer('facebook',info,source);
+	});
+}
+
+function createVimeoPlayer(info) {
+
+	httpGetAsync('https://api.vimeo.com/videos/'+info.id+'?access_token=3842fc48186684845f76f44e607ae85a', function(j) {
+		let vm = JSON.parse(j);
+		if (vm && vm.privacy.embed === 'public') {
+			info.icon = vm.pictures.sizes[Math.floor((vm.pictures.sizes.length-1)/2)].link;
+			info.title = vm.name;
+			info.ratio = ((vm.height / vm.width) * 100);
+			createChatVideoPlayer('vimeo',info,'https://player.vimeo.com/video/'+info.id+'?autoplay=1&title=1');
+		}
 	});
 }
 
@@ -744,6 +762,15 @@ function chatLogScrollLock(callback) { // keeps the chat log scrolled down if th
 	let scrollLock = Math.abs((logField.scrollHeight - logField.clientHeight) - logField.scrollTop.fastRound()) < 2;
 	if (callback) callback();
 	if (scrollLock) logField.scrollTop = logField.scrollHeight - logField.clientHeight;
+}
+
+function matchVimeoUrl(url) {
+    let p = /^https:\/\/vimeo.com(.*)\/([0-9]+)/;
+	let m = url.match(p);
+	if (m) {
+        return m[2];
+    }
+    return false;
 }
 
 function matchFacebookUrl(url) {

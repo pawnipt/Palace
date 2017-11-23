@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 72 42" enable-background="new 0 0 72 42" xml:space="preserve">
+<g>
+	<g opacity="0.9">
+		<path fill-rule="evenodd" clip-rule="evenodd" fill="#26afed" d="M5,0h62c2.8,0,5,2.2,5,5v32c0,2.8-2.2,5-5,5H5c-2.8,0-5-2.2-5-5
+			V5C0,2.2,2.2,0,5,0z"/>
+	</g>
+</g>
+<g>
+	<g>
+		<path fill-rule="evenodd" clip-rule="evenodd" fill="#FFFFFF" d="M28,11v19l19-9L28,11z"/>
+	</g>
+</g>
+</svg>
