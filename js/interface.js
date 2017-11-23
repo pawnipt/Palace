@@ -5,8 +5,6 @@ var smileys = {},
 	selectedBagProps = [],
 	propBag = document.getElementById('props'),
 	propBagRetainer = document.getElementById('propbagretainer'), // adjust retainer size to set the scrollbar
-	resizingPropBag = null,
-	resizingChatLog = null,
 	directoryList = null,
 	viewScale = 1,
 	viewScaleTimer = null,
@@ -181,7 +179,11 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	};
 
 
-
+	let restrictSidePanelSize = function(w) {
+		if (w > window.innerWidth/1.5) w = (window.innerWidth/1.5).fastRound();
+		if (w < 50) w = 50;
+		return w;
+	};
 
 
 	propBag.onscroll = function() {
@@ -199,10 +201,17 @@ let contextMenuListener = new ContextMenuListener((info) => {
 		}
 	};
 	propBag.ondblclick = function(event) {
-		if (propBag.clickedProp(event.target).dataset.pid) wearSelectedProps();
+		if (this.clickedProp(event.target).dataset.pid) wearSelectedProps();
+	};
+	propBag.onmousemove = function(event) {
+		if (event.target === this && event.layerX < 2) {
+			this.style.cursor = 'col-resize';
+		} else {
+			this.style.cursor = 'auto';
+		}
 	};
 	propBag.onmousedown = function(event) {
-		var newTarget = propBag.clickedProp(event.target);
+		var newTarget = this.clickedProp(event.target);
 		if (event.target.nodeName != 'IMG') event.preventDefault();
 		if (newTarget && (newTarget.className == '' || event.shiftKey || event.metaKey)) {
 			var newPid = Number(newTarget.dataset.pid);
@@ -229,15 +238,31 @@ let contextMenuListener = new ContextMenuListener((info) => {
 				refreshPropBagView(true);
 				setPropButtons();
 			}
-		} else if (event.x-propBag.offsetLeft < 2) {
+		} else if (event.x-this.offsetLeft < 2) {
 			event.preventDefault();
-			let mouseUpPropBag = (event) => {
-				event.preventDefault();
-				resizingPropBag = null;
-				window.removeEventListener('mouseup',mouseUpPropBag);
+			var initialX = event.pageX;
+			var initialW = this.offsetWidth;
+
+			var mouseMovePropBag = (event) => {
+				this.style.cursor = 'col-resize';
+				event.stopImmediatePropagation();
+				var w = restrictSidePanelSize(initialX-event.x+initialW);
+				this.style.width = w+'px';
+				setBodyWidth();
+				setGeneralPref('propBagWidth',w);
+				refreshPropBagView();
+				return false;
 			};
+			var mouseUpPropBag = (event) => {
+				event.stopImmediatePropagation();
+				window.removeEventListener('mouseup',mouseUpPropBag,true);
+				window.removeEventListener('mousemove',mouseMovePropBag,true);
+				this.style.cursor = 'auto';
+			};
+
 			window.addEventListener('mouseup',mouseUpPropBag,true);
-			resizingPropBag = {x:event.x,w:propBag.offsetWidth};
+			window.addEventListener('mousemove',mouseMovePropBag,true);
+
 		}
 	};
 	document.getElementById('deleteprops').onclick = function() {
@@ -394,53 +419,33 @@ let contextMenuListener = new ContextMenuListener((info) => {
 		}
 	};
 
-	window.addEventListener('mousemove',function(event) { // need to redesign this function...
-		var restrictSidePanelSize = function(w) {
-			if (w > window.innerWidth/1.5) w = (window.innerWidth/1.5).fastRound();
-			if (w < 50) w = 50;
-			return w;
-		};
-
-		if (resizingPropBag || (propBag.offsetLeft <= event.x && event.x < propBag.offsetLeft+2)) {
-			propBag.style.cursor = 'col-resize';
-		} else {
-			propBag.style.cursor = 'auto';
-		}
-		if (resizingChatLog || (logField.offsetLeft <= event.x && event.x < logField.offsetLeft+2)) {
-			logField.style.cursor = 'col-resize';
-		} else {
-			logField.style.cursor = 'auto';
-		}
-
-		if (resizingChatLog) {
+	logField.onmousemove = propBag.onmousemove; // same basic functionality...
+	logField.onmousedown = function(event) { // trigger for log resizing
+		if (event.target === this && event.layerX < 2) {
 			event.preventDefault();
-			var w = restrictSidePanelSize(resizingChatLog.x-event.x+resizingChatLog.w);
-			logField.style.width = w+'px';
-			setBodyWidth();
-			setGeneralPref('chatLogWidth',w);
-			scale2Fit();
-			return false;
-		} else if (resizingPropBag) {
-			event.preventDefault();
-			var w = restrictSidePanelSize(resizingPropBag.x-event.x+resizingPropBag.w);
-			propBag.style.width = w+'px';
-			setBodyWidth();
-			setGeneralPref('propBagWidth',w);
-			refreshPropBagView();
-			return false;
-		}
-	},true);
+			var initialX = event.pageX;
+			var initialW = this.offsetWidth;
 
-	document.getElementById('log').onmousedown = function(event) { // trigger for log resizing
-		if (event.x-logField.offsetLeft < 2) {
-			event.preventDefault();
+			let mouseMoveLog = function(event) {
+				logField.style.cursor = 'col-resize';
+
+				event.stopImmediatePropagation();
+				var w = restrictSidePanelSize(initialX-event.x+initialW);
+				chatLogScrollLock(() => {
+					logField.style.width = w+'px';
+				});
+				setBodyWidth();
+				setGeneralPref('chatLogWidth',w);
+				scale2Fit();
+				return false;
+			};
 			let mouseUpLog = (event) => {
 				event.preventDefault();
-				resizingChatLog = null;
-				window.removeEventListener('mouseup',mouseUpLog);
+				window.removeEventListener('mouseup',mouseUpLog,true);
+				window.removeEventListener('mousemove',mouseMoveLog,true);
 			};
 			window.addEventListener('mouseup',mouseUpLog,true);
-			resizingChatLog = {x:event.x,w:logField.offsetWidth};
+			window.addEventListener('mousemove',mouseMoveLog,true);
 		}
 	};
 
@@ -580,12 +585,12 @@ function logmsg(msg) {
 }
 
 function logAppend(logspan) {
-	var scrollLock = Math.abs((logField.scrollHeight - logField.clientHeight) - logField.scrollTop.fastRound()) < 2; // might need to make this 3...
-	if (logField.children.length > 400)
-		while (logField.children.length > 300) // limit log for performance reasons
-			logField.removeChild(logField.firstChild);
-	logField.appendChild(logspan);
-	if (scrollLock) logField.scrollTop = logField.scrollHeight - logField.clientHeight;
+	chatLogScrollLock(() => {
+		if (logField.children.length > 400)
+			while (logField.children.length > 300) // limit log for performance reasons
+				logField.removeChild(logField.firstChild);
+		logField.appendChild(logspan);
+	});
 }
 
 function logspecial(name) {
@@ -601,10 +606,10 @@ function makeHyperLinks(str,parent) { /* fix this, oddly; numbers fail! */
 	var s = document.createElement('span');
 	if (l > 1) {
 		for (var i = 0; i < l; i++) {
-			var part = parts[i];
-			if (part.length > 0) {
-				let txt = document.createTextNode(part);
-				if (linkSearch.test(part)) {
+			let link = parts[i];
+			if (link.length > 0) {
+				let txt = document.createTextNode(link);
+				if (linkSearch.test(link)) {
 					let a = document.createElement('a');
 					a.tabIndex = -1;
 					a.onfocus=function(){this.blur()};
@@ -613,14 +618,14 @@ function makeHyperLinks(str,parent) { /* fix this, oddly; numbers fail! */
 						shell.openExternal(this.href);
 					});
 					a.appendChild(txt);
-					a.href = part;
+					a.href = link;
 					s.appendChild(a);
 
-					let youTube = matchYoutubeUrl(part);
+					let youTube = matchYoutubeUrl(link);
 					if (youTube) {
 						createYoutubePlayer({id:youTube,anchor:a,container:s,parent:parent});
 					} else {
-						let faceBook = matchFacebookUrl(part);
+						let faceBook = matchFacebookUrl(link);
 						if (faceBook) {
 							createFacebookPlayer({id:faceBook,anchor:a,container:s,parent:parent});
 						}
@@ -650,63 +655,100 @@ function createYoutubePlayer(info) {
 }
 
 function createFacebookPlayer(info) {
-	httpGetAsync('https://graph.facebook.com/'+info.id+'?fields=title,picture,embeddable,embed_html,description&access_token=872564939584635|cc4b23aa93ddd3413884ab3e9875dd73', function(j) {
+	let source = 'https://www.facebook.com/plugins/video.php?href=';
+	httpGetAsync('https://graph.facebook.com/'+info.id[3]+'?fields=title,format,picture,embeddable,permalink_url,description&access_token=872564939584635|cc4b23aa93ddd3413884ab3e9875dd73', function(j) {
 		let fb = JSON.parse(j);
 		if (fb && fb.embeddable) {
-			info.icon = fb.picture;
+			let HQformat = fb.format[Math.floor((fb.format.length-1)/2)];
+			info.ratio = ((HQformat.height / HQformat.width) * 100);
+			info.icon = HQformat.picture || fb.picture;
 			info.title = fb.title || fb.description || '';
-			let source = (fb.embed_html.match(/^.*src="(.*?)"/))[1]+'&autoplay=true&mute=0';
+			source = source + encodeURIComponent('https://www.facebook.com/'+fb.permalink_url)+'&autoplay=true&mute=0';
 			createChatVideoPlayer('facebook',info,source);
-		} // else display error probably...
+		}
+	},'',function (error) {
+		info.icon = ''; //generic facebook icon
+		info.title = '';
+		source = source + encodeURIComponent('https://www.facebook.com/'+info.id[1]+'/videos/'+info.id[3]+'/')+'&autoplay=true&mute=0';
+		createChatVideoPlayer('facebook',info,source);
 	});
+}
+
+
+function closeAllLogVideos() {
+	let closeButtons = document.getElementsByClassName('closechatvideo');
+	for (let i = 0; i < closeButtons.length; i++) {
+		closeButtons[i].click();
+	}
 }
 
 function createChatVideoPlayer(type,info,source) {
 	let pb = document.createElement('div');
 	pb.onclick = function() {
+		closeAllLogVideos();
 		let frame = document.createElement('iframe');
 		let closeyt = document.createElement('div');
 		closeyt.className = 'closechatvideo';
 		closeyt.onclick = function(event) {
-			info.parent.style.position = 'static';
-			info.container.className = '';
-			info.container.replaceChild(pb,frame);
-			info.container.insertBefore(info.anchor,pb);
-			info.container.removeChild(this);
+			chatLogScrollLock(() => {
+				info.container.style.paddingBottom = ''; // remove possible custom ratio
+				info.parent.style.position = 'static';
+				info.parent.style.zIndex = '';
+				info.container.className = '';
+				info.container.replaceChild(pb,frame);
+				info.container.insertBefore(info.anchor,pb);
+				info.container.removeChild(this);
+			});
 		};
 		frame.setAttribute('allowFullScreen', '');
+		frame.setAttribute('scrolling', 'no');
 		//frame.setAttribute('allowTransparency', '');
+		frame.onmessage = function(msg) {
+			logmsg('test '+msg);
+		};
 		frame.tabIndex = -1;
 		frame.frameBorder = '0';
 		frame.className = 'chatvideoiframe';
 		frame.width = '100%';
 		frame.height = '100%';
 		frame.src = source;
-
-		info.container.className = 'chatvideocontainer';
-		info.container.replaceChild(frame,this);
-		info.container.removeChild(info.anchor);
-		info.container.appendChild(closeyt);
-
-		info.parent.style.position = 'sticky';
-		info.parent.style.top = -(info.container.offsetTop+2)+'px';
+		chatLogScrollLock(() => {
+			if (info.ratio) {
+				info.container.style.paddingBottom = info.ratio+'%';
+			}
+			info.container.className = 'chatvideocontainer';
+			info.container.replaceChild(frame,this);
+			info.container.removeChild(info.anchor);
+			info.container.appendChild(closeyt);
+			info.parent.style.position = 'sticky';
+			info.parent.style.zIndex = '100';
+			info.parent.style.top = -(info.container.offsetTop+2)+'px';
+		});
 	};
-	info.container.appendChild(pb);
 
-
-	// quick hack for log scrolling (should make it a function a part of an interface class i haven't coded yet!)
-	let scrollLock = Math.abs((logField.scrollHeight - logField.clientHeight) - logField.scrollTop.fastRound()) < 2;
+	let title = document.createElement('div');
+	title.className = 'chatvideotitle';
+	title.innerText = info.title;
+	pb.appendChild(title);
 	pb.className = 'chatvideocontainer';
-	pb.innerText = info.title;
 	pb.style.backgroundImage = 'url(img/'+type+'-play.svg), url('+info.icon+')';
+
+	chatLogScrollLock(() => {
+		info.container.appendChild(pb);
+	});
+}
+
+function chatLogScrollLock(callback) { // keeps the chat log scrolled down if the user hasn't scrolled up
+	let scrollLock = Math.abs((logField.scrollHeight - logField.clientHeight) - logField.scrollTop.fastRound()) < 2;
+	if (callback) callback();
 	if (scrollLock) logField.scrollTop = logField.scrollHeight - logField.clientHeight;
 }
 
 function matchFacebookUrl(url) {
-    let p = /^https:\/\/www\.facebook\.com\/.*\/videos\/.*?\/?([0-9]+)/;
+    let p = /^https:\/\/www\.facebook\.com\/(.*?)\/videos\/(.*\/)?([0-9]+)/;
 	let m = url.match(p);
 	if (m) {
-        return m[1];
+        return m;
     }
     return false;
 }

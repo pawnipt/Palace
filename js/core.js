@@ -2,7 +2,7 @@
 
 const palace = new PalaceClient(prefs.registration.regi,prefs.registration.puid);
 
-//move to PalaceRoom
+//move to PalaceRoom or maybe PalaceClient
 const overLayer = document.getElementById('container');
 const bgVideo = document.getElementById('bgVideo');
 const backGround = document.getElementById('background');
@@ -10,10 +10,9 @@ const bgEnv = document.getElementById('mainlayer');
 
 
 const electron = require('electron');
+const shell = electron.shell;
 const webFrame = electron.webFrame; // need this to getZoomFactor for proper mouse coordinates later
-
-
-const {remote} = require('electron');
+const remote = electron.remote;
 const {Menu, MenuItem} = remote;
 
 
@@ -469,7 +468,9 @@ class PalaceRoom extends Renderer {
 		this.mCtx = mCanvas.getContext('2d');
 
 
-		Bubble.deleteAllBubbles();
+		if (!info.authored) {
+			Bubble.deleteAllBubbles();
+		}
 
 		document.getElementById('palaceroom').innerText = this.name;
 

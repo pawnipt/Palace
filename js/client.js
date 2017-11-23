@@ -5,7 +5,8 @@ var net = require('net');
 class PalaceProtocol {
 	constructor(regi,puid) {
 		this.crypt = new PalaceCrypt(1);
-		this.regi = new PalaceRegistration(regi,puid);
+		this.regi = regi;
+		this.puid = puid;
 	}
 
 	static toArrayBuffer(b) { // node buffer to ArrayBuffer
@@ -930,8 +931,8 @@ class PalaceProtocol {
 		reg.writeInt32LE(TCPmsgConsts.LOGON,0);
 		reg.writeInt32LE(128,4); //fixed packet length
 
-		reg.writeInt32LE(this.regi.key,12);
-		reg.writeInt32LE(this.regi.crc,16);
+		reg.writeInt32LE(this.regi.crc,12);
+		reg.writeInt32LE(this.regi.counter,16);
 
 		var name = Buffer.from(this.textEncoding.encode(prefs.general.userName));
 		reg.writeInt8(name.length,20);
@@ -943,8 +944,8 @@ class PalaceProtocol {
 			reg.writeUInt32LE(0x80000002,84);
 		}
 
-		reg.writeInt32LE(this.regi.puidCrc,88);
-		reg.writeInt32LE(this.regi.puid,92);
+		reg.writeInt32LE(this.puid.counter,88);
+		reg.writeInt32LE(this.puid.crc,92);
 
 		reg.writeInt32LE(0x00011940,96);
 		reg.writeInt32LE(0x00011940,100);
@@ -967,7 +968,8 @@ class PalaceProtocol {
 
 class PalaceClient extends PalaceProtocol {
 	constructor(regi,puid) {
-		super(regi,puid);
+		let reg = new PalaceRegistration(regi,puid);
+		super({crc:reg.crc,counter:reg.counter},{crc:reg.puidCrc,counter:reg.puidCounter});
 	}
 
 	connecting() {
@@ -1183,6 +1185,7 @@ class PalaceClient extends PalaceProtocol {
 			case TCPmsgConsts.ROOMDESC:
 				var users;
 				if (this.theRoom && this.theRoom.users) users = this.theRoom.users; // if editing room, god save the people!
+				p.data.authored = p.type === TCPmsgConsts.ROOMSETDESC;
 				this.theRoom = new PalaceRoom(p.data);
 				this.theRoom.users = users;
 				if (users) this.theRoom.refresh();
@@ -1235,10 +1238,10 @@ class PalaceClient extends PalaceProtocol {
 
 class PalaceRegistration {
 	constructor(seed,p) {
-		this.key = this.computeLicenseCRC(seed);
-		this.crc = ( ( seed ^ PalaceRegistration.MAGIC_LONG ) ^ this.key );
-		this.puid = this.computeLicenseCRC(p);
-		this.puidCrc = (p ^ this.puid);
+		this.crc = this.computeLicenseCRC(seed);
+		this.counter = ( ( seed ^ PalaceRegistration.MAGIC_LONG ) ^ this.crc );
+		this.puidCrc = this.computeLicenseCRC(p);
+		this.puidCounter = (p ^ this.puidCrc);
 	}
 
 	static get CRC_MAGIC() { return 0xa95ade76; }

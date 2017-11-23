@@ -1,6 +1,6 @@
 // @flow
 
-const shell = require('electron').shell;
+
 
 function timeStampStr(seconds) {
 	var now = new Date();
@@ -145,12 +145,7 @@ function roundRect(ctx, x, y, width, height, radius, fill, stroke) { /* optimize
 		ctx.stroke();
 	}
 }
-function rectsOverlap(x1,y1,w1,h1,x2,y2,w2,h2) {
-	return (x1>=x2+w2 || x1+w1<=x2 || y1>=y2+h2 || y1+h1<=y2)==false;
-}
-function rectsOverlapObj(r1,r2) {
-	return (r1.x>=r2.x+r2.w || r1.x+r1.w<=r2.x || r1.y>=r2.y+r2.h || r1.y+r1.h<=r2.y)==false;
-}
+
 function calculateAspectRatioFit(srcWidth, srcHeight, maxWidth, maxHeight) {
 	var ratio = Math.min(maxWidth / srcWidth, maxHeight / srcHeight);
 	return {w:srcWidth*ratio, h:srcHeight*ratio};
@@ -183,7 +178,7 @@ function httpPostAsync(theUrl, callback, postContent) {
 	xmlHttp.send(postContent);
 }
 
-function httpGetAsync(theUrl, callback, rtype) {
+function httpGetAsync(theUrl, callback, rtype, callerror) {
 	var xmlHttp = new XMLHttpRequest();
 	if (rtype) xmlHttp.responseType = rtype;
 	xmlHttp.onerror = function() {
@@ -193,7 +188,7 @@ function httpGetAsync(theUrl, callback, rtype) {
 		if (xmlHttp.status == 200) {
 			callback(xmlHttp.responseText);
 		} else {
-			logmsg('Error '+xmlHttp.status+' with http post request: '+this.url);
+			if (callerror) callerror(xmlHttp.status);
 		}
 	};
 	xmlHttp.url = theUrl;

@@ -245,7 +245,7 @@ class Bubble {
 				var y2 = boob.y-boob.padA;
 				var w2 = boob.textWidth+boob.padB;
 				var h2 = boob.textHeight+boob.padB;
-				var overLaps = rectsOverlap(x1,y1,w1,h1,x2,y2,w2,h2);
+				var overLaps = Bubble.rectsOverlap(x1,y1,w1,h1,x2,y2,w2,h2);
 				if (((bub.sticky && boob.sticky) || (!boob.deflated && !boob.sticky)) && overLaps)
 					return true;
 				if (!bub.sticky && boob.sticky && overLaps)
@@ -258,7 +258,10 @@ class Bubble {
 			return true;
 		}
 
-		submissives.find(function(sub){sub.deflate(false)});
+		submissives.forEach(function(sub){sub.deflate(false)});
+	}
+	static rectsOverlap(x1,y1,w1,h1,x2,y2,w2,h2) {
+		return (x1>=x2+w2 || x1+w1<=x2 || y1>=y2+h2 || y1+h1<=y2)===false;
 	}
 	awaitDirection() {
 		var side = (bgEnv.width/2 < this.originX);
