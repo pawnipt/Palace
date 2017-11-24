@@ -1,4 +1,72 @@
 // @flow
+
+const	MSG_ASSETNEW = 0x61417374,
+		MSG_ASSETQUERY = 0x71417374,
+		MSG_ASSETREGI = 0x72417374,
+		MSG_ASSETSEND = 0x73417374,
+		MSG_AUTHENTICATE = 0x61757468,
+		MSG_AUTHRESPONSE = 0x61757472,
+		MSG_DISPLAYURL = 0x6475726c,
+		MSG_DIYIT = 0x72796974,
+		MSG_DOORLOCK = 0x6c6f636b,
+		MSG_DOORUNLOCK = 0x756e6c6f,
+		MSG_DRAW = 0x64726177,
+		MSG_EXTENDEDINFO = 0x73496e66,
+		MSG_FILENOTFND = 0x666e6665,
+		MSG_FILEQUERY = 0x7146696c,
+		MSG_FILESEND = 0x7346696C,
+		MSG_GMSG = 0x676d7367,
+		MSG_HTTPSERVER = 0x48545450,
+		MSG_KILLUSER = 0x6b696c6c,
+		MSG_LISTOFALLROOMS = 0x724c7374,
+		MSG_LISTOFALLUSERS = 0x754c7374,
+		MSG_LOGOFF = 0x62796520,
+		MSG_LOGON = 0x72656769,
+		MSG_NAVERROR = 0x73457272,
+		MSG_PICTMOVE = 0x704c6f63,
+		MSG_PING = 0x70696e67,
+		MSG_PONG = 0x706f6e67,
+		MSG_PROPDEL = 0x64507270,
+		MSG_PROPMOVE = 0x6d507270,
+		MSG_PROPNEW = 0x6e507270,
+		MSG_RMSG = 0x726d7367,
+		MSG_ROOMDESC = 0x726f6f6d,
+		MSG_ROOMDESCEND = 0x656e6472,
+		MSG_ROOMGOTO = 0x6e617652,
+		MSG_ROOMNEW = 0x6e526f6d,
+		MSG_ROOMSETDESC = 0x73526f6d,
+		MSG_SERVERDOWN = 0x646f776e,
+		MSG_SERVERINFO = 0x73696e66,
+		MSG_SPOTDEL = 0x6f705364,
+		MSG_SPOTMOVE = 0x636f4c73,
+		MSG_SPOTNEW = 0x6f70536e,
+		MSG_SUPERUSER = 0x73757372,
+		MSG_TALK = 0x74616c6b,
+		MSG_TIYID = 0x74697972,
+		MSG_USERCOLOR = 0x75737243,
+		MSG_USERDESC = 0x75737244,
+		MSG_USEREXIT = 0x65707273,
+		MSG_USERFACE = 0x75737246,
+		MSG_USERLIST = 0x72707273,
+		MSG_USERLOG = 0x6c6f6720,
+		MSG_USERMOVE = 0x754c6f63,
+		MSG_USERNAME = 0x7573724e,
+		MSG_USERNEW = 0x6e707273,
+		MSG_USERPROP = 0x75737250,
+		MSG_USERSTATUS = 0x75537461,
+		MSG_VERSION = 0x76657273,
+		MSG_WHISPER = 0x77686973,
+		MSG_XTALK = 0x78746c6b,
+		MSG_XWHISPER = 0x78776973,
+		MSG_BLOWTHRU = 0x626c6f77,
+		MSG_SPOTSTATE = 0x73537461,
+		MSG_SMSG = 0x736d7367,
+		MSG_ALTLOGONREPLY = 0x72657032,
+		MSG_JSON = 0x6a736f6e,
+		MSG_IPTSIGNAL = 0x69707473;
+
+
+
 const zlib = require('zlib'); // needed for legacy props
 const net = require('net');
 
@@ -98,123 +166,123 @@ class PalaceProtocol {
 					data:buffer};
 
 		switch(packet.type) {
-			case TCPmsgConsts.USERMOVE:
+			case MSG_USERMOVE:
 				this.parseUserMove(packet);
 				break;
-			case TCPmsgConsts.USERFACE:
+			case MSG_USERFACE:
 				this.parseUserFace(packet);
 				break;
-			case TCPmsgConsts.USERCOLOR:
+			case MSG_USERCOLOR:
 				this.parseUserColor(packet);
 				break;
-			case TCPmsgConsts.USERPROP:
+			case MSG_USERPROP:
 				this.parseUserProp(packet);
 				break;
-			case TCPmsgConsts.USERDESC:
+			case MSG_USERDESC:
 				this.parseUserDesc(packet);
 				break;
-			case TCPmsgConsts.DRAW:
+			case MSG_DRAW:
 				this.parseDrawing(packet);
 				break;
-			case TCPmsgConsts.XTALK:
+			case MSG_XTALK:
 				this.parseXtalk(packet);
 				break;
-			case TCPmsgConsts.TALK:
+			case MSG_TALK:
 				this.parseTalk(packet);
 				break;
-			case TCPmsgConsts.WHISPER:
+			case MSG_WHISPER:
 				this.parseWhisper(packet);
 				break;
-			case TCPmsgConsts.XWHISPER:
+			case MSG_XWHISPER:
 				this.parseXwhisper(packet);
 				break;
-			case TCPmsgConsts.USEREXIT:
+			case MSG_USEREXIT:
 				this.parseUserExit(packet);
 				break;
-			case TCPmsgConsts.USERNEW:
+			case MSG_USERNEW:
 				this.parseUser(packet);
 				break;
-			case TCPmsgConsts.USERLOG:
+			case MSG_USERLOG:
 				this.parseUserLog(packet);
 				break;
-			case TCPmsgConsts.LOGOFF:
+			case MSG_LOGOFF:
 				this.parseLogOff(packet);
 				break;
-			case TCPmsgConsts.USERNAME:
+			case MSG_USERNAME:
 				this.parseUserName(packet);
 				break;
-			case TCPmsgConsts.TIYID:
+			case MSG_TIYID:
 				this.sendRegistration();
 				break;
-			case TCPmsgConsts.HTTPSERVER:
+			case MSG_HTTPSERVER:
 				this.parseHttpServer(packet);
 				break;
-			case TCPmsgConsts.SPOTMOVE:
+			case MSG_SPOTMOVE:
 				this.parseSpotMove(packet);
 				break;
-			case TCPmsgConsts.PICTMOVE:
+			case MSG_PICTMOVE:
 				this.parsePicMove(packet);
 				break;
-			case TCPmsgConsts.SPOTSTATE:
+			case MSG_SPOTSTATE:
 				this.parseSpotState(packet);
 				break;
-			case TCPmsgConsts.DOORLOCK:
+			case MSG_DOORLOCK:
 				this.parseDoorLock(packet);
 				break;
-			case TCPmsgConsts.DOORUNLOCK:
+			case MSG_DOORUNLOCK:
 				this.parseDoorUnlock(packet);
 				break;
-			case TCPmsgConsts.ROOMSETDESC:
-			case TCPmsgConsts.ROOMDESC:
+			case MSG_ROOMSETDESC:
+			case MSG_ROOMDESC:
 				this.parseRoom(packet);
 				break;
-			case TCPmsgConsts.NAVERROR:
+			case MSG_NAVERROR:
 				this.parseNavError(packet);
 				break;
-			case TCPmsgConsts.LISTOFALLROOMS:
+			case MSG_LISTOFALLROOMS:
 				this.parseRoomList(packet);
 				break;
-			case TCPmsgConsts.LISTOFALLUSERS:
+			case MSG_LISTOFALLUSERS:
 				this.parseUserList(packet);
 				break;
-			case TCPmsgConsts.PROPDEL:
+			case MSG_PROPDEL:
 				this.parsePropDelete(packet);
 				break;
-			case TCPmsgConsts.PROPNEW:
+			case MSG_PROPNEW:
 				this.parsePropNew(packet);
 				break;
-			case TCPmsgConsts.PROPMOVE:
+			case MSG_PROPMOVE:
 				this.parsePropMove(packet);
 				break;
-			case TCPmsgConsts.USERSTATUS:
+			case MSG_USERSTATUS:
 				this.parseUserStatus(packet);
 				break;
-			case TCPmsgConsts.SERVERINFO:
+			case MSG_SERVERINFO:
 				this.parseServerInfo(packet);
 				break;
-			case TCPmsgConsts.USERLIST:
+			case MSG_USERLIST:
 				this.parseUsers(packet);
 				break;
-			case TCPmsgConsts.PING:
+			case MSG_PING:
 				this.sendPong();
 				break;
-			case TCPmsgConsts.BLOWTHRU:
+			case MSG_BLOWTHRU:
 				this.parseBlowThru(packet);
 				break;
-			case TCPmsgConsts.AUTHENTICATE:
+			case MSG_AUTHENTICATE:
 				this.passData(packet);
 				break;
-			case TCPmsgConsts.SERVERDOWN:
+			case MSG_SERVERDOWN:
 				this.parseServerDown(packet);
 				break;
-			case TCPmsgConsts.ASSETSEND:
+			case MSG_ASSETSEND:
 				this.parseAsset(packet);
 				break;
-			case TCPmsgConsts.ASSETQUERY:
-			case TCPmsgConsts.ALTLOGONREPLY:
-			case TCPmsgConsts.ROOMDESCEND:
-			case TCPmsgConsts.EXTENDEDINFO:
-			case TCPmsgConsts.VERSION:
+			case MSG_ASSETQUERY:
+			case MSG_ALTLOGONREPLY:
+			case MSG_ROOMDESCEND:
+			case MSG_EXTENDEDINFO:
+			case MSG_VERSION:
 				//trash
 				break;
 			default:
@@ -698,7 +766,7 @@ class PalaceProtocol {
 
 	sendLogOff() {
 		var packet = Buffer.alloc(12);
-		packet.writeInt32LE(TCPmsgConsts.LOGOFF,0);
+		packet.writeInt32LE(MSG_LOGOFF,0);
 		this.soc.write(packet);
 	}
 
@@ -717,7 +785,7 @@ class PalaceProtocol {
 		var packet = Buffer.alloc((n*2)+40);
 
 		//header data
-		packet.writeInt32LE(TCPmsgConsts.DRAW,0);
+		packet.writeInt32LE(MSG_DRAW,0);
 		packet.writeInt32LE((n*2)+28,4); //packetlength
 		//packet.long(8)=0 'userID
 		//link
@@ -775,7 +843,7 @@ class PalaceProtocol {
 
 	sendDrawClear(drawCmd) {
 		var packet = Buffer.alloc(22);
-		packet.writeInt32LE(TCPmsgConsts.DRAW,0);
+		packet.writeInt32LE(MSG_DRAW,0);
 		packet.writeInt32LE(10,4);
 		packet.writeInt16LE(drawCmd,16);
 		this.soc.write(packet);
@@ -783,7 +851,7 @@ class PalaceProtocol {
 
 	sendUnlockRoom(spotid) {
 		var packet = Buffer.alloc(16);
-		packet.writeInt32LE(TCPmsgConsts.DOORUNLOCK,0);
+		packet.writeInt32LE(MSG_DOORUNLOCK,0);
 		packet.writeInt32LE(4,4);
 		packet.writeInt16LE(this.theRoom.id,12);
 		packet.writeInt16LE(spotid,14);
@@ -792,7 +860,7 @@ class PalaceProtocol {
 
 	sendLockRoom(spotid) {
 		var packet = Buffer.alloc(16);
-		packet.writeInt32LE(TCPmsgConsts.DOORLOCK,0);
+		packet.writeInt32LE(MSG_DOORLOCK,0);
 		packet.writeInt32LE(4,4);
 		packet.writeInt16LE(this.theRoom.id,12);
 		packet.writeInt16LE(spotid,14);
@@ -803,7 +871,7 @@ class PalaceProtocol {
 		password = Buffer.from(this.textEncoding.encode(password));
 		var leng = password.length;
 		var packet = Buffer.alloc(13+leng);
-		packet.writeInt32LE(TCPmsgConsts.SUPERUSER,0);
+		packet.writeInt32LE(MSG_SUPERUSER,0);
 		packet.writeInt32LE(leng+1,4);
 		var data = this.crypt.Encrypt(password);
 		packet.writeInt8(data.length,12);
@@ -813,7 +881,7 @@ class PalaceProtocol {
 
 	sendPong() {
 		var packet = Buffer.alloc(12);
-		packet.writeInt32LE(TCPmsgConsts.PONG,0);
+		packet.writeInt32LE(MSG_PONG,0);
 		this.soc.write(packet);
 	}
 
@@ -821,7 +889,7 @@ class PalaceProtocol {
 		msg = Buffer.from(this.textEncoding.encode(msg));
 		var leng = msg.length;
 		var packet = Buffer.alloc(19+leng);
-		packet.writeInt32LE(TCPmsgConsts.XWHISPER,0);
+		packet.writeInt32LE(MSG_XWHISPER,0);
 		packet.writeInt32LE(leng+7,4);
 		packet.writeInt32LE(whisperID,12);
 		packet.writeInt16LE(leng+3,16);
@@ -833,7 +901,7 @@ class PalaceProtocol {
 		msg = Buffer.from(this.textEncoding.encode(msg));
 		var leng = msg.length;
 		var packet = Buffer.alloc(15+leng);
-		packet.writeInt32LE(TCPmsgConsts.XTALK,0);
+		packet.writeInt32LE(MSG_XTALK,0);
 		packet.writeInt32LE(leng+3,4);
 		packet.writeInt16LE(leng+3,12);
 		this.crypt.Encrypt(msg).copy(packet,14);
@@ -842,7 +910,7 @@ class PalaceProtocol {
 
 	sendRoomNav(id) {
 		var packet = Buffer.alloc(14);
-		packet.writeInt32LE(TCPmsgConsts.ROOMGOTO,0);
+		packet.writeInt32LE(MSG_ROOMGOTO,0);
 		packet.writeInt32LE(2,4);
 		packet.writeInt16LE(id,12);
 		this.soc.write(packet);
@@ -850,13 +918,13 @@ class PalaceProtocol {
 
 	sendRoomListRequest() {
 		var packet = Buffer.alloc(12);
-		packet.writeInt32LE(TCPmsgConsts.LISTOFALLROOMS,0);
+		packet.writeInt32LE(MSG_LISTOFALLROOMS,0);
 		this.soc.write(packet);
 	}
 
 	sendUserListRequest() {
 		var packet = Buffer.alloc(12);
-		packet.writeInt32LE(TCPmsgConsts.LISTOFALLUSERS,0);
+		packet.writeInt32LE(MSG_LISTOFALLUSERS,0);
 		this.soc.write(packet);
 	}
 
@@ -864,7 +932,7 @@ class PalaceProtocol {
 		var length = props.length;
 		var packet = Buffer.alloc(16+length*8);
 
-		packet.writeInt32LE(TCPmsgConsts.USERPROP,0);
+		packet.writeInt32LE(MSG_USERPROP,0);
 		packet.writeInt32LE(length*8+4,4);
 		packet.writeInt32LE(length,12);
 		for (var i = 0; i < length; i++)
@@ -875,7 +943,7 @@ class PalaceProtocol {
 
 	sendPropDrop(x,y,id) {
 		var packet = Buffer.alloc(24);
-		packet.writeInt32LE(TCPmsgConsts.PROPNEW,0);
+		packet.writeInt32LE(MSG_PROPNEW,0);
 		packet.writeInt32LE(12,4);
 		packet.writeInt32LE(id,12);
 		packet.writeInt16LE(y,20);
@@ -885,7 +953,7 @@ class PalaceProtocol {
 
 	sendPropMove(x,y,index) {
 		var packet = Buffer.alloc(20);
-		packet.writeInt32LE(TCPmsgConsts.PROPMOVE,0);
+		packet.writeInt32LE(MSG_PROPMOVE,0);
 		packet.writeInt32LE(8,4);
 		packet.writeInt32LE(index,12);
 		packet.writeInt16LE(y,16);
@@ -895,7 +963,7 @@ class PalaceProtocol {
 
 	sendPropDelete(index) {
 		var packet = Buffer.alloc(16);
-		packet.writeInt32LE(TCPmsgConsts.PROPDEL,0);
+		packet.writeInt32LE(MSG_PROPDEL,0);
 		packet.writeInt32LE(4,4);
 		packet.writeInt32LE(index,12);
 		this.soc.write(packet);
@@ -903,7 +971,7 @@ class PalaceProtocol {
 
 	sendUserLocation(x,y) {
 		var packet = Buffer.alloc(16);
-		packet.writeInt32LE(TCPmsgConsts.USERMOVE,0);
+		packet.writeInt32LE(MSG_USERMOVE,0);
 		packet.writeInt32LE(4,4);
 		packet.writeInt16LE(y,12);
 		packet.writeInt16LE(x,14);
@@ -913,7 +981,7 @@ class PalaceProtocol {
 	sendUserName(name) {
 		name = Buffer.from(this.textEncoding.encode(name));
 		var packet = Buffer.alloc(name.length+13);
-		packet.writeInt32LE(TCPmsgConsts.USERNAME,0);
+		packet.writeInt32LE(MSG_USERNAME,0);
 		packet.writeInt32LE(name.length+1,4);
 		packet.writeInt8(name.length,12);
 		name.copy(packet,13);
@@ -922,7 +990,7 @@ class PalaceProtocol {
 
 	sendFace(face) {
 		var packet = Buffer.alloc(14);
-		packet.writeInt32LE(TCPmsgConsts.USERFACE,0);
+		packet.writeInt32LE(MSG_USERFACE,0);
 		packet.writeInt32LE(2,4);
 		packet.writeInt16LE(face,12);
 		this.soc.write(packet);
@@ -930,7 +998,7 @@ class PalaceProtocol {
 
 	sendFaceColor(color) {
 		var packet = Buffer.alloc(14);
-		packet.writeInt32LE(TCPmsgConsts.USERCOLOR,0);
+		packet.writeInt32LE(MSG_USERCOLOR,0);
 		packet.writeInt32LE(2,4);
 		packet.writeInt16LE(color,12);
 		this.soc.write(packet);
@@ -939,7 +1007,7 @@ class PalaceProtocol {
 	sendAuthenticate(name,pass) {
 		var info = Buffer.from(this.textEncoding.encode(name+':'+pass));
 		var packet = Buffer.alloc(13+info.length);
-		packet.writeInt32LE(TCPmsgConsts.AUTHRESPONSE,0);
+		packet.writeInt32LE(MSG_AUTHRESPONSE,0);
 		packet.writeInt32LE(info.length+1,4);
 		packet.writeInt8(info.length,12);
 		this.crypt.Encrypt(info).copy(packet,13);
@@ -948,7 +1016,7 @@ class PalaceProtocol {
 
 	sendRegistration() {
 		var reg =  Buffer.alloc(140);
-		reg.writeInt32LE(TCPmsgConsts.LOGON,0);
+		reg.writeInt32LE(MSG_LOGON,0);
 		reg.writeInt32LE(128,4); //fixed packet length
 
 		reg.writeInt32LE(this.regi.crc,12);
@@ -988,7 +1056,7 @@ class PalaceProtocol {
 
 	sendAssetQuery(id) { // request a legacy prop
 		var packet = Buffer.alloc(24);
-		packet.writeInt32LE(TCPmsgConsts.ASSETQUERY,0);
+		packet.writeInt32LE(MSG_ASSETQUERY,0);
 		packet.writeInt32LE(12,4);
 		packet.writeInt32LE(0x50726F70,12); // asset name 'Prop'
 		packet.writeInt32LE(id,16);
@@ -1166,107 +1234,107 @@ class PalaceClient extends PalaceProtocol {
 	passData(p) {
 		//console.log(p);
 		switch(p.type) {
-			case TCPmsgConsts.TALK:
-			case TCPmsgConsts.WHISPER:
-			case TCPmsgConsts.XWHISPER:
-			case TCPmsgConsts.XTALK:
+			case MSG_TALK:
+			case MSG_WHISPER:
+			case MSG_XWHISPER:
+			case MSG_XTALK:
 				this.theRoom.userChat(p.data);
 				break;
-			case TCPmsgConsts.USERMOVE:
+			case MSG_USERMOVE:
 				this.theRoom.userMove(p.data);
 				break;
-			case TCPmsgConsts.USERFACE:
+			case MSG_USERFACE:
 				this.theRoom.userFaceChange(p.data);
 				break;
-			case TCPmsgConsts.USERCOLOR:
+			case MSG_USERCOLOR:
 				this.theRoom.userColorChange(p.data);
 				break;
-			case TCPmsgConsts.USERPROP:
+			case MSG_USERPROP:
 				this.theRoom.userPropChange(p.data);
 				break;
-			case TCPmsgConsts.USERDESC:
+			case MSG_USERDESC:
 				this.theRoom.userAvatarChange(p.data);
 				break;
-			case TCPmsgConsts.USERNAME:
+			case MSG_USERNAME:
 				this.theRoom.userNameChange(p.data);
 				break;
-			case TCPmsgConsts.DRAW:
+			case MSG_DRAW:
 				this.theRoom.draw(p.data);
 				break;
-			case TCPmsgConsts.USERLOG:
+			case MSG_USERLOG:
 				this.userLogOn(p.data);
 				break;
-			case TCPmsgConsts.LOGOFF:
+			case MSG_LOGOFF:
 				this.userLogOff(p.data);
 				break;
-			case TCPmsgConsts.USEREXIT:
+			case MSG_USEREXIT:
 				this.theRoom.removeUser(p.data);
 				break;
-			case TCPmsgConsts.USERNEW:
+			case MSG_USERNEW:
 				this.theRoom.addUser(p.data);
 				break;
-			case TCPmsgConsts.HTTPSERVER:
+			case MSG_HTTPSERVER:
 				this.mediaUrl = p.data;
 				break;
-			case TCPmsgConsts.SPOTMOVE:
+			case MSG_SPOTMOVE:
 				this.theRoom.spotMove(p.data);
 				break;
-			case TCPmsgConsts.PICTMOVE:
+			case MSG_PICTMOVE:
 				this.theRoom.spotMovePic(p.data);
 				break;
-			case TCPmsgConsts.SPOTSTATE:
+			case MSG_SPOTSTATE:
 				this.theRoom.spotStateChange(p.data);
 				break;
-			case TCPmsgConsts.DOORLOCK:
+			case MSG_DOORLOCK:
 				this.theRoom.spotStateChange(p.data);
 				break;
-			case TCPmsgConsts.DOORUNLOCK:
+			case MSG_DOORUNLOCK:
 				this.theRoom.spotStateChange(p.data);
 				break;
-			case TCPmsgConsts.ROOMSETDESC:
-			case TCPmsgConsts.ROOMDESC:
+			case MSG_ROOMSETDESC:
+			case MSG_ROOMDESC:
 				var users;
 				if (this.theRoom && this.theRoom.users) users = this.theRoom.users; // if editing room, god save the people!
-				p.data.authored = p.type === TCPmsgConsts.ROOMSETDESC;
+				p.data.authored = p.type === MSG_ROOMSETDESC;
 				this.theRoom = new PalaceRoom(p.data);
 				this.theRoom.users = users;
 				if (users) this.theRoom.refresh();
 				break;
-			case TCPmsgConsts.NAVERROR:
+			case MSG_NAVERROR:
 				this.theRoom.navigationError(p.data);
 				break;
-			case TCPmsgConsts.LISTOFALLROOMS:
+			case MSG_LISTOFALLROOMS:
 				loadRoomList(p.data);
 				break;
-			case TCPmsgConsts.LISTOFALLUSERS:
+			case MSG_LISTOFALLUSERS:
 				loadUserList(p.data);
 				break;
-			case TCPmsgConsts.PROPDEL:
+			case MSG_PROPDEL:
 				this.theRoom.loosePropDelete(p.data);
 				break;
-			case TCPmsgConsts.PROPNEW:
+			case MSG_PROPNEW:
 				this.theRoom.loosePropAdd(p.data);
 				break;
-			case TCPmsgConsts.PROPMOVE:
+			case MSG_PROPMOVE:
 				this.theRoom.loosePropMove(p.data);
 				break;
-			case TCPmsgConsts.USERSTATUS:
+			case MSG_USERSTATUS:
 				this.theUserID = p.data.id;
 				this.theUserStatus = p.data.status;
 				break;
-			case TCPmsgConsts.SERVERINFO:
+			case MSG_SERVERINFO:
 				this.serverInfo(p.data);
 				break;
-			case TCPmsgConsts.USERLIST:
+			case MSG_USERLIST:
 				this.theRoom.loadUsers(p.data);
 				break;
-			case TCPmsgConsts.AUTHENTICATE:
+			case MSG_AUTHENTICATE:
 				toggleZoomPanel('authenticate',1);
 				break;
-			case TCPmsgConsts.SERVERDOWN:
+			case MSG_SERVERDOWN:
 				this.serverDown(this.serverDownMsg(p.data.refnum,p.data.msg));
 				break;
-			case TCPmsgConsts.ASSETSEND:
+			case MSG_ASSETSEND:
 				this.decodeLegacyProp(p.data);
 				break;
 			default:

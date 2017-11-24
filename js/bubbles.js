@@ -122,7 +122,7 @@ class Bubble {
 				this.p.style.top = this.y+'px';
 			}
 			palace.theRoom.reDraw();
-		},20);
+		},25);
 	}
 	deflate(remove) {
 		this.p.style.top = '-9999px';
@@ -130,7 +130,7 @@ class Bubble {
 		if (this.timer) clearInterval(this.timer);
 		this.timer = null;
 		this.timer = setInterval(() => {
-			if (this.size > 0.5) {
+			if (this.size > 0.6) {
 				this.size -= 0.1;
 			} else {
 				this.size = 0.5;
@@ -140,8 +140,9 @@ class Bubble {
 				}
 				if (remove) this.remove(true);
 			}
+
 			palace.theRoom.reDraw();
-		},20);
+		},25);
 	}
 	makeShoutBubble(ctx) {
 		var w = this.textWidth*this.size;
@@ -177,17 +178,21 @@ class Bubble {
 		}
 		ctx.closePath();
 	}
-	makeRegularBubble(ctx, radius) {
-		var x = this.x - bubbleConsts.padding;
-		var y = this.y - bubbleConsts.padding;
-		var width = this.textWidth + (bubbleConsts.padding*2);
-		var height = this.textHeight + (bubbleConsts.padding*2);
-		var ux = this.originX;
-		var uy = this.originY;
-		var dist = 23;
-		var space = 4;
-		var w = width;
+	makeRegularBubble(ctx) {
+		let radius = (14*this.size);
+		if (radius < 10) radius = 10;
+		let x = this.x - bubbleConsts.padding;
+		let y = this.y - bubbleConsts.padding;
+		let width = this.textWidth + (bubbleConsts.padding*2);
+		let height = this.textHeight + (bubbleConsts.padding*2);
+		let ux = this.originX;
+		let uy = this.originY;
+		let dist = 23;
+		let space = 4;
 
+
+
+		let w = width;
 		if (this.right) {
 			width = width*this.size;
 			x = x + w/4 - (width*this.size)/4;
@@ -196,35 +201,38 @@ class Bubble {
 			x = x + w/3 - (width*this.size)/3;
 		}
 
-		if (this.textHeight > 23) {
-			var h = height;
-			height = height*this.size;
-			y = y + h/4 - (height*this.size)/4;
-		}
+		let h = height;
+		height = height*this.size;
+		y = y + h/3 - (height*this.size)/3;
 
 		ctx.beginPath();
 		ctx.moveTo(x + radius, y);
 		ctx.lineTo(x + width - radius, y);
 		ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
 		if (!this.right && !this.sticky) {
-			var blexit = uy;
-			if (y + radius > blexit) blexit = y + radius;
-			if (y + height - radius < blexit) blexit = y + height - radius;
-			ctx.lineTo(x + width, blexit - space);
+			let neck = uy;
+			if (y + radius > neck) neck = y + radius;
+			if (y + height - radius < neck) neck = y + height - radius;
+			dist = dist/this.size;
+			if (dist > 35) dist = 35;
+			ctx.lineTo(x + width, neck - space);
 			ctx.lineTo(ux - dist, uy);
-			ctx.lineTo(x + width, blexit + space);
+			ctx.lineTo(x + width, neck + space);
 		}
 		ctx.lineTo(x + width, y + height - radius);
 		ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
 		ctx.lineTo(x + radius, y + height);
 		ctx.quadraticCurveTo(x, y + height, x , y + height - radius);
-		if (this.right === true && !this.sticky) {
-			var brexit = uy;
-			if (y + height - radius < brexit) brexit = y + height - radius;
-			if (y + radius > brexit) brexit = y + radius;
-			ctx.lineTo(x, brexit + space);
+		if (this.right && !this.sticky) {
+			let neck = uy;
+
+			if (y + height - radius < neck) neck = y + height - radius;
+			if (y + radius > neck) neck = y + radius;
+			dist = dist/this.size;
+			if (dist > 35) dist = 35;
+			ctx.lineTo(x, neck + space);
 			ctx.lineTo(ux + dist, uy);
-			ctx.lineTo(x, brexit - space);
+			ctx.lineTo(x, neck - space);
 		}
 		ctx.lineTo(x, y + radius );
 		ctx.quadraticCurveTo(x, y, x + radius, y);

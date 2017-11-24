@@ -5,6 +5,15 @@ var allProps = {},
     retryProps = [];
 
 
+const   PROP_HEAD = 2,
+    	PROP_GHOST = 4,
+    	PROP_RARE = 8,
+    	PROP_ANIMATED = 16,
+    	PROP_BOUNCE = 32,
+    	PROP_PNG = 1024;
+
+
+
 class PalaceProp {
     constructor(id,info) {
         this.id = id;
@@ -65,18 +74,18 @@ class PalaceProp {
         if (typeof flags === 'string') {
             flags = parseInt(flags,16).swap16();
         }
-    	this.head = Boolean(flags & propConsts.head);
-    	this.ghost = Boolean(flags & propConsts.ghost);
-    	this.animated = Boolean(flags & propConsts.animated);
-    	this.bounce = Boolean(flags & propConsts.bounce);
+    	this.head = Boolean(flags & PROP_HEAD);
+    	this.ghost = Boolean(flags & PROP_GHOST);
+    	this.animated = Boolean(flags & PROP_ANIMATED);
+    	this.bounce = Boolean(flags & PROP_BOUNCE);
     }
 
     get encodePropFlags() {
-    	var flag = propConsts.png;
-    	if (this.head) flag ^= propConsts.head;
-    	if (this.ghost) flag ^= propConsts.ghost;
-    	if (this.animated) flag ^= propConsts.animated;
-    	if (this.bounce) flag ^= propConsts.bounce;
+    	var flag = PROP_PNG;
+    	if (this.head) flag ^= PROP_HEAD;
+    	if (this.ghost) flag ^= PROP_GHOST;
+    	if (this.animated) flag ^= PROP_ANIMATED;
+    	if (this.bounce) flag ^= PROP_BOUNCE;
     	return flag.swap16().toHex();
     }
 }

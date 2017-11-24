@@ -601,7 +601,7 @@ body {
   box-shadow       : 0 0 16px black;
   font-size        : small;
   animation        : fadeout 0.3s;
-  transform        : scale(0,0);
+  transform        : scale(0);
 }
 
 @keyframes fadeout {
@@ -612,7 +612,7 @@ body {
 
   100% {
     opacity   : 0;
-    transform : scale(0,0);
+    transform : scale(0);
   }
 }
 
@@ -621,15 +621,18 @@ body {
 #smileypicker[data-state='1'] {
   opacity   : 1;
   animation : fadein 0.3s;
-  transform : scale(1,1);
+  transform : scale(1);
 }
 
 @keyframes fadein {
   0% {
     opacity   : 0;
-    transform : scale(0,0);
+    transform : scale(0);
   }
-
+  99% {
+    opacity   : 1;
+    transform : scale(1.03);
+  }
   100% {
     opacity   : 1;
     transform : none;

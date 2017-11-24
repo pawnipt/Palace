@@ -241,7 +241,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 				event.stopImmediatePropagation();
 				var w = initialX-event.x+initialW;
 				this.style.width = w+'px';
-				setBodyWidth();
+				//setBodyWidth();
 				setGeneralPref('propBagWidth',w);
 				refreshPropBagView();
 				return false;
@@ -818,8 +818,9 @@ function scale2Fit() {
 
 function setBodyWidth() {
 	var space = 0;
-	if (logField.dataset.state == 1) space = logField.offsetWidth;
-	if (propBag.dataset.state == 1) space = propBag.offsetWidth;
+	//if (logField.dataset.state == 1)
+	space = logField.offsetWidth;
+	//if (propBag.dataset.state == 1) space = propBag.offsetWidth;
 	document.body.style.width = bgEnv.width + space + 'px';
 }
 

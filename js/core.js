@@ -164,7 +164,7 @@ class Renderer {
 		/* } else if (bub.thought) { */
 
 		} else {
-			bub.makeRegularBubble(this.context, bubbleConsts.radius);
+			bub.makeRegularBubble(this.context);
 		}
 		this.context.globalAlpha = bub.size-0.1;
 		this.context.fill();
