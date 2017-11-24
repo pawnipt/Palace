@@ -1,6 +1,6 @@
 // @flow
-
-var net = require('net');
+const zlib = require('zlib'); // needed for legacy props
+const net = require('net');
 
 class PalaceProtocol {
 	constructor(regi,puid) {
@@ -11,6 +11,13 @@ class PalaceProtocol {
 
 	static toArrayBuffer(b) { // node buffer to ArrayBuffer
 		return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
+	}
+	static pStr(b,offset,encoding) {
+		return encoding.decode(
+			PalaceProtocol.toArrayBuffer(
+				b.slice(offset+1,offset+1+b.readUInt8(offset))
+			)
+		);
 	}
 	static pString(b,offset) {
 		return palace.textDecoding.decode(
@@ -200,6 +207,9 @@ class PalaceProtocol {
 			case TCPmsgConsts.SERVERDOWN:
 				this.parseServerDown(packet);
 				break;
+			case TCPmsgConsts.ASSETSEND:
+				this.parseAsset(packet);
+				break;
 			case TCPmsgConsts.ASSETQUERY:
 			case TCPmsgConsts.ALTLOGONREPLY:
 			case TCPmsgConsts.ROOMDESCEND:
@@ -211,6 +221,16 @@ class PalaceProtocol {
 				console.log('unhandled packet: '+buffer.slice(0,4));
 				break;
 		}
+	}
+
+	parseAsset(p) {
+		p.data = {id:p.data.readInt32LE(16),
+			flags:p.data.readInt16LE(86),
+			offsets:{x:p.data.readInt16LE(80), y:p.data.readInt16LE(82)},
+			size:{w:44, h:44},
+			name:PalaceProtocol.pStr(p.data,44,new TextDecoder('utf-8')),
+			img:p.data.slice(88,p.data.readInt32LE(40)+76)};
+		this.passData(p);
 	}
 
 	parseServerDown(p) {
@@ -964,6 +984,18 @@ class PalaceProtocol {
 
 		this.soc.write(reg);
 	}
+
+
+	sendAssetQuery(id) { // request a legacy prop
+		var packet = Buffer.alloc(24);
+		packet.writeInt32LE(TCPmsgConsts.ASSETQUERY,0);
+		packet.writeInt32LE(12,4);
+		packet.writeInt32LE(0x50726F70,12); // asset name 'Prop'
+		packet.writeInt32LE(id,16);
+		this.soc.write(packet);
+		this.propDecoder = new LegacyPropDecoder();
+	}
+
 }
 
 class PalaceClient extends PalaceProtocol {
@@ -1121,6 +1153,16 @@ class PalaceClient extends PalaceProtocol {
 		enablePropButtons();
 	}
 
+	decodeLegacyProp(data) {
+		let dataUrl = this.propDecoder.decode(data.flags,data.img);
+		if (dataUrl) {
+			let aProp = new PalaceProp(data.id,data);
+			allProps[data.id] = aProp;
+			aProp.requestPropImage(dataUrl);
+			delete aProp.rcounter; // no need to retry
+		}
+	}
+
 	passData(p) {
 		//console.log(p);
 		switch(p.type) {
@@ -1223,6 +1265,9 @@ class PalaceClient extends PalaceProtocol {
 				break;
 			case TCPmsgConsts.SERVERDOWN:
 				this.serverDown(this.serverDownMsg(p.data.refnum,p.data.msg));
+				break;
+			case TCPmsgConsts.ASSETSEND:
+				this.decodeLegacyProp(p.data);
 				break;
 			default:
 				console.log(p);
@@ -1368,5 +1413,192 @@ class PalaceCrypt {
 	MySRand(s) {
 		this.gSeed = s;
 		if (this.gSeed == 0) this.gSeed = 1;
+	}
+}
+
+
+
+class LegacyPropDecoder {
+
+	constructor() { // preload offscreen buffer goodies
+		let c = document.createElement('canvas');
+		c.width = 44;
+		c.height = 44;
+		this.ctx = c.getContext("2d");
+		this.imageData = this.ctx.getImageData(0, 0, 44, 44);
+		this.colors = this.colorPalette;
+	}
+
+	PROP_20BIT(flags) { return Boolean(flags & 64); }
+	PROP_S20BIT(flags) { return Boolean(flags & 512); }
+	PROP_32BIT(flags) { return Boolean(flags & 256); }
+	PROP_16BIT(flags) { return Boolean(flags & 128); }
+
+	decode8bit(b) {
+		let Read = 0,Skip = 0,l = 0,x = 7744,o = 0,value = 0,len = b.length,
+			buf = new ArrayBuffer(7744),
+			buf8 = new Uint8ClampedArray(buf),
+			data = new Uint32Array(buf);
+
+		while (x > 0) {
+			if (o>=len) break; //went too far
+
+			let index = b.readUInt8(o);
+			Skip = index >> 4;
+			Read = index & 0x0F;
+			x -= (Skip + Read);
+
+			if (x < 0) break;
+			l += Skip;
+			o++;
+
+			while (Read--) {
+				data[l] = this.colors[index = b.readUInt8(o)];
+				o++;
+				l++;
+			}
+		}
+
+		this.imageData.data.set(buf8);
+		this.ctx.putImageData(this.imageData,0,0);
+		return this.ctx.canvas.toDataURL();
+	}
+
+	decode32bit(b) {
+		let buf = new ArrayBuffer(7744),
+			buf8 = new Uint8ClampedArray(buf),
+			data = new Uint32Array(buf);
+
+		for (let i = 0; i < 7744; i+=4) {
+			data[i/4] = b.readUInt32LE(i);
+		}
+
+		this.imageData.data.set(buf8);
+		this.ctx.putImageData(this.imageData,0,0);
+		return this.ctx.canvas.toDataURL();
+	}
+
+	decodeS20bit(b) { //yeah its crazy, the things we did though
+		let intComp = 0,inc = 0,
+			buf = new ArrayBuffer(7744),
+			buf8 = new Uint8ClampedArray(buf);
+
+
+		for (let i = 0; i < 7744; i+=4) {
+			intComp = (256*b.readUInt8(inc))+b.readUInt8(inc+1);
+			buf8[i] = (intComp & 63488) * 0.00401650705645161323897873728583363118; //red S20pixel1
+			buf8[i+1] = (intComp & 1984) * 0.128528225806451623647319593146676198; //green S20pixel2
+			buf8[i+2] = (intComp & 62) * 4.11290322580645195671422698069363832; //blue S20pixel3
+			intComp = (b.readUInt8(inc+1)*256)+b.readUInt8(inc+2);
+			buf8[i+3] = (((intComp & 496) * 0.514112903225806494589278372586704791)); //alpha S20pixel4
+
+
+			i+=4;
+
+			intComp = (256 * b.readUInt8(inc+2)) + b.readUInt8(inc+3);
+			buf8[i] = (intComp & 3968) * 0.0642641129032258118236597965733380988; //red S20pixel5
+			buf8[i+1] = (intComp & 124) * 2.05645161290322597835711349034681916; //green S20pixel6
+			intComp = (256 * b.readUInt8(inc+3)) + b.readUInt8(inc+4);
+			buf8[i+2] = (intComp & 992) * 0.257056451612903247294639186293352395; //blue S20pixel7
+			buf8[i+3] = (((intComp & 31) * 8.22580645161290391342845396138727665)); //alpha S20pixel8
+
+			inc+=5;
+		}
+
+		this.imageData.data.set(buf8);
+		this.ctx.putImageData(this.imageData,0,0);
+		return this.ctx.canvas.toDataURL();
+	}
+
+	decode20bit(b) { //yeah its crazy, the things we did though
+		let s1 = 0,s2 = 0,inc = 0,
+			buf = new ArrayBuffer(7744),
+			buf8 = new Uint8ClampedArray(buf);
+
+
+		for (let i = 0; i < 7744; i+=4) {
+			s1=this.joinUShort(b.readUInt8(inc+1),b.readUInt8(inc+2));
+			buf8[i+3] = (((s1 & 48) * 5.3125));
+			buf8[i] = (b.readUInt8(inc) & 252) * 1.01190476190476186246769429999403656;
+			buf8[i+1] = (this.joinUShort(b.readUInt8(inc),b.readUInt8(inc+1)) & 1008) * 0.252976190476190465616923574998509139;
+			buf8[i+2] = (s1 & 4032) * 0.0632440476190476164042308937496272847;
+
+			i+=4;
+
+			s1=this.joinUShort(b.readUInt8(inc+2),b.readUInt8(inc+3));
+			s2=b.readUInt8(inc+4);
+			buf8[i+3] = (((s2 & 3) * 85));
+			buf8[i] = (this.joinUShort(b.readUInt8(inc+2),b.readUInt8(inc+3)) & 4032) * 0.0632440476190476164042308937496272847;
+			buf8[i+1] = (s1 & 63) * 4.04761904761904744987077719997614622;
+			buf8[i+2] = (s2 & 252) * 1.01190476190476186246769429999403656;
+
+			inc+=5;
+		}
+
+		this.imageData.data.set(buf8);
+		this.ctx.putImageData(this.imageData,0,0);
+		return this.ctx.canvas.toDataURL();
+	}
+
+	joinUShort(a,b) {
+		let val = 0;
+		val = a;
+		val <<= 8;
+		val |= b;
+		return val;
+	}
+
+	decode(flags,buffer) {
+		if (this.PROP_S20BIT(flags)) {
+			return this.decodeS20bit(zlib.inflateSync(buffer));
+		} else if (this.PROP_20BIT(flags)) {
+			return this.decode20bit(zlib.inflateSync(buffer));
+		} else if (this.PROP_32BIT(flags)) {
+			return this.decode32bit(zlib.inflateSync(buffer));
+		} else if (this.PROP_16BIT(flags)) {
+			return this.decode16bit(zlib.inflateSync(buffer));
+		} else {
+			return this.decode8bit(buffer);
+		}
+	}
+
+
+
+	get colorPalette() {
+		return [
+			// XBGR
+			0xFFFEFEFE, 0xFFFFFFCC, 0xFFFFFF99, 0xFFFFFF66, 0xFFFFFF33, 0xFFFFFF00, 0xFFFFDFFF, 0xFFFFDFCC,
+			0xFFFFDF99, 0xFFFFDF66, 0xFFFFDF33, 0xFFFFDF00, 0xFFFFBFFF, 0xFFFFBFCC, 0xFFFFBF99, 0xFFFFBF66,
+			0xFFFFBF33, 0xFFFFBF00, 0xFFFF9FFF, 0xFFFF9FCC, 0xFFFF9F99, 0xFFFF9F66, 0xFFFF9F33, 0xFFFF9F00,
+			0xFFFF7FFF, 0xFFFF7FCC, 0xFFFF7F99, 0xFFFF7F66, 0xFFFF7F33, 0xFFFF7F00, 0xFFFF5FFF, 0xFFFF5FCC,
+			0xFFFF5F99, 0xFFFF5F66, 0xFFFF5F33, 0xFFFF5F00, 0xFFFF3FFF, 0xFFFF3FCC, 0xFFFF3F99, 0xFFFF3F66,
+			0xFFFF3F33, 0xFFFF3F00, 0xFFFF1FFF, 0xFFFF1FCC, 0xFFFF1F99, 0xFFFF1F66, 0xFFFF1F33, 0xFFFF1F00,
+			0xFFFF00FF, 0xFFFF00CC, 0xFFFF0099, 0xFFFF0066, 0xFFFF0033, 0xFFFF0000, 0xFFEEEEEE, 0xFFDDDDDD,
+			0xFFCCCCCC, 0xFFBBBBBB, 0xFFAAFFFF, 0xFFAAFFCC, 0xFFAAFF99, 0xFFAAFF66, 0xFFAAFF33, 0xFFAAFF00,
+			0xFFAADFFF, 0xFFAADFCC, 0xFFAADF99, 0xFFAADF66, 0xFFAADF33, 0xFFAADF00, 0xFFAABFFF, 0xFFAABFCC,
+			0xFFAABF99, 0xFFAABF66, 0xFFAABF33, 0xFFAABF00, 0xFFAAAAAA, 0xFFAA9FFF, 0xFFAA9FCC, 0xFFAA9F99,
+			0xFFAA9F66, 0xFFAA9F33, 0xFFAA9F00, 0xFFAA7FFF, 0xFFAA7FCC, 0xFFAA7F99, 0xFFAA7F66, 0xFFAA7F33,
+			0xFFAA7F00, 0xFFAA5FFF, 0xFFAA5FCC, 0xFFAA5F99, 0xFFAA5F66, 0xFFAA5F33, 0xFFAA5F00, 0xFFAA3FFF,
+			0xFFAA3FCC, 0xFFAA3F99, 0xFFAA3F66, 0xFFAA3F33, 0xFFAA3F00, 0xFFAA1FFF, 0xFFAA1FCC, 0xFFAA1F99,
+			0xFFAA1F66, 0xFFAA1F33, 0xFFAA1F00, 0xFFAA00FF, 0xFFAA00CC, 0xFFAA0099, 0xFFAA0066, 0xFFAA0033,
+			0xFFAA0000, 0xFF999999, 0xFF888888, 0xFF777777, 0xFF666666, 0xFF55FFFF, 0xFF55FFCC, 0xFF55FF99,
+			0xFF55FF66, 0xFF55FF33, 0xFF55FF00, 0xFF55DFFF, 0xFF55DFCC, 0xFF55DF99, 0xFF55DF66, 0xFF55DF33,
+			0xFF55DF00, 0xFF55BFFF, 0xFF55BFCC, 0xFF55BF99, 0xFF55BF66, 0xFF55BF33, 0xFF55BF00, 0xFF559FFF,
+			0xFF559FCC, 0xFF559F99, 0xFF559F66, 0xFF559F33, 0xFF559F00, 0xFF557FFF, 0xFF557FCC, 0xFF557F99,
+			0xFF557F66, 0xFF557F33, 0xFF557F00, 0xFF555FFF, 0xFF555FCC, 0xFF555F99, 0xFF555F66, 0xFF555F33,
+			0xFF555F00, 0xFF555555, 0xFF553FFF, 0xFF553FCC, 0xFF553F99, 0xFF553F66, 0xFF553F33, 0xFF553F00,
+			0xFF551FFF, 0xFF551FCC, 0xFF551F99, 0xFF551F66, 0xFF551F33, 0xFF551F00, 0xFF5500FF, 0xFF5500CC,
+			0xFF550099, 0xFF550066, 0xFF550033, 0xFF550000, 0xFF444444, 0xFF333333, 0xFF222222, 0xFF111111,
+			0xFF00FFFF, 0xFF00FFCC, 0xFF00FF99, 0xFF00FF66, 0xFF00FF33, 0xFF00FF00, 0xFF00DFFF, 0xFF00DFCC,
+			0xFF00DF99, 0xFF00DF66, 0xFF00DF33, 0xFF00DF00, 0xFF00BFFF, 0xFF00BFCC, 0xFF00BF99, 0xFF00BF66,
+			0xFF00BF33, 0xFF00BF00, 0xFF009FFF, 0xFF009FCC, 0xFF009F99, 0xFF009F66, 0xFF009F33, 0xFF009F00,
+			0xFF007FFF, 0xFF007FCC, 0xFF007F99, 0xFF007F66, 0xFF007F33, 0xFF007F00, 0xFF005FFF, 0xFF005FCC,
+			0xFF005F99, 0xFF005F66, 0xFF005F33, 0xFF005F00, 0xFF003FFF, 0xFF003FCC, 0xFF003F99, 0xFF003F66,
+			0xFF003F33, 0xFF003F00, 0xFF001FFF, 0xFF001FCC, 0xFF001F99, 0xFF001F66, 0xFF001F33, 0xFF001F00,
+			0xFF0000FF, 0xFF0000CC, 0xFF000099, 0xFF000066, 0xFF000033, 0xFF000000, 0xFF000000, 0xFF000000,
+			0xFF000000, 0xFF000000, 0xFF000000, 0xFF000000, 0xFF000000, 0xFF000000, 0xFF000000, 0xFF000000,
+			0xFFF0F0F0, 0xFFE0E0E0, 0xFFD0D0D0, 0xFFC0C0C0, 0xFFB0B0B0, 0xFFA0A0A0, 0xFF808080, 0xFF707070,
+			0xFF606060, 0xFF505050, 0xFF404040, 0xFF303030, 0xFF202020, 0xFF101010, 0xFF080808, 0xFF000000
+		];
 	}
 }

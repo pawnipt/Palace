@@ -640,6 +640,13 @@ function makeHyperLinks(str,parent) { /* fix this, oddly; numbers fail! */
 	return s;
 };
 
+
+function matchYoutubeUrl(url) {
+	let m = url.match(/^(?:https?:\/\/)?(?:m\.|www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})(?:\S+)?$/);
+	if (m) {
+        return m[1];
+    }
+}
 function createYoutubePlayer(info) {
 	httpGetAsync('https://www.googleapis.com/youtube/v3/videos?part=snippet&key=AIzaSyAHk4QfatpeEcQg-CPDrTqi9ozoJ55w5GE&id='+info.id, function(j) {
 		let yt = JSON.parse(j);
@@ -652,6 +659,12 @@ function createYoutubePlayer(info) {
 	});
 }
 
+function matchFacebookUrl(url) {
+	let m = url.match(/^https:\/\/www\.facebook\.com\/(.*?)\/videos\/(.*\/)?([0-9]+)/);
+	if (m) {
+        return m;
+    }
+}
 function createFacebookPlayer(info) {
 	let source = 'https://www.facebook.com/plugins/video.php?href=';
 	httpGetAsync('https://graph.facebook.com/'+info.id[3]+'?fields=title,format,picture,embeddable,permalink_url,description&access_token=872564939584635|cc4b23aa93ddd3413884ab3e9875dd73', function(j) {
@@ -672,8 +685,13 @@ function createFacebookPlayer(info) {
 	});
 }
 
+function matchVimeoUrl(url) {
+	let m = url.match(/^https:\/\/vimeo.com(.*)\/([0-9]+)/);
+	if (m) {
+        return m[2];
+    }
+}
 function createVimeoPlayer(info) {
-
 	httpGetAsync('https://api.vimeo.com/videos/'+info.id+'?access_token=3842fc48186684845f76f44e607ae85a', function(j) {
 		let vm = JSON.parse(j);
 		if (vm && vm.privacy.embed === 'public') {
@@ -764,32 +782,6 @@ function chatLogScrollLock(callback) { // keeps the chat log scrolled down if th
 	if (scrollLock) logField.scrollTop = logField.scrollHeight - logField.clientHeight;
 }
 
-function matchVimeoUrl(url) {
-    let p = /^https:\/\/vimeo.com(.*)\/([0-9]+)/;
-	let m = url.match(p);
-	if (m) {
-        return m[2];
-    }
-    return false;
-}
-
-function matchFacebookUrl(url) {
-    let p = /^https:\/\/www\.facebook\.com\/(.*?)\/videos\/(.*\/)?([0-9]+)/;
-	let m = url.match(p);
-	if (m) {
-        return m;
-    }
-    return false;
-}
-
-function matchYoutubeUrl(url) {
-    let p = /^(?:https?:\/\/)?(?:m\.|www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})(?:\S+)?$/;
-	let m = url.match(p);
-	if (m) {
-        return m[1];
-    }
-    return false;
-}
 
 // add more elements perhaps.
 function setUserInterfaceAvailability(disable) {

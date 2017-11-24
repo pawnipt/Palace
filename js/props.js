@@ -62,11 +62,13 @@ class PalaceProp {
     }
 
     decodePropFlags(flags) {
-    	var i = parseInt(flags,16).swap16();
-    	this.head = Boolean(i & propConsts.head);
-    	this.ghost = Boolean(i & propConsts.ghost);
-    	this.animated = Boolean(i & propConsts.animated);
-    	this.bounce = Boolean(i & propConsts.bounce);
+        if (typeof flags === 'string') {
+            flags = parseInt(flags,16).swap16();
+        }
+    	this.head = Boolean(flags & propConsts.head);
+    	this.ghost = Boolean(flags & propConsts.ghost);
+    	this.animated = Boolean(flags & propConsts.animated);
+    	this.bounce = Boolean(flags & propConsts.bounce);
     }
 
     get encodePropFlags() {
@@ -132,8 +134,11 @@ function downloadPropInfoCallBack(response) { // need to handle possible http er
 	for (var i = 0; i < propsInfo.props.length; i++) {
 		var prop = propsInfo.props[i];
 		var aProp = allProps[prop.id];
-		if (aProp) {
+		if (aProp && aProp.rcounter !== undefined) {
 			if (prop.success === false) {
+                if (aProp.rcounter === 0) { // only request legacy prop once and only if normal prop request fails.
+                    palace.sendAssetQuery(prop.id);
+                }
 				retryProps.push(prop.id);
 				aProp.rcounter++;
 			} else {
@@ -167,8 +172,8 @@ function loadProps(pids,fromSelf,callback) {
 				}
 			} else if (aProp.rcounter !== undefined && aProp.rcounter > 0 && aProp.rcounter < 9) {
 				toLoad.props.push({id:pid});
-			} else {
-				if (callback) callback();
+			} else if (callback) {
+                callback();
 			}
 		}
 		if (toLoad.props.length > 0)
