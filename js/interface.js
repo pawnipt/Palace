@@ -197,7 +197,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 		if (this.clickedProp(event.target).dataset.pid) wearSelectedProps();
 	};
 	propBag.onmousemove = function(event) {
-		if (event.target === this && event.layerX < 2) {
+		if (event.target === this && event.x-this.offsetLeft < 2) {
 			this.style.cursor = 'col-resize';
 		} else {
 			this.style.cursor = 'auto';
@@ -233,7 +233,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 			}
 		} else if (event.x-this.offsetLeft < 2) {
 			event.preventDefault();
-			var initialX = event.pageX;
+			var initialX = event.pageX-window.scrollX;
 			var initialW = this.offsetWidth;
 
 			var mouseMovePropBag = (event) => {
@@ -414,9 +414,9 @@ let contextMenuListener = new ContextMenuListener((info) => {
 
 	logField.onmousemove = propBag.onmousemove; // same basic functionality...
 	logField.onmousedown = function(event) { // trigger for log resizing
-		if (event.target === this && event.layerX < 2) {
+		if (event.target === this && event.x-this.offsetLeft < 2) {
 			event.preventDefault();
-			var initialX = event.pageX;
+			var initialX = event.pageX-window.scrollX;
 			var initialW = this.offsetWidth;
 
 			let mouseMoveLog = (event) => {
