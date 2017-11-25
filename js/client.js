@@ -7,7 +7,6 @@ const	MSG_ASSETNEW = 0x61417374,
 		MSG_AUTHENTICATE = 0x61757468,
 		MSG_AUTHRESPONSE = 0x61757472,
 		MSG_DISPLAYURL = 0x6475726c,
-		MSG_DIYIT = 0x72796974,
 		MSG_DOORLOCK = 0x6c6f636b,
 		MSG_DOORUNLOCK = 0x756e6c6f,
 		MSG_DRAW = 0x64726177,
@@ -61,14 +60,110 @@ const	MSG_ASSETNEW = 0x61417374,
 		MSG_BLOWTHRU = 0x626c6f77,
 		MSG_SPOTSTATE = 0x73537461,
 		MSG_SMSG = 0x736d7367,
-		MSG_ALTLOGONREPLY = 0x72657032,
-		MSG_JSON = 0x6a736f6e,
-		MSG_IPTSIGNAL = 0x69707473;
+		MSG_ALTLOGONREPLY = 0x72657032;
 
 
 
 const zlib = require('zlib'); // needed for legacy props
 const net = require('net');
+
+class BufferView extends DataView {
+
+	constructor(abuffer,endian) {
+		super(abuffer);
+		this.littleEndian = !Boolean(endian); // defaults to little endian, set true for big endian.
+	}
+
+	static alloc(size) {
+		return new BufferView(new ArrayBuffer(size));
+	}
+
+	static concat(buffer1,buffer2) {
+		let tmp = new Uint8Array(buffer1.byteLength + buffer2.byteLength);
+		tmp.set(new Uint8Array(buffer1), 0);
+		tmp.set(new Uint8Array(buffer2), buffer1.byteLength);
+		return new BufferView(tmp.buffer);
+	}
+
+	get length() {
+		return super.byteLength;
+	}
+
+	set(uint8,offset) {
+		new Uint8Array(super.buffer).set(uint8,offset);
+	}
+
+	pStr(offset,decoder) {
+		return decoder.decode(
+			super.buffer.slice(offset+1,offset+this.getUint8(offset)+1)
+		);
+	}
+	pString(offset,decoder) {
+		return decoder.decode(
+			super.buffer.slice(offset+1,offset+this.getUint8(offset)+1)
+		);
+	}
+	cString(offset,decoder) {
+		return decoder.decode(
+			super.buffer.slice(offset,new Uint8Array(super.buffer).indexOf(0,offset))
+		);
+	}
+	toString(start,end,decoder) {
+		return decoder.decode(
+			super.buffer.slice(start,end)
+		);
+	}
+
+	slice(start,end) {
+		return new BufferView(super.buffer.slice(start,end));
+	}
+
+	sliceUint8(start,end) {
+		return new Uint8Array(super.buffer.slice(start,end));
+	}
+
+	sliceUint8Clamped(start,end) {
+		return new Uint8ClampedArray(super.buffer.slice(start,end));
+	}
+
+	getUint32(offset) {
+		return super.getUint32(offset,this.littleEndian);
+	}
+	getInt32(offset) {
+		return super.getInt32(offset,this.littleEndian);
+	}
+	getUint16(offset) {
+		return super.getUint16(offset,this.littleEndian);
+	}
+	getInt16(offset) {
+		return super.getInt16(offset,this.littleEndian);
+	}
+	// getUint8(offset) {
+	// 	return super.getUint8(offset);
+	// }
+
+
+	setUint32(value,offset) {
+		return super.setUint32(offset,value,this.littleEndian);
+	}
+	setInt32(value,offset) {
+		return super.setInt32(offset,value,this.littleEndian);
+	}
+	setUint16(value,offset) {
+		return super.setUint16(offset,value,this.littleEndian);
+	}
+	setInt16(value,offset) {
+		return super.setInt16(offset,value,this.littleEndian);
+	}
+	setUint8(value,offset) {
+		return super.setUint8(offset,value);
+	}
+	setInt8(value,offset) {
+		return super.setInt8(offset,value);
+	}
+
+}
+
 
 class PalaceProtocol {
 	constructor(regi,puid) {
@@ -77,43 +172,10 @@ class PalaceProtocol {
 		this.puid = puid;
 	}
 
-	static toArrayBuffer(b) { // node buffer to ArrayBuffer
-		return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
-	}
-	static pStr(b,offset,encoding) {
-		return encoding.decode(
-			PalaceProtocol.toArrayBuffer(
-				b.slice(offset+1,offset+1+b.readUInt8(offset))
-			)
-		);
-	}
-	static pString(b,offset) {
-		return palace.textDecoding.decode(
-			PalaceProtocol.toArrayBuffer(
-				b.slice(offset+1,offset+1+b.readUInt8(offset))
-			)
-		);
-	}
-	static cString(b,offset) {
-		return palace.textDecoding.decode(
-			PalaceProtocol.toArrayBuffer(
-				b.slice(offset,b.indexOf(0,offset))
-			)
-		);
-	}
-
-	static toString(b,start,end) {
-		return palace.textDecoding.decode(
-			PalaceProtocol.toArrayBuffer(
-				b.slice(start,end)
-			)
-		);
-	}
-
 	connect(ip,port) {
+		this.textDecoder = new TextDecoder('windows-1252'); // default server encoding
+		this.textEncoder = new TextEncoder('windows-1252', { NONSTANDARD_allowLegacyEncoding: true }); // palace default! :\
 
-		this.textDecoding = new TextDecoder('windows-1252'); // default server encoding
-		this.textEncoding = new TextEncoder('windows-1252', { NONSTANDARD_allowLegacyEncoding: true }); // palace default! :\
 		if (!port) port = '9998';
 		this.ip = ip.trim();
 		this.port = port.trim();
@@ -125,7 +187,7 @@ class PalaceProtocol {
 			this.soc.destroy();
 		}
 
-		this.buffer = Buffer.alloc(0);
+		this.buffer = BufferView.alloc(0);
 		this.soc = new net.Socket(); // node socket
 		this.soc.on('connect', () => {
 			logmsg('Connected');
@@ -136,22 +198,26 @@ class PalaceProtocol {
 		this.soc.connect(this.port, this.ip); // connecting problem to dragons lair
 	}
 
-	onData(data) {
-		this.buffer = Buffer.concat([this.buffer, data]);
+	onData(nodeBuffer) { 								// accessing the Node Buffers ArrayBuffer
+		this.buffer = BufferView.concat(this.buffer.buffer, nodeBuffer.buffer); // concating two ArrayBuffers
 		do {
 			if (this.buffer.length < 8) break;
-			var packetLength = this.buffer.readInt32LE(4) + 12;
+			var packetLength = this.buffer.getInt32(4) + 12;
 			if (this.buffer.length < packetLength) break;
 			this.packetReceived(this.buffer.slice(0,packetLength));
 			this.buffer = this.buffer.slice(packetLength,this.buffer.length);
 		} while (this.buffer.length > 0);
 	}
 
+	send(b) {
+		this.soc.write(Buffer.from(b.buffer));
+	}
+
 	onError(err) {
 		if (err.code = 'ECONNRESET') {
 			if (!this.retryRegistration) { //part of pserver security plugin to work around local proxies like pdrug.
 				this.retryRegistration = true;
-				this.buffer = Buffer.alloc(0);
+				this.buffer = BufferView.alloc(0);
 				this.soc.destroy(); // seems nessacery
 				this.soc.connect(this.port,this.ip);
 			}
@@ -160,10 +226,10 @@ class PalaceProtocol {
 		}
 	}
 
-	packetReceived(buffer) {
-		var packet = {type:buffer.readInt32LE(0),
-					reference:buffer.readInt32LE(8), // reference is sub identifier; usually a user ID
-					data:buffer};
+	packetReceived(view) {
+		var packet = {type:view.getInt32(0),
+					reference:view.getInt32(8), // reference is sub identifier; usually a user ID
+					data:view};
 
 		switch(packet.type) {
 			case MSG_USERMOVE:
@@ -286,90 +352,90 @@ class PalaceProtocol {
 				//trash
 				break;
 			default:
-				console.log('unhandled packet: '+buffer.slice(0,4));
+				console.log('unhandled packet: '+packet.type);
 				break;
 		}
 	}
 
 	parseAsset(p) {
-		p.data = {id:p.data.readInt32LE(16),
-			flags:p.data.readInt16LE(86),
-			offsets:{x:p.data.readInt16LE(80), y:p.data.readInt16LE(82)},
+		p.data = {id:p.data.getInt32(16),
+			flags:p.data.getInt16(86),
+			offsets:{x:p.data.getInt16(80), y:p.data.getInt16(82)},
 			size:{w:44, h:44},
-			name:PalaceProtocol.pStr(p.data,44,new TextDecoder('utf-8')),
-			img:p.data.slice(88,p.data.readInt32LE(40)+76)};
+			name:p.data.pString(44,new TextDecoder('utf-8')), //prop assets names from the pserver are utf8
+			img:p.data.sliceUint8Clamped(88,p.data.getInt32(40)+76)};
 		this.passData(p);
 	}
 
 	parseServerDown(p) {
 		p.data = {refnum:p.reference,
-			msg:PalaceProtocol.cString(p.data, 12)};
+			msg:p.data.cString(12,this.textDecoder)};
 		this.passData(p);
 	}
 
 	parseBlowThru(p) {
 		if (p.reference == 0x4f434e45) { // pserver plugin that sets encoding for the server
-			var encoding = p.data.toString('binary',12,p.data.readInt32LE(4) + 12);
-			this.textDecoding = new TextDecoder(encoding);
-			this.textEncoding = new TextEncoder(encoding, { NONSTANDARD_allowLegacyEncoding: true });
+			var encoding = p.data.toString(12,p.data.getInt32(4) + 12,this.textDecoder);
+			this.textDecoder = new TextDecoder(encoding);
+			this.textEncoder = new TextEncoder(encoding, { NONSTANDARD_allowLegacyEncoding: true });
 		}
 	}
 
 	parseSpotMove(p) {
-		p.data = {roomid:p.data.readInt16LE(12),
-			spotid:p.data.readInt16LE(14),
-			x:p.data.readInt16LE(18),
-			y:p.data.readInt16LE(16)};
+		p.data = {roomid:p.data.getInt16(12),
+			spotid:p.data.getInt16(14),
+			x:p.data.getInt16(18),
+			y:p.data.getInt16(16)};
 		this.passData(p);
 	}
 
 	parsePicMove(p) {
-		p.data = {roomid:p.data.readInt16LE(12),
-			spotid:p.data.readInt16LE(14),
-			x:p.data.readInt16LE(18),
-			y:p.data.readInt16LE(16)};
+		p.data = {roomid:p.data.getInt16(12),
+			spotid:p.data.getInt16(14),
+			x:p.data.getInt16(18),
+			y:p.data.getInt16(16)};
 		this.passData(p);
 	}
 
 	parseSpotState(p) {
-		p.data = {roomid:p.data.readInt16LE(12),
-			spotid:p.data.readInt16LE(14),
-			state:p.data.readInt16LE(16),
+		p.data = {roomid:p.data.getInt16(12),
+			spotid:p.data.getInt16(14),
+			state:p.data.getInt16(16),
 			lock:null};
 		this.passData(p);
 	}
 
 	parseDoorLock(p) {
-		p.data = {roomid:p.data.readInt16LE(12),
-			spotid:p.data.readInt16LE(14),
+		p.data = {roomid:p.data.getInt16(12),
+			spotid:p.data.getInt16(14),
 			state:1,
 			lock:true};
 		this.passData(p);
 	}
 
 	parseDoorUnlock(p) {
-		p.data = {roomid:p.data.readInt16LE(12),
-			spotid:p.data.readInt16LE(14),
+		p.data = {roomid:p.data.getInt16(12),
+			spotid:p.data.getInt16(14),
 			state:0,
 			lock:false};
 		this.passData(p);
 	}
 
 	parseHttpServer(p) {
-		p.data = PalaceProtocol.cString(p.data,12).replace(/\/?$/, '/'); // make sure it ends with a forward slash!
+		p.data = p.data.cString(12,this.textDecoder).replace(/\/?$/, '/'); // make sure it ends with a forward slash!
 		this.passData(p);
 	}
 
 	parseRoom(p) {
-		var readPointer = function(b,offset) {
-			return b.readInt16LE(offset)+52;
+		var readPointer = (b,offset) => {
+			return b.getInt16(offset)+52;
 		};
-		var roomPstring = function(b,offset) {
-			return PalaceProtocol.pString(b,readPointer(b,offset));
+		var roomPstring = (b,offset) => {
+			return b.pString(readPointer(b,offset),this.textDecoder);
 		};
 
-		var room = {id:p.data.readInt16LE(20),
-					flags:p.data.readInt32LE(12),
+		var room = {id:p.data.getInt16(20),
+					flags:p.data.getInt32(12),
 					name:roomPstring(p.data,22),
 					artist:roomPstring(p.data,26),
 					background:roomPstring(p.data,24),
@@ -381,46 +447,46 @@ class PalaceProtocol {
 
 
 		var nxt = readPointer(p.data,46);
-		var count = p.data.readInt16LE(44);
+		var count = p.data.getInt16(44);
 		for (var i = 0; i < count; i++) {
-			room.looseProps.push({y:p.data.readInt16LE(nxt+20),
-				x:p.data.readInt16LE(nxt+22),
-				id:p.data.readInt32LE(nxt+4)});
+			room.looseProps.push({y:p.data.getInt16(nxt+20),
+				x:p.data.getInt16(nxt+22),
+				id:p.data.getInt32(nxt+4)});
 			nxt = readPointer(p.data,nxt);
 		}
 
 		nxt = readPointer(p.data,32);
-		count = p.data.readInt16LE(30);
+		count = p.data.getInt16(30);
 
 		for (var i = 0; i < count; i++) { //hotspots aka doors
-			var flags = p.data.readInt32LE(nxt+4);
+			var flags = p.data.getInt32(nxt+4);
 			var spot = {flags:flags,
 							layer:(flags & 0x00000004 || flags & 0x00000040 || flags & 0x00000001)?1:0,
-							y:p.data.readInt16LE(nxt+16),
-							x:p.data.readInt16LE(nxt+18),
-							id:p.data.readInt16LE(nxt+20),
-							dest:p.data.readInt16LE(nxt+22),
-							type:p.data.readInt16LE(nxt+28),
-							state:p.data.readInt16LE(nxt+36),
+							y:p.data.getInt16(nxt+16),
+							x:p.data.getInt16(nxt+18),
+							id:p.data.getInt16(nxt+20),
+							dest:p.data.getInt16(nxt+22),
+							type:p.data.getInt16(nxt+28),
+							state:p.data.getInt16(nxt+36),
 							name:roomPstring(p.data,nxt+42),
-							script:PalaceProtocol.cString(p.data,readPointer(p.data,nxt+44)),
+							script:p.data.cString(readPointer(p.data,nxt+44),this.textDecoder),
 							points:[],
 							statepics:[]};
 
-			var ptsCount = p.data.readInt16LE(nxt+24);
+			var ptsCount = p.data.getInt16(nxt+24);
 			var ptsOffset = readPointer(p.data,nxt+26);
 			for (var j = 0; j < ptsCount; j++) {
-				spot.points.push(p.data.readInt16LE(ptsOffset+2));
-				spot.points.push(p.data.readInt16LE(ptsOffset));
+				spot.points.push(p.data.getInt16(ptsOffset+2));
+				spot.points.push(p.data.getInt16(ptsOffset));
 				ptsOffset += 4;
 			}
 
-			var nbrStates = p.data.readInt16LE(nxt+38);
+			var nbrStates = p.data.getInt16(nxt+38);
 			var stateRecOfst = readPointer(p.data,nxt+40);
 			for (var j = 0; j < nbrStates; j++) {
-				spot.statepics.push({id:p.data.readInt16LE(stateRecOfst),
-										x:p.data.readInt16LE(stateRecOfst+6),
-										y:p.data.readInt16LE(stateRecOfst+4)});
+				spot.statepics.push({id:p.data.getInt16(stateRecOfst),
+										x:p.data.getInt16(stateRecOfst+6),
+										y:p.data.getInt16(stateRecOfst+4)});
 				stateRecOfst += 8;
 			}
 
@@ -428,22 +494,22 @@ class PalaceProtocol {
 			nxt += 48;
 		}
 
-		var nbrPics = p.data.readInt16LE(34);
+		var nbrPics = p.data.getInt16(34);
 		var picOffset = readPointer(p.data,36);
 		for (var i = 0; i < nbrPics; i++) {
 			room.pictures.push({name:roomPstring(p.data,picOffset+6),
-				id:p.data.readInt16LE(picOffset+4),
-				trans:p.data.readInt16LE(picOffset+8)});
+				id:p.data.getInt16(picOffset+4),
+				trans:p.data.getInt16(picOffset+8)});
 			picOffset += 12;
 		}
 
 		nxt = readPointer(p.data,40);
 
 		room.draws = [];
-		var nbrDraws = p.data.readInt16LE(38);
+		var nbrDraws = p.data.getInt16(38);
 		for (var i = 0; i < nbrDraws; i++) {
 			var pos = readPointer(p.data,nxt+8);
-			room.draws.push(PalaceProtocol.parseDraw( p.data.slice(pos,p.data.readInt16LE(nxt+6)+pos) , p.data.readInt16LE(nxt+4)));
+			room.draws.push(this.parseDraw(p.data.slice(pos,p.data.getInt16(nxt+6)+pos) , p.data.getInt16(nxt+4)));
 			nxt = readPointer(p.data,nxt);
 		}
 
@@ -458,14 +524,14 @@ class PalaceProtocol {
 
 	parseRoomList(p) {
 		var list = [];
-		var count = p.data.readInt32LE(8);
+		var count = p.data.getInt32(8);
 		var add = 12;
 		for (var i = 0; i < count; i++) {
-			var nameLen = p.data.readInt8(add+8);
-			list.push({name:PalaceProtocol.toString(p.data,add+9,add+9+nameLen),
-							id:p.data.readInt32LE(add),
-							flags:p.data.readInt16LE(add+4),
-							population:p.data.readInt16LE(add+6)});
+			var nameLen = p.data.getUint8(add+8);
+			list.push({name:p.data.toString(add+9,add+9+nameLen,this.textDecoder),
+							id:p.data.getInt32(add),
+							flags:p.data.getInt16(add+4),
+							population:p.data.getInt16(add+6)});
 			add = add+9+((nameLen + ( 4 - (nameLen & 3))) - 1);
 		}
 		p.data = list;
@@ -474,14 +540,14 @@ class PalaceProtocol {
 
 	parseUserList(p) {
 		var list = [];
-		var count = p.data.readInt32LE(8);
+		var count = p.data.getInt32(8);
 		var add = 12;
 		for (var i = 0; i < count; i++) {
-			var nameLen = p.data.readInt8(add+8);
-			list.push({name:PalaceProtocol.toString(p.data,add+9,add+9+nameLen),
-							userid:p.data.readInt32LE(add),
-							flags:p.data.readInt16LE(add+4),
-							roomid:p.data.readInt16LE(add+6)});
+			var nameLen = p.data.getUint8(add+8);
+			list.push({name:p.data.toString(add+9,add+9+nameLen,this.textDecoder),
+							userid:p.data.getInt32(add),
+							flags:p.data.getInt16(add+4),
+							roomid:p.data.getInt16(add+6)});
 			add = add+9+((nameLen + ( 4 - (nameLen & 3))) - 1);
 		}
 		p.data = list;
@@ -489,108 +555,118 @@ class PalaceProtocol {
 	}
 
 	parsePropDelete(p) {
-		p.data = p.data.readInt32LE(12);
+		p.data = p.data.getInt32(12);
 		this.passData(p);
 	}
 	parsePropNew(p) {
-		p.data = {x:p.data.readInt16LE(22),
-			y:p.data.readInt16LE(20),
-			id:p.data.readInt32LE(12),
-			crc:p.data.readInt32LE(16)};
+		p.data = {x:p.data.getInt16(22),
+			y:p.data.getInt16(20),
+			id:p.data.getInt32(12),
+			crc:p.data.getInt32(16)};
 		this.passData(p);
 	}
 	parsePropMove(p) {
-		p.data = {x:p.data.readInt16LE(18),
-			y:p.data.readInt16LE(16),
-			index:p.data.readInt32LE(12)};
+		p.data = {x:p.data.getInt16(18),
+			y:p.data.getInt16(16),
+			index:p.data.getInt32(12)};
 		this.passData(p);
 	}
 
 	parseUserStatus(p) {
 		p.data = {id:p.reference,
-			status:p.data.readInt16LE(12)};
+			status:p.data.getInt16(12)};
 		this.passData(p);
 	}
 
 	parseServerInfo(p) {
-		p.data = {flags:p.data.readInt32LE(12),
-			name:PalaceProtocol.pString(p.data,16)};
+		p.data = {flags:p.data.getInt32(12),
+			name:p.data.pString(16,this.textDecoder)};
 		this.passData(p);
 	}
 
 
 	parseUserFace(p) {
 		p.data = {id:p.reference,
-			face:p.data.readInt16LE(12)};
+			face:p.data.getInt16(12)};
 		this.passData(p);
 	}
 	parseUserColor(p) {
 		p.data = {id:p.reference,
-			color:p.data.readInt16LE(12)};
+			color:p.data.getInt16(12)};
 		this.passData(p);
 	}
+
 	parseUserProp(p) {
+		var props = [];
+		for (var i = 16; i < p.data.length-1; i += 8) {
+			props.push(p.data.getInt32(i));
+		}
 		p.data = {id:p.reference,
-			props:PalaceProtocol.buffer2Props(p.data.slice(16,p.data.length))};
+			props:props};
 		this.passData(p);
 	}
+
 	parseUserDesc(p) {
+		var props = [];
+		for (var i = 20; i < p.data.length-1; i += 8) {
+			props.push(p.data.getInt32(i));
+		}
 		p.data = {id:p.reference,
-			face:p.data.readInt16LE(12),
-			color:p.data.readInt16LE(14),
-			props:PalaceProtocol.buffer2Props(p.data.slice(20,p.data.length))};
+			face:p.data.getInt16(12),
+			color:p.data.getInt16(14),
+			props:props};
 		this.passData(p);
 	}
 
 	parseUserName(p) {
 		p.data = {id:p.reference,
-			name:PalaceProtocol.pString(p.data,12)};
+			name:p.data.pString(12,this.textDecoder)};
 		this.passData(p);
 	}
 
 	parseUserLog(p) {
 		p.data = {id:p.reference,
-			count:p.data.readInt32LE(12)};
+			count:p.data.getInt32(12)};
 		this.passData(p);
 	}
 
 	parseLogOff(p) {
 		p.data = {id:p.reference,
-			count:p.data.readInt32LE(12)};
+			count:p.data.getInt32(12)};
 		this.passData(p);
 	}
 
 	parseUserMove(p) {
 		p.data = {id:p.reference,
-			x:p.data.readInt16LE(14),
-			y:p.data.readInt16LE(12)};
+			x:p.data.getInt16(14),
+			y:p.data.getInt16(12)};
 		this.passData(p);
 	}
 
 	parseWhisper(p) {
 		p.data = {id:0,
-			chatstr:PalaceProtocol.cString(p.data,12),
+			chatstr:p.data.cString(12,this.textDecoder),
 			whisper:true};
 		this.passData(p);
 	}
 
 	parseTalk(p) {
 		p.data = {id:p.reference,
-			chatstr:PalaceProtocol.cString(p.data,12),
+			chatstr:p.data.cString(12,this.textDecoder),
 			whisper:false};
 		this.passData(p);
 	}
 
 	parseXtalk(p) {
 		p.data = {id:p.reference,
-			chatstr:this.crypt.Decrypt(p.data.slice(14,14+p.data.readInt16LE(12)-3)),
+			chatstr:this.crypt.Decrypt(p.data.sliceUint8Clamped(14,11+p.data.getInt16(12)),this.textDecoder),
 			whisper:false};
 		this.passData(p);
 	}
 
 	parseXwhisper(p) {
 		p.data = {id:p.reference,
-			chatstr:this.crypt.Decrypt(p.data.slice(14,14+p.data.readInt16LE(12)-3)),
+			chatstr:this.crypt.Decrypt(p.data.sliceUint8Clamped(14,11+p.data.getInt16(12)),this.textDecoder),
 			whisper:true};
 		this.passData(p);
 	}
@@ -601,22 +677,22 @@ class PalaceProtocol {
 	}
 
 	parseDrawing(p) {
-		p.data = PalaceProtocol.parseDraw(p.data.slice(22,p.data.length),p.data.readUInt16LE(16));
+		p.data = this.parseDraw(p.data.slice(22,p.data.length),p.data.getUint16(16));
 		this.passData(p);
 	}
 
 	parseUser(p) {
-	  var user = {name:PalaceProtocol.pString(p.data,104),
+	  var user = {name:p.data.pString(104,this.textDecoder),
 					id:p.reference,
-					x:p.data.readInt16LE(18),
-					y:p.data.readInt16LE(16),
-					color:p.data.readInt16LE(96),
-					face:p.data.readInt16LE(94),
+					x:p.data.getInt16(18),
+					y:p.data.getInt16(16),
+					color:p.data.getInt16(96),
+					face:p.data.getInt16(94),
 					props:[]};
 
-		var nbrProps = p.data.readInt16LE(102);
+		var nbrProps = p.data.getInt16(102);
 		for (var j = 0; j < nbrProps; j++) {
-			user.props.push(p.data.readInt32LE(20+(j*8)));
+			user.props.push(p.data.getInt32(20+(j*8)));
 		}
 
 		p.data = user;
@@ -628,17 +704,17 @@ class PalaceProtocol {
 		var uOffset = 12;
 		var count = p.reference;
 		for (var i = 0; i < count; i++) {
-			var user = {name:PalaceProtocol.pString(p.data,uOffset+92),
-						id:p.data.readInt32LE(uOffset),
-						x:p.data.readInt16LE(uOffset+6),
-						y:p.data.readInt16LE(uOffset+4),
-						color:p.data.readInt16LE(uOffset+84),
-						face:p.data.readInt16LE(uOffset+82),
+			var user = {name:p.data.pString(uOffset+92,this.textDecoder),
+						id:p.data.getInt32(uOffset),
+						x:p.data.getInt16(uOffset+6),
+						y:p.data.getInt16(uOffset+4),
+						color:p.data.getInt16(uOffset+84),
+						face:p.data.getInt16(uOffset+82),
 						props:[]};
 
-			var nbrProps = p.data.readInt16LE(90+uOffset);
+			var nbrProps = p.data.getInt16(90+uOffset);
 			for (var j = 0; j < nbrProps; j++)
-				user.props.push(p.data.readInt32LE(8+uOffset+(j*8)));
+				user.props.push(p.data.getInt32(8+uOffset+(j*8)));
 
 			users.push(user);
 			uOffset += 124;
@@ -649,16 +725,7 @@ class PalaceProtocol {
 	}
 
 
-
-	static buffer2Props(b) {
-		var props = [];
-		for (var i = 0; i < b.length-1; i += 8)
-			props.push(b.readInt32LE(i));
-		return props;
-	}
-
-
-	static parseDraw(cmdData,type) { // one old hack of a packet
+	parseDraw(cmdData,type) { // one old hack of a packet
 
 		var nbrPoints,i,differential,pensize,r1,g1,b1,r2,g2,b2;
 		var a1 = -1;
@@ -671,24 +738,24 @@ class PalaceProtocol {
 
 
 			var shape = (type & drawType.SHAPE) != 0;
-			pensize = cmdData.readInt16LE(0);
+			pensize = cmdData.getInt16(0);
 			differential = Math.trunc(pensize/2);
-			nbrPoints = cmdData.readInt16LE(2);
+			nbrPoints = cmdData.getInt16(2);
 
 			if (cmdData.length == (nbrPoints*4)+22) {
-				r1 = cmdData.readUInt8(cmdData.length-7);
-				g1 = cmdData.readUInt8(cmdData.length-6);
-				b1 = cmdData.readUInt8(cmdData.length-5);
-				a1 = cmdData.readUInt8(cmdData.length-8);
+				r1 = cmdData.getUint8(cmdData.length-7);
+				g1 = cmdData.getUint8(cmdData.length-6);
+				b1 = cmdData.getUint8(cmdData.length-5);
+				a1 = cmdData.getUint8(cmdData.length-8);
 
-				r2 = cmdData.readUInt8(cmdData.length-3);
-				g2 = cmdData.readUInt8(cmdData.length-2);
-				b2 = cmdData.readUInt8(cmdData.length-1);
-				a2 = cmdData.readUInt8(cmdData.length-4);
+				r2 = cmdData.getUint8(cmdData.length-3);
+				g2 = cmdData.getUint8(cmdData.length-2);
+				b2 = cmdData.getUint8(cmdData.length-1);
+				a2 = cmdData.getUint8(cmdData.length-4);
 			} else {
-				r1 = cmdData.readUInt8(4);
-				g1 = cmdData.readUInt8(6);
-				b1 = cmdData.readUInt8(8);
+				r1 = cmdData.getUint8(4);
+				g1 = cmdData.getUint8(6);
+				b1 = cmdData.getUint8(8);
 				r2 = r1;
 				g2 = g2;
 				b2 = b2;
@@ -696,42 +763,42 @@ class PalaceProtocol {
 			}
 
 			if ((type & drawType.TEXT) != 0) { //text
-				pensize = cmdData.readInt16LE(0);
+				pensize = cmdData.getInt16(0);
 
-				jdraw.bold = (cmdData.readUInt8(18) & 1) != 0;
-				jdraw.underline = (cmdData.readUInt8(18) & 2) != 0;
-				jdraw.italic = (cmdData.readUInt8(18) & 4) != 0;
+				jdraw.bold = (cmdData.getUint8(18) & 1) != 0;
+				jdraw.underline = (cmdData.getUint8(18) & 2) != 0;
+				jdraw.italic = (cmdData.getUint8(18) & 4) != 0;
 
-				var font = PalaceProtocol.pString(cmdData,19);
+				var font = cmdData.pString(19,this.textDecoder);
 				var aLen = font.length;
 				jdraw.font = font;
-				var msg = PalaceProtocol.cString(cmdData,20+aLen); //must define utf8!
+				var msg = cmdData.cString(20+aLen,this.textDecoder); //must define utf8!
 				jdraw.msg = msg;
 
 				if (aLen+msg.length+29 == cmdData.length) {
 					// might be executing color building twice, check for this later
-					r1 = cmdData.readUInt8(cmdData.length-7);
-					g1 = cmdData.readUInt8(cmdData.length-6);
-					b1 = cmdData.readUInt8(cmdData.length-5);
-					a1 = cmdData.readUInt8(cmdData.length-8);
+					r1 = cmdData.getUint8(cmdData.length-7);
+					g1 = cmdData.getUint8(cmdData.length-6);
+					b1 = cmdData.getUint8(cmdData.length-5);
+					a1 = cmdData.getUint8(cmdData.length-8);
 
-					r2 = cmdData.readUInt8(cmdData.length-3);
-					g2 = cmdData.readUInt8(cmdData.length-2);
-					b2 = cmdData.readUInt8(cmdData.length-1);
-					a2 = cmdData.readUInt8(cmdData.length-4);
-					pensize=cmdData.readInt16LE(0);
+					r2 = cmdData.getUint8(cmdData.length-3);
+					g2 = cmdData.getUint8(cmdData.length-2);
+					b2 = cmdData.getUint8(cmdData.length-1);
+					a2 = cmdData.getUint8(cmdData.length-4);
+					pensize=cmdData.getInt16(0);
 				}
 
-				jdraw.x = cmdData.readInt16LE(10);
-				jdraw.y = cmdData.readInt16LE(12);
+				jdraw.x = cmdData.getInt16(10);
+				jdraw.y = cmdData.getInt16(12);
 
 			} else if ((type & drawType.OVAL) != 0) { //oval
-				var w = cmdData.readInt16LE(14);
-				var h = cmdData.readInt16LE(16);
+				var w = cmdData.getInt16(14);
+				var h = cmdData.getInt16(16);
 				jdraw.w = w;
 				jdraw.h = h;
-				jdraw.x = cmdData.readInt16LE(10) - Math.trunc(w/2);
-				jdraw.y = cmdData.readInt16LE(12) - Math.trunc(h/2);
+				jdraw.x = cmdData.getInt16(10) - Math.trunc(w/2);
+				jdraw.y = cmdData.getInt16(12) - Math.trunc(h/2);
 			} else {
 
 				i = ((nbrPoints+1)*4)+9;
@@ -742,8 +809,8 @@ class PalaceProtocol {
 
 				var pts = [];
 				for (var j = 10; j < i; j += 4) {
-					y=y+cmdData.readInt16LE(j);
-					x=x+cmdData.readInt16LE(j+2);
+					y=y+cmdData.getInt16(j);
+					x=x+cmdData.getInt16(j+2);
 					pts.push(x+difference);
 					pts.push(y+difference);
 				}
@@ -765,9 +832,9 @@ class PalaceProtocol {
 
 
 	sendLogOff() {
-		var packet = Buffer.alloc(12);
-		packet.writeInt32LE(MSG_LOGOFF,0);
-		this.soc.write(packet);
+		var packet = BufferView.alloc(12);
+		packet.setInt32(MSG_LOGOFF,0);
+		this.send(packet);
 	}
 
 	sendDraw(draw) {
@@ -782,294 +849,295 @@ class PalaceProtocol {
 
 		if (draw.front) drawCmd = drawCmd ^ drawType.PENFRONT;
 		var n = draw.points.length;
-		var packet = Buffer.alloc((n*2)+40);
+		var packet = BufferView.alloc((n*2)+40);
 
 		//header data
-		packet.writeInt32LE(MSG_DRAW,0);
-		packet.writeInt32LE((n*2)+28,4); //packetlength
+		packet.setInt32(MSG_DRAW,0);
+		packet.setInt32((n*2)+28,4); //packetlength
 		//packet.long(8)=0 'userID
 		//link
-		//packet.writeInt16LE(12)=0
-		//packet.writeInt16LE(14)=0
+		//packet.setInt16(12)=0
+		//packet.setInt16(14)=0
 		//drawCmd
 
-		packet.writeInt16LE(drawCmd,16,true); //flag...... not sure if applying correct value
+		packet.setInt16(drawCmd,16,true); //flag...... not sure if applying correct value
 		//cmdLength
 
-		packet.writeInt16LE((n*2)+18,18);
-		packet.writeInt16LE(draw.size,22); //pensize
+		packet.setInt16((n*2)+18,18);
+		packet.setInt16(draw.size,22); //pensize
 
-		packet.writeInt16LE((n/2)-1,24); //nbrPts
+		packet.setInt16((n/2)-1,24); //nbrPts
 
 		var red = Number(draw.color[0]);
 		var green = Number(draw.color[1]);
 		var blue = Number(draw.color[2]);
 		var alpha = (Number(draw.color[3]) * 255).fastRound();
 
-		packet.writeUInt8(red,26);
-		packet.writeUInt8(red,27);
-		packet.writeUInt8(green,28);
-		packet.writeUInt8(green,29);
-		packet.writeUInt8(blue,30);
-		packet.writeUInt8(blue,31);
+		packet.setUint8(red,26);
+		packet.setUint8(red,27);
+		packet.setUint8(green,28);
+		packet.setUint8(green,29);
+		packet.setUint8(blue,30);
+		packet.setUint8(blue,31);
 
 		//for i=1 to n-1 step 2
 		for (i = 1; i < n; i += 2) {
 			x1=draw.points[i-1];
 			y1=draw.points[i];
-			packet.writeInt16LE(y1-y,(i*2)+30);
-			packet.writeInt16LE(x1-x,(i*2)+32);
+			packet.setInt16(y1-y,(i*2)+30);
+			packet.setInt16(x1-x,(i*2)+32);
 			x=x1;
 			y=y1;
 		}
 
-		packet.writeUInt8(alpha,packet.length-8);
-		packet.writeUInt8(red,packet.length-7);
-		packet.writeUInt8(green,packet.length-6);
-		packet.writeUInt8(blue,packet.length-5);
+		packet.setUint8(alpha,packet.length-8);
+		packet.setUint8(red,packet.length-7);
+		packet.setUint8(green,packet.length-6);
+		packet.setUint8(blue,packet.length-5);
 
-		red = Number(draw.fill[0]);
+		red = Number(draw.fill[0]); // fix this number casting shit
 		green = Number(draw.fill[1]);
 		blue = Number(draw.fill[2]);
 		alpha = (Number(draw.fill[3]) * 255).fastRound();
 
-		packet.writeUInt8(alpha,packet.length-4);
-		packet.writeUInt8(red,packet.length-3);
-		packet.writeUInt8(green,packet.length-2);
-		packet.writeUInt8(blue,packet.length-1);
+		packet.setUint8(alpha,packet.length-4);
+		packet.setUint8(red,packet.length-3);
+		packet.setUint8(green,packet.length-2);
+		packet.setUint8(blue,packet.length-1);
 
-		this.soc.write(packet);
+		this.send(packet);
 	}
 
 	sendDrawClear(drawCmd) {
-		var packet = Buffer.alloc(22);
-		packet.writeInt32LE(MSG_DRAW,0);
-		packet.writeInt32LE(10,4);
-		packet.writeInt16LE(drawCmd,16);
-		this.soc.write(packet);
+		var packet = BufferView.alloc(22);
+		packet.setInt32(MSG_DRAW,0);
+		packet.setInt32(10,4);
+		packet.setInt16(drawCmd,16);
+		this.send(packet);
 	}
 
 	sendUnlockRoom(spotid) {
-		var packet = Buffer.alloc(16);
-		packet.writeInt32LE(MSG_DOORUNLOCK,0);
-		packet.writeInt32LE(4,4);
-		packet.writeInt16LE(this.theRoom.id,12);
-		packet.writeInt16LE(spotid,14);
-		this.soc.write(packet);
+		var packet = BufferView.alloc(16);
+		packet.setInt32(MSG_DOORUNLOCK,0);
+		packet.setInt32(4,4);
+		packet.setInt16(this.theRoom.id,12);
+		packet.setInt16(spotid,14);
+		this.send(packet);
 	}
 
 	sendLockRoom(spotid) {
-		var packet = Buffer.alloc(16);
-		packet.writeInt32LE(MSG_DOORLOCK,0);
-		packet.writeInt32LE(4,4);
-		packet.writeInt16LE(this.theRoom.id,12);
-		packet.writeInt16LE(spotid,14);
-		this.soc.write(packet);
+		var packet = BufferView.alloc(16);
+		packet.setInt32(MSG_DOORLOCK,0);
+		packet.setInt32(4,4);
+		packet.setInt16(this.theRoom.id,12);
+		packet.setInt16(spotid,14);
+		this.send(packet);
 	}
 
 	sendOperatorRequest(password) {
-		password = Buffer.from(this.textEncoding.encode(password));
+		password = this.textEncoder.encode(password);
 		var leng = password.length;
-		var packet = Buffer.alloc(13+leng);
-		packet.writeInt32LE(MSG_SUPERUSER,0);
-		packet.writeInt32LE(leng+1,4);
+		var packet = BufferView.alloc(13+leng);
+		packet.setInt32(MSG_SUPERUSER,0);
+		packet.setInt32(leng+1,4);
 		var data = this.crypt.Encrypt(password);
-		packet.writeInt8(data.length,12);
-		data.copy(packet,13);
-		this.soc.write(packet);
+		packet.setInt8(data.length,12);
+		packet.set(data,13);
+		this.send(packet);
 	}
 
 	sendPong() {
-		var packet = Buffer.alloc(12);
-		packet.writeInt32LE(MSG_PONG,0);
-		this.soc.write(packet);
+		var packet = BufferView.alloc(12);
+		packet.setInt32(MSG_PONG,0);
+		this.send(packet);
 	}
 
 	sendWhisper(msg,whisperID) {
-		msg = Buffer.from(this.textEncoding.encode(msg));
+		msg = this.textEncoder.encode(msg);
 		var leng = msg.length;
-		var packet = Buffer.alloc(19+leng);
-		packet.writeInt32LE(MSG_XWHISPER,0);
-		packet.writeInt32LE(leng+7,4);
-		packet.writeInt32LE(whisperID,12);
-		packet.writeInt16LE(leng+3,16);
-		this.crypt.Encrypt(msg).copy(packet,18);
-		this.soc.write(packet);
+		var packet = BufferView.alloc(19+leng);
+		packet.setInt32(MSG_XWHISPER,0);
+		packet.setInt32(leng+7,4);
+		packet.setInt32(whisperID,12);
+		packet.setInt16(leng+3,16);
+		packet.set(this.crypt.Encrypt(msg),18)
+		this.send(packet);
 	}
 
 	sendXtlk(msg) {
-		msg = Buffer.from(this.textEncoding.encode(msg));
+		msg = this.textEncoder.encode(msg);
 		var leng = msg.length;
-		var packet = Buffer.alloc(15+leng);
-		packet.writeInt32LE(MSG_XTALK,0);
-		packet.writeInt32LE(leng+3,4);
-		packet.writeInt16LE(leng+3,12);
-		this.crypt.Encrypt(msg).copy(packet,14);
-		this.soc.write(packet);
+		var packet = BufferView.alloc(15+leng);
+		packet.setInt32(MSG_XTALK,0);
+		packet.setInt32(leng+3,4);
+		packet.setInt16(leng+3,12);
+		packet.set(this.crypt.Encrypt(msg),14);
+		this.send(packet);
 	}
 
 	sendRoomNav(id) {
-		var packet = Buffer.alloc(14);
-		packet.writeInt32LE(MSG_ROOMGOTO,0);
-		packet.writeInt32LE(2,4);
-		packet.writeInt16LE(id,12);
-		this.soc.write(packet);
+		var packet = BufferView.alloc(14);
+		packet.setInt32(MSG_ROOMGOTO,0);
+		packet.setInt32(2,4);
+		packet.setInt16(id,12);
+		this.send(packet);
 	}
 
 	sendRoomListRequest() {
-		var packet = Buffer.alloc(12);
-		packet.writeInt32LE(MSG_LISTOFALLROOMS,0);
-		this.soc.write(packet);
+		var packet = BufferView.alloc(12);
+		packet.setInt32(MSG_LISTOFALLROOMS,0);
+		this.send(packet);
 	}
 
 	sendUserListRequest() {
-		var packet = Buffer.alloc(12);
-		packet.writeInt32LE(MSG_LISTOFALLUSERS,0);
-		this.soc.write(packet);
+		var packet = BufferView.alloc(12);
+		packet.setInt32(MSG_LISTOFALLUSERS,0);
+		this.send(packet);
 	}
 
 	sendPropDress(props) {
 		var length = props.length;
-		var packet = Buffer.alloc(16+length*8);
+		var packet = BufferView.alloc(16+length*8);
 
-		packet.writeInt32LE(MSG_USERPROP,0);
-		packet.writeInt32LE(length*8+4,4);
-		packet.writeInt32LE(length,12);
+		packet.setInt32(MSG_USERPROP,0);
+		packet.setInt32(length*8+4,4);
+		packet.setInt32(length,12);
 		for (var i = 0; i < length; i++)
-			packet.writeInt32LE(props[i],16+i*8);
+			packet.setInt32(props[i],16+i*8);
 
-		this.soc.write(packet);
+		this.send(packet);
 	}
 
 	sendPropDrop(x,y,id) {
-		var packet = Buffer.alloc(24);
-		packet.writeInt32LE(MSG_PROPNEW,0);
-		packet.writeInt32LE(12,4);
-		packet.writeInt32LE(id,12);
-		packet.writeInt16LE(y,20);
-		packet.writeInt16LE(x,22);
-		this.soc.write(packet);
+		var packet = BufferView.alloc(24);
+		packet.setInt32(MSG_PROPNEW,0);
+		packet.setInt32(12,4);
+		packet.setInt32(id,12);
+		packet.setInt16(y,20);
+		packet.setInt16(x,22);
+		this.send(packet);
 	}
 
 	sendPropMove(x,y,index) {
-		var packet = Buffer.alloc(20);
-		packet.writeInt32LE(MSG_PROPMOVE,0);
-		packet.writeInt32LE(8,4);
-		packet.writeInt32LE(index,12);
-		packet.writeInt16LE(y,16);
-		packet.writeInt16LE(x,18);
-		this.soc.write(packet);
+		var packet = BufferView.alloc(20);
+		packet.setInt32(MSG_PROPMOVE,0);
+		packet.setInt32(8,4);
+		packet.setInt32(index,12);
+		packet.setInt16(y,16);
+		packet.setInt16(x,18);
+		this.send(packet);
 	}
 
 	sendPropDelete(index) {
-		var packet = Buffer.alloc(16);
-		packet.writeInt32LE(MSG_PROPDEL,0);
-		packet.writeInt32LE(4,4);
-		packet.writeInt32LE(index,12);
-		this.soc.write(packet);
+		var packet = BufferView.alloc(16);
+		packet.setInt32(MSG_PROPDEL,0);
+		packet.setInt32(4,4);
+		packet.setInt32(index,12);
+		this.send(packet);
 	}
 
 	sendUserLocation(x,y) {
-		var packet = Buffer.alloc(16);
-		packet.writeInt32LE(MSG_USERMOVE,0);
-		packet.writeInt32LE(4,4);
-		packet.writeInt16LE(y,12);
-		packet.writeInt16LE(x,14);
-		this.soc.write(packet);
+		var packet = BufferView.alloc(16);
+		packet.setInt32(MSG_USERMOVE,0);
+		packet.setInt32(4,4);
+		packet.setInt16(y,12);
+		packet.setInt16(x,14);
+		this.send(packet);
 	}
 
 	sendUserName(name) {
-		name = Buffer.from(this.textEncoding.encode(name));
-		var packet = Buffer.alloc(name.length+13);
-		packet.writeInt32LE(MSG_USERNAME,0);
-		packet.writeInt32LE(name.length+1,4);
-		packet.writeInt8(name.length,12);
-		name.copy(packet,13);
-		this.soc.write(packet);
+		name = this.textEncoder.encode(name);
+		var packet = BufferView.alloc(name.length+13);
+		packet.setInt32(MSG_USERNAME,0);
+		packet.setInt32(name.length+1,4);
+		packet.setInt8(name.length,12);
+		packet.set(name,13);
+		this.send(packet);
 	}
 
 	sendFace(face) {
-		var packet = Buffer.alloc(14);
-		packet.writeInt32LE(MSG_USERFACE,0);
-		packet.writeInt32LE(2,4);
-		packet.writeInt16LE(face,12);
-		this.soc.write(packet);
+		var packet = BufferView.alloc(14);
+		packet.setInt32(MSG_USERFACE,0);
+		packet.setInt32(2,4);
+		packet.setInt16(face,12);
+		this.send(packet);
 	}
 
 	sendFaceColor(color) {
-		var packet = Buffer.alloc(14);
-		packet.writeInt32LE(MSG_USERCOLOR,0);
-		packet.writeInt32LE(2,4);
-		packet.writeInt16LE(color,12);
-		this.soc.write(packet);
+		var packet = BufferView.alloc(14);
+		packet.setInt32(MSG_USERCOLOR,0);
+		packet.setInt32(2,4);
+		packet.setInt16(color,12);
+		this.send(packet);
 	}
 
 	sendAuthenticate(name,pass) {
-		var info = Buffer.from(this.textEncoding.encode(name+':'+pass));
-		var packet = Buffer.alloc(13+info.length);
-		packet.writeInt32LE(MSG_AUTHRESPONSE,0);
-		packet.writeInt32LE(info.length+1,4);
-		packet.writeInt8(info.length,12);
-		this.crypt.Encrypt(info).copy(packet,13);
-		this.soc.write(packet);
+		var info = this.textEncoder.encode(name+':'+pass);
+		var packet = BufferView.alloc(13+info.length);
+		packet.setInt32(MSG_AUTHRESPONSE,0);
+		packet.setInt32(info.length+1,4);
+		packet.setInt8(info.length,12);
+		packet.set(this.crypt.Encrypt(info),13);
+		this.send(packet);
 	}
 
 	sendRegistration() {
-		var reg =  Buffer.alloc(140);
-		reg.writeInt32LE(MSG_LOGON,0);
-		reg.writeInt32LE(128,4); //fixed packet length
+		var reg = BufferView.alloc(140);
+		reg.setInt32(MSG_LOGON,0);
+		reg.setInt32(128,4); //fixed packet length
 
-		reg.writeInt32LE(this.regi.crc,12);
-		reg.writeInt32LE(this.regi.counter,16);
+		reg.setInt32(this.regi.crc,12);
+		reg.setInt32(this.regi.counter,16);
 
-		var name = Buffer.from(this.textEncoding.encode(prefs.general.userName));
-		reg.writeInt8(name.length,20);
-		name.copy(reg,21);//should truncate to 31 bytes max
+		var name = this.textEncoder.encode(prefs.general.userName);
+		reg.setInt8(name.length,20);
+		reg.set(name,21);//should truncate to 31 bytes max
 
 		if (/^win/.test(process.platform)) { //add linux/unix identifier.
-			reg.writeUInt32LE(0x80000004,84); //must validate since value is
+			reg.setUint32(0x80000004,84); //must validate since value is
 		} else {
-			reg.writeUInt32LE(0x80000002,84);
+			reg.setUint32(0x80000002,84);
 		}
 
-		reg.writeInt32LE(this.puid.counter,88);
-		reg.writeInt32LE(this.puid.crc,92);
+		reg.setInt32(this.puid.counter,88);
+		reg.setInt32(this.puid.crc,92);
 
-		reg.writeInt32LE(0x00011940,96);
-		reg.writeInt32LE(0x00011940,100);
-		reg.writeInt32LE(0x00011940,104);
-		//reg.writeInt16LE(0,108); //optional room ID to land in (if server allows it)
-		reg.write('PC5'+remote.app.getVersion().replace(/\./g, ''),110,6);
+		reg.setInt32(0x00011940,96);
+		reg.setInt32(0x00011940,100);
+		reg.setInt32(0x00011940,104);
+		//reg.setInt16(0,108); //optional room ID to land in (if server allows it)
+		reg.set(this.textEncoder.encode('PC5'+remote.app.getVersion().replace(/\./g, '')),110);
 
-		reg.writeInt32LE(0x00000041,120);
+		reg.setInt32(0x00000041,120);
 		if (this.retryRegistration === true ) {
-			reg.writeInt32LE(0x00000111,124); //original value required by a security pserver plugin
+			reg.setInt32(0x00000111,124); //original value required by a security pserver plugin
 		} else {
-			reg.writeInt32LE(0x00000151,124); //a protocol required by a different security pserver plugins
+			reg.setInt32(0x00000151,124); //a protocol required by a different security pserver plugins
 		}
-		reg.writeInt32LE(0x00000001,128);
-		reg.writeInt32LE(0x00000001,132);
+		reg.setInt32(0x00000001,128);
+		reg.setInt32(0x00000001,132);
 
-		this.soc.write(reg);
+		this.send(reg);
 	}
 
 
 	sendAssetQuery(id) { // request a legacy prop
-		var packet = Buffer.alloc(24);
-		packet.writeInt32LE(MSG_ASSETQUERY,0);
-		packet.writeInt32LE(12,4);
-		packet.writeInt32LE(0x50726F70,12); // asset name 'Prop'
-		packet.writeInt32LE(id,16);
-		this.soc.write(packet);
-		this.propDecoder = new LegacyPropDecoder();
+		var packet = BufferView.alloc(24);
+		packet.setInt32(MSG_ASSETQUERY,0);
+		packet.setInt32(12,4);
+		packet.setInt32(0x50726F70,12); // asset name 'Prop'
+		packet.setInt32(id,16);
+		this.send(packet);
 	}
 
 }
 
 class PalaceClient extends PalaceProtocol {
 	constructor(regi,puid) {
+
 		let reg = new PalaceRegistration(regi,puid);
 		super({crc:reg.crc,counter:reg.counter},{crc:reg.puidCrc,counter:reg.puidCounter});
+		this.propDecoder = new LegacyPropDecoder();
 	}
 
 	connecting() {
@@ -1404,13 +1472,14 @@ class PalaceRegistration {
 	computeLicenseCRC(v) {
 		var mask = PalaceRegistration.CRCMask;
 		var crc = PalaceRegistration.CRC_MAGIC;
-		var p = Buffer.alloc(4);
-		p.writeIntBE(v,0,4);
+		var p = BufferView.alloc(4);
+		p.littleEndian = false;
+		p.setInt32(v,0);
 		for (var i = 0; i < 4; i++) {
 			if ((crc & 0x80000000) == 0) {
-				crc = (crc << 1) ^ mask[p.readUInt8(i)];
+				crc = (crc << 1) ^ mask[p.getUint8(i)];
 			} else {
-				crc = ((crc << 1) + 1) ^ mask[p.readUInt8(i)];
+				crc = ((crc << 1) + 1) ^ mask[p.getUint8(i)];
 			}
 		}
 		return crc;
@@ -1439,26 +1508,26 @@ class PalaceCrypt {
 	static get R_R() { return 2836; }
 
 	Encrypt(b) {
-		if (b == null || b.length == 0) return '';
+		if (b == null || b.length === 0) return '';
 		var rc = 0,lastChar = 0,i = b.length;
 		while(i--) {
-			b.writeUInt8(b.readUInt8(i)^(this.gEncryptTable[rc]^lastChar),i);
-			lastChar = b.readUInt8(i)^this.gEncryptTable[rc+1];
+			b[i] = b[i]^(this.gEncryptTable[rc]^lastChar);
+			lastChar = b[i]^this.gEncryptTable[rc+1];
 			rc += 2;
 		}
 		return b;
 	}
 
-	Decrypt(b) {
-		if (b == null || b.length == 0) return '';
+	Decrypt(b,decoder) {
+		if (b == null || b.length === 0) return '';
 		var rc = 0,tmp = 0,lastChar = 0,i = b.length;
 		while(i--) {
-			tmp = b.readUInt8(i);
-			b.writeUInt8(tmp^(this.gEncryptTable[rc]^lastChar),i);
+			tmp = b[i];
+			b[i] = tmp^(this.gEncryptTable[rc]^lastChar);
 			lastChar = tmp^this.gEncryptTable[rc+1];
 			rc += 2;
 		}
-		return palace.textDecoding.decode(PalaceProtocol.toArrayBuffer(b));
+		return decoder.decode(b);
 	}
 
 	get LongRandom() {
@@ -1503,7 +1572,7 @@ class LegacyPropDecoder {
 	PROP_16BIT(flags) { return Boolean(flags & 128); }
 
 	decode8bit(b) {
-		let Read = 0,Skip = 0,l = 0,x = 7744,o = 0,value = 0,len = b.length,
+		let Read = 0,Skip = 0,l = 0,x = 7744,o = 0,index = 0,len = b.length,
 			buf = new ArrayBuffer(7744),
 			buf8 = new Uint8ClampedArray(buf),
 			data = new Uint32Array(buf);
@@ -1511,7 +1580,7 @@ class LegacyPropDecoder {
 		while (x > 0) {
 			if (o>=len) break; //went too far
 
-			let index = b.readUInt8(o);
+			index = b[o];
 			Skip = index >> 4;
 			Read = index & 0x0F;
 			x -= (Skip + Read);
@@ -1521,7 +1590,7 @@ class LegacyPropDecoder {
 			o++;
 
 			while (Read--) {
-				data[l] = this.colors[index = b.readUInt8(o)];
+				data[l] = this.colors[index = b[o]];
 				o++;
 				l++;
 			}
@@ -1534,11 +1603,13 @@ class LegacyPropDecoder {
 
 	decode32bit(b) {
 		let buf = new ArrayBuffer(7744),
-			buf8 = new Uint8ClampedArray(buf),
-			data = new Uint32Array(buf);
+			buf8 = new Uint8ClampedArray(buf);
 
 		for (let i = 0; i < 7744; i+=4) {
-			data[i/4] = b.readUInt32LE(i);
+			buf8[i+2] = b[i+2];
+			buf8[i+1] = b[i+1];
+			buf8[i] = b[i];
+			buf8[i+3] = b[i+3];
 		}
 
 		this.imageData.data.set(buf8);
@@ -1553,20 +1624,20 @@ class LegacyPropDecoder {
 
 
 		for (let i = 0; i < 7744; i+=4) {
-			intComp = (256*b.readUInt8(inc))+b.readUInt8(inc+1);
+			intComp = (256*b[inc])+b[inc+1];
 			buf8[i] = (intComp & 63488) * 0.00401650705645161323897873728583363118; //red S20pixel1
 			buf8[i+1] = (intComp & 1984) * 0.128528225806451623647319593146676198; //green S20pixel2
 			buf8[i+2] = (intComp & 62) * 4.11290322580645195671422698069363832; //blue S20pixel3
-			intComp = (b.readUInt8(inc+1)*256)+b.readUInt8(inc+2);
+			intComp = (b[inc+1]*256)+b[inc+2];
 			buf8[i+3] = (((intComp & 496) * 0.514112903225806494589278372586704791)); //alpha S20pixel4
 
 
 			i+=4;
 
-			intComp = (256 * b.readUInt8(inc+2)) + b.readUInt8(inc+3);
+			intComp = (256 * b[inc+2]) + b[inc+3];
 			buf8[i] = (intComp & 3968) * 0.0642641129032258118236597965733380988; //red S20pixel5
 			buf8[i+1] = (intComp & 124) * 2.05645161290322597835711349034681916; //green S20pixel6
-			intComp = (256 * b.readUInt8(inc+3)) + b.readUInt8(inc+4);
+			intComp = (256 * b[inc+3]) + b[inc+4];
 			buf8[i+2] = (intComp & 992) * 0.257056451612903247294639186293352395; //blue S20pixel7
 			buf8[i+3] = (((intComp & 31) * 8.22580645161290391342845396138727665)); //alpha S20pixel8
 
@@ -1585,18 +1656,18 @@ class LegacyPropDecoder {
 
 
 		for (let i = 0; i < 7744; i+=4) {
-			s1=this.joinUShort(b.readUInt8(inc+1),b.readUInt8(inc+2));
+			s1=this.joinUShort(b[inc+1],b[inc+2]);
 			buf8[i+3] = (((s1 & 48) * 5.3125));
-			buf8[i] = (b.readUInt8(inc) & 252) * 1.01190476190476186246769429999403656;
-			buf8[i+1] = (this.joinUShort(b.readUInt8(inc),b.readUInt8(inc+1)) & 1008) * 0.252976190476190465616923574998509139;
+			buf8[i] = (b[inc] & 252) * 1.01190476190476186246769429999403656;
+			buf8[i+1] = (this.joinUShort(b[inc],b[inc+1]) & 1008) * 0.252976190476190465616923574998509139;
 			buf8[i+2] = (s1 & 4032) * 0.0632440476190476164042308937496272847;
 
 			i+=4;
 
-			s1=this.joinUShort(b.readUInt8(inc+2),b.readUInt8(inc+3));
-			s2=b.readUInt8(inc+4);
+			s1=this.joinUShort(b[inc+2],b[inc+3]);
+			s2=b[inc+4];
 			buf8[i+3] = (((s2 & 3) * 85));
-			buf8[i] = (this.joinUShort(b.readUInt8(inc+2),b.readUInt8(inc+3)) & 4032) * 0.0632440476190476164042308937496272847;
+			buf8[i] = (this.joinUShort(b[inc+2],b[inc+3]) & 4032) * 0.0632440476190476164042308937496272847;
 			buf8[i+1] = (s1 & 63) * 4.04761904761904744987077719997614622;
 			buf8[i+2] = (s2 & 252) * 1.01190476190476186246769429999403656;
 
@@ -1616,17 +1687,17 @@ class LegacyPropDecoder {
 		return val;
 	}
 
-	decode(flags,buffer) {
-		if (this.PROP_S20BIT(flags)) {
-			return this.decodeS20bit(zlib.inflateSync(buffer));
+	decode(flags,uint8ary) {
+		if (this.PROP_S20BIT(flags)) { // node zlib returns a node Buffer but it will be read just like a Uint8Array later on
+			return this.decodeS20bit(zlib.inflateSync(uint8ary));
 		} else if (this.PROP_20BIT(flags)) {
-			return this.decode20bit(zlib.inflateSync(buffer));
+			return this.decode20bit(zlib.inflateSync(uint8ary));
 		} else if (this.PROP_32BIT(flags)) {
-			return this.decode32bit(zlib.inflateSync(buffer));
-		} else if (this.PROP_16BIT(flags)) {
-			return this.decode16bit(zlib.inflateSync(buffer));
+			return this.decode32bit(zlib.inflateSync(uint8ary));
+		//} else if (this.PROP_16BIT(flags)) {
+			//return this.decode16bit(zlib.inflateSync(uint8ary));
 		} else {
-			return this.decode8bit(buffer);
+			return this.decode8bit(uint8ary);
 		}
 	}
 
