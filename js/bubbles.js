@@ -122,7 +122,7 @@ class Bubble {
 				this.p.style.top = this.y+'px';
 			}
 			palace.theRoom.reDraw();
-		},25);
+		},20);
 	}
 	deflate(remove) {
 		this.p.style.top = '-9999px';
@@ -142,7 +142,7 @@ class Bubble {
 			}
 
 			palace.theRoom.reDraw();
-		},25);
+		},20);
 	}
 	makeShoutBubble(ctx) {
 		var w = this.textWidth*this.size;
