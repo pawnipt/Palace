@@ -1,19 +1,19 @@
-const {app, Menu, BrowserWindow, globalShortcut} = require('electron');
+const {app, Menu, BrowserWindow} = require('electron');
 const path = require('path');
 const url = require('url');
-
+let win;
 
 app.commandLine.appendSwitch('high-dpi-support', 'true'); // might not be needed
 app.commandLine.appendSwitch('force-device-scale-factor', '1'); // quick fix for user coordinates offset when windows desktop scaling is active
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
-let win
+
 
 function createWindow () {
-	const screen = require('electron').screen;
-    const display = screen.getPrimaryDisplay();
-    const area = display.workArea;
+	let screen = require('electron').screen;
+    let display = screen.getPrimaryDisplay();
+    let area = display.workArea;
 
 
 

@@ -9,10 +9,7 @@ const backGround = document.getElementById('background');
 const bgEnv = document.getElementById('mainlayer');
 
 
-const electron = require('electron');
-const shell = electron.shell;
-const webFrame = electron.webFrame; // need this to getZoomFactor for proper mouse coordinates later
-const remote = electron.remote;
+const {shell, webFrame, remote} = require('electron');
 const {Menu, MenuItem} = remote;
 
 
@@ -102,7 +99,7 @@ class Renderer {
 		this.context.clearRect(0,0,this.context.canvas.width,this.context.canvas.height);
 		//bgEnv.width = bgEnv.width;
 
-		var i;
+		let i;
 
 		for (i = 0; i < this.spots.length; i++) {this.drawSpot(this.spots[i],false);}
 		for (i = 0; i < this.draws.length; i++) {this.drawDraws(this.draws[i],false);}
@@ -130,7 +127,7 @@ class Renderer {
 
 	reDraw() {
 		if (this.drawTimer) clearTimeout(this.drawTimer);
-		this.drawTimer = setTimeout(() => {this.refresh();},0);
+		this.drawTimer = setTimeout(() => {this.refresh();},1);
 	}
 
 	drawBubble(bub) {

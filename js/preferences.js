@@ -212,7 +212,6 @@ window.onunload = function(e) {
 		setDrawType();
 	} else { //default
 		prefs.registration = {regi:getRandomInt(100,2147483647),puid:getRandomInt(1,2147483647)};
-		setGeneralPref('registration',prefs.registration);
 		setGeneralPref('home','ee.fastpalaces.com:9991'); //avatarpalace.net:9998
 		setGeneralPref('userName','Palace User');
 		setGeneralPref('propBagTileSize',91);
