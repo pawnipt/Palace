@@ -340,6 +340,12 @@ let contextMenuListener = new ContextMenuListener((info) => {
 		}
 	}, true);
 
+	document.getElementById('authenticate').onkeydown = function(event) {
+		if (event.keyCode === 13) {
+			document.getElementById('submitauthenticate').click();
+		}
+	}
+
 	document.getElementById('muteaudio').onclick = function() {
 		bgVideo.muted = !bgVideo.muted;
 		let muteaudio = document.getElementById('muteaudio');
@@ -1299,7 +1305,7 @@ function requestDirectory() {
 function loadDirectoryList(directList) {
 
 	directoryList = directList;
-	if (typeof directList == 'string')
+	if (typeof directList === 'string')
 		directoryList = JSON.parse(directoryList);
 
 	var listbox = document.getElementById('navlistbox'),
@@ -1307,7 +1313,7 @@ function loadDirectoryList(directList) {
 		scount = directoryList.directory.length,
 		serverList, li, s, s2, cl;
 
-	if (navframe.dataset.ctrlname == 'servers') {
+	if (navframe.dataset.ctrlname === 'servers') {
 		clearListBox(listbox);
 		var word = document.getElementById('navsearch').value.toLowerCase();
 

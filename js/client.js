@@ -1384,6 +1384,7 @@ class PalaceClient extends PalaceProtocol {
 				break;
 			case MSG_AUTHENTICATE:
 				toggleZoomPanel('authenticate',1);
+				document.getElementById("authusername").focus();
 				break;
 			case MSG_SERVERDOWN:
 				this.serverDown(this.serverDownMsg(p.data.refnum,p.data.msg));
