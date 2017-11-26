@@ -846,7 +846,7 @@ class PalaceProtocol {
 		//packet.setInt16(14)=0
 		//drawCmd
 
-		packet.setInt16(true,drawCmd,16); //flag...... not sure if applying correct value
+		packet.setInt16(16,drawCmd); //flag...... not sure if applying correct value
 		//cmdLength
 
 		packet.setInt16(18,(n*2)+18);
