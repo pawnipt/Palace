@@ -1,6 +1,7 @@
 {
   "name": "Palace",
   "version": "0.0.3",
+  "repository": "https://github.com/pawnipt/Palace",
   "description": "Palace visual chat app",
   "main": "main.js",
   "scripts": {
