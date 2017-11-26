@@ -69,9 +69,9 @@ const net = require('net');
 
 class BufferView extends DataView {
 
-	constructor(abuffer,endian) {
+	constructor(abuffer,endian) { // defaults to little endian, set true for big endian.
 		super(abuffer);
-		this.littleEndian = !Boolean(endian); // defaults to little endian, set true for big endian.
+		this.littleEndian = !Boolean(endian);
 	}
 
 	static alloc(size) {
@@ -93,11 +93,6 @@ class BufferView extends DataView {
 		new Uint8Array(super.buffer).set(uint8,offset);
 	}
 
-	pStr(offset,decoder) {
-		return decoder.decode(
-			super.buffer.slice(offset+1,offset+this.getUint8(offset)+1)
-		);
-	}
 	pString(offset,decoder) {
 		return decoder.decode(
 			super.buffer.slice(offset+1,offset+this.getUint8(offset)+1)
@@ -138,28 +133,19 @@ class BufferView extends DataView {
 	getInt16(offset) {
 		return super.getInt16(offset,this.littleEndian);
 	}
-	// getUint8(offset) {
-	// 	return super.getUint8(offset);
-	// }
 
 
-	setUint32(value,offset) {
+	setUint32(offset,value) {
 		return super.setUint32(offset,value,this.littleEndian);
 	}
-	setInt32(value,offset) {
+	setInt32(offset,value) {
 		return super.setInt32(offset,value,this.littleEndian);
 	}
-	setUint16(value,offset) {
+	setUint16(offset,value) {
 		return super.setUint16(offset,value,this.littleEndian);
 	}
-	setInt16(value,offset) {
+	setInt16(offset,value) {
 		return super.setInt16(offset,value,this.littleEndian);
-	}
-	setUint8(value,offset) {
-		return super.setUint8(offset,value);
-	}
-	setInt8(value,offset) {
-		return super.setInt8(offset,value);
 	}
 
 }
@@ -180,7 +166,7 @@ class PalaceProtocol {
 		this.ip = ip.trim();
 		this.port = port.trim();
 
-		this.connecting();
+		this.connecting(); // trigger sub class PalaceClient event.
 
 		if (this.soc) {
 			this.sendLogOff(); // politely disconnect
@@ -214,7 +200,7 @@ class PalaceProtocol {
 	}
 
 	onError(err) {
-		if (err.code = 'ECONNRESET') {
+		if (err.code === 'ECONNRESET') {
 			if (!this.retryRegistration) { //part of pserver security plugin to work around local proxies like pdrug.
 				this.retryRegistration = true;
 				this.buffer = BufferView.alloc(0);
@@ -222,7 +208,7 @@ class PalaceProtocol {
 				this.soc.connect(this.port,this.ip);
 			}
 		} else {
-			logmsg('Socket error: ' + err);
+			console.log('Socket error: ' + err);
 		}
 	}
 
@@ -833,7 +819,7 @@ class PalaceProtocol {
 
 	sendLogOff() {
 		var packet = BufferView.alloc(12);
-		packet.setInt32(MSG_LOGOFF,0);
+		packet.setInt32(0,MSG_LOGOFF);
 		this.send(packet);
 	}
 
@@ -852,85 +838,85 @@ class PalaceProtocol {
 		var packet = BufferView.alloc((n*2)+40);
 
 		//header data
-		packet.setInt32(MSG_DRAW,0);
-		packet.setInt32((n*2)+28,4); //packetlength
+		packet.setInt32(0,MSG_DRAW);
+		packet.setInt32(4,(n*2)+28); //packetlength
 		//packet.long(8)=0 'userID
 		//link
 		//packet.setInt16(12)=0
 		//packet.setInt16(14)=0
 		//drawCmd
 
-		packet.setInt16(drawCmd,16,true); //flag...... not sure if applying correct value
+		packet.setInt16(true,drawCmd,16); //flag...... not sure if applying correct value
 		//cmdLength
 
-		packet.setInt16((n*2)+18,18);
-		packet.setInt16(draw.size,22); //pensize
+		packet.setInt16(18,(n*2)+18);
+		packet.setInt16(22,draw.size); //pensize
 
-		packet.setInt16((n/2)-1,24); //nbrPts
+		packet.setInt16(24,(n/2)-1); //nbrPts
 
 		var red = Number(draw.color[0]);
 		var green = Number(draw.color[1]);
 		var blue = Number(draw.color[2]);
 		var alpha = (Number(draw.color[3]) * 255).fastRound();
 
-		packet.setUint8(red,26);
-		packet.setUint8(red,27);
-		packet.setUint8(green,28);
-		packet.setUint8(green,29);
-		packet.setUint8(blue,30);
-		packet.setUint8(blue,31);
+		packet.setUint8(26,red);
+		packet.setUint8(27,red);
+		packet.setUint8(28,green);
+		packet.setUint8(29,green);
+		packet.setUint8(30,blue);
+		packet.setUint8(31,blue);
 
 		//for i=1 to n-1 step 2
 		for (i = 1; i < n; i += 2) {
 			x1=draw.points[i-1];
 			y1=draw.points[i];
-			packet.setInt16(y1-y,(i*2)+30);
-			packet.setInt16(x1-x,(i*2)+32);
+			packet.setInt16((i*2)+30,y1-y);
+			packet.setInt16((i*2)+32,x1-x);
 			x=x1;
 			y=y1;
 		}
 
-		packet.setUint8(alpha,packet.length-8);
-		packet.setUint8(red,packet.length-7);
-		packet.setUint8(green,packet.length-6);
-		packet.setUint8(blue,packet.length-5);
+		packet.setUint8(packet.length-8,alpha);
+		packet.setUint8(packet.length-7,red);
+		packet.setUint8(packet.length-6,green);
+		packet.setUint8(packet.length-5,blue);
 
 		red = Number(draw.fill[0]); // fix this number casting shit
 		green = Number(draw.fill[1]);
 		blue = Number(draw.fill[2]);
 		alpha = (Number(draw.fill[3]) * 255).fastRound();
 
-		packet.setUint8(alpha,packet.length-4);
-		packet.setUint8(red,packet.length-3);
-		packet.setUint8(green,packet.length-2);
-		packet.setUint8(blue,packet.length-1);
+		packet.setUint8(packet.length-4,alpha);
+		packet.setUint8(packet.length-3,red);
+		packet.setUint8(packet.length-2,green);
+		packet.setUint8(packet.length-1,blue);
 
 		this.send(packet);
 	}
 
 	sendDrawClear(drawCmd) {
 		var packet = BufferView.alloc(22);
-		packet.setInt32(MSG_DRAW,0);
-		packet.setInt32(10,4);
-		packet.setInt16(drawCmd,16);
+		packet.setInt32(0,MSG_DRAW);
+		packet.setInt32(4,10);
+		packet.setInt16(16,drawCmd);
 		this.send(packet);
 	}
 
 	sendUnlockRoom(spotid) {
 		var packet = BufferView.alloc(16);
-		packet.setInt32(MSG_DOORUNLOCK,0);
+		packet.setInt32(0,MSG_DOORUNLOCK);
 		packet.setInt32(4,4);
-		packet.setInt16(this.theRoom.id,12);
-		packet.setInt16(spotid,14);
+		packet.setInt16(12,this.theRoom.id);
+		packet.setInt16(14,spotid);
 		this.send(packet);
 	}
 
 	sendLockRoom(spotid) {
 		var packet = BufferView.alloc(16);
-		packet.setInt32(MSG_DOORLOCK,0);
+		packet.setInt32(0,MSG_DOORLOCK);
 		packet.setInt32(4,4);
-		packet.setInt16(this.theRoom.id,12);
-		packet.setInt16(spotid,14);
+		packet.setInt16(12,this.theRoom.id);
+		packet.setInt16(14,spotid);
 		this.send(packet);
 	}
 
@@ -938,17 +924,17 @@ class PalaceProtocol {
 		password = this.textEncoder.encode(password);
 		var leng = password.length;
 		var packet = BufferView.alloc(13+leng);
-		packet.setInt32(MSG_SUPERUSER,0);
-		packet.setInt32(leng+1,4);
+		packet.setInt32(0,MSG_SUPERUSER);
+		packet.setInt32(4,leng+1);
 		var data = this.crypt.Encrypt(password);
-		packet.setInt8(data.length,12);
+		packet.setInt8(12,data.length);
 		packet.set(data,13);
 		this.send(packet);
 	}
 
 	sendPong() {
 		var packet = BufferView.alloc(12);
-		packet.setInt32(MSG_PONG,0);
+		packet.setInt32(0,MSG_PONG);
 		this.send(packet);
 	}
 
@@ -956,10 +942,10 @@ class PalaceProtocol {
 		msg = this.textEncoder.encode(msg);
 		var leng = msg.length;
 		var packet = BufferView.alloc(19+leng);
-		packet.setInt32(MSG_XWHISPER,0);
-		packet.setInt32(leng+7,4);
-		packet.setInt32(whisperID,12);
-		packet.setInt16(leng+3,16);
+		packet.setInt32(0,MSG_XWHISPER);
+		packet.setInt32(4,leng+7);
+		packet.setInt32(12,whisperID);
+		packet.setInt16(16,leng+3);
 		packet.set(this.crypt.Encrypt(msg),18)
 		this.send(packet);
 	}
@@ -968,30 +954,30 @@ class PalaceProtocol {
 		msg = this.textEncoder.encode(msg);
 		var leng = msg.length;
 		var packet = BufferView.alloc(15+leng);
-		packet.setInt32(MSG_XTALK,0);
-		packet.setInt32(leng+3,4);
-		packet.setInt16(leng+3,12);
+		packet.setInt32(0,MSG_XTALK);
+		packet.setInt32(4,leng+3);
+		packet.setInt16(12,leng+3);
 		packet.set(this.crypt.Encrypt(msg),14);
 		this.send(packet);
 	}
 
 	sendRoomNav(id) {
 		var packet = BufferView.alloc(14);
-		packet.setInt32(MSG_ROOMGOTO,0);
-		packet.setInt32(2,4);
-		packet.setInt16(id,12);
+		packet.setInt32(0,MSG_ROOMGOTO);
+		packet.setInt32(4,2);
+		packet.setInt16(12,id);
 		this.send(packet);
 	}
 
 	sendRoomListRequest() {
 		var packet = BufferView.alloc(12);
-		packet.setInt32(MSG_LISTOFALLROOMS,0);
+		packet.setInt32(0,MSG_LISTOFALLROOMS);
 		this.send(packet);
 	}
 
 	sendUserListRequest() {
 		var packet = BufferView.alloc(12);
-		packet.setInt32(MSG_LISTOFALLUSERS,0);
+		packet.setInt32(0,MSG_LISTOFALLUSERS);
 		this.send(packet);
 	}
 
@@ -999,123 +985,123 @@ class PalaceProtocol {
 		var length = props.length;
 		var packet = BufferView.alloc(16+length*8);
 
-		packet.setInt32(MSG_USERPROP,0);
-		packet.setInt32(length*8+4,4);
-		packet.setInt32(length,12);
+		packet.setInt32(0,MSG_USERPROP);
+		packet.setInt32(4,length*8+4);
+		packet.setInt32(12,length);
 		for (var i = 0; i < length; i++)
-			packet.setInt32(props[i],16+i*8);
+			packet.setInt32(16+i*8,props[i]);
 
 		this.send(packet);
 	}
 
 	sendPropDrop(x,y,id) {
 		var packet = BufferView.alloc(24);
-		packet.setInt32(MSG_PROPNEW,0);
-		packet.setInt32(12,4);
-		packet.setInt32(id,12);
-		packet.setInt16(y,20);
-		packet.setInt16(x,22);
+		packet.setInt32(0,MSG_PROPNEW);
+		packet.setInt32(4,12);
+		packet.setInt32(12,id);
+		packet.setInt16(20,y);
+		packet.setInt16(22,x);
 		this.send(packet);
 	}
 
 	sendPropMove(x,y,index) {
 		var packet = BufferView.alloc(20);
-		packet.setInt32(MSG_PROPMOVE,0);
-		packet.setInt32(8,4);
-		packet.setInt32(index,12);
-		packet.setInt16(y,16);
-		packet.setInt16(x,18);
+		packet.setInt32(0,MSG_PROPMOVE);
+		packet.setInt32(4,8);
+		packet.setInt32(12,index);
+		packet.setInt16(16,y);
+		packet.setInt16(18,x);
 		this.send(packet);
 	}
 
 	sendPropDelete(index) {
 		var packet = BufferView.alloc(16);
-		packet.setInt32(MSG_PROPDEL,0);
+		packet.setInt32(0,MSG_PROPDEL);
 		packet.setInt32(4,4);
-		packet.setInt32(index,12);
+		packet.setInt32(12,index);
 		this.send(packet);
 	}
 
 	sendUserLocation(x,y) {
 		var packet = BufferView.alloc(16);
-		packet.setInt32(MSG_USERMOVE,0);
+		packet.setInt32(0,MSG_USERMOVE);
 		packet.setInt32(4,4);
-		packet.setInt16(y,12);
-		packet.setInt16(x,14);
+		packet.setInt16(12,y);
+		packet.setInt16(14,x);
 		this.send(packet);
 	}
 
 	sendUserName(name) {
 		name = this.textEncoder.encode(name);
 		var packet = BufferView.alloc(name.length+13);
-		packet.setInt32(MSG_USERNAME,0);
-		packet.setInt32(name.length+1,4);
-		packet.setInt8(name.length,12);
+		packet.setInt32(0,MSG_USERNAME);
+		packet.setInt32(4,name.length+1);
+		packet.setInt8(12,name.length);
 		packet.set(name,13);
 		this.send(packet);
 	}
 
 	sendFace(face) {
 		var packet = BufferView.alloc(14);
-		packet.setInt32(MSG_USERFACE,0);
-		packet.setInt32(2,4);
-		packet.setInt16(face,12);
+		packet.setInt32(0,MSG_USERFACE);
+		packet.setInt32(4,2);
+		packet.setInt16(12,face);
 		this.send(packet);
 	}
 
 	sendFaceColor(color) {
 		var packet = BufferView.alloc(14);
-		packet.setInt32(MSG_USERCOLOR,0);
-		packet.setInt32(2,4);
-		packet.setInt16(color,12);
+		packet.setInt32(0,MSG_USERCOLOR);
+		packet.setInt32(4,2);
+		packet.setInt16(12,color);
 		this.send(packet);
 	}
 
 	sendAuthenticate(name,pass) {
 		var info = this.textEncoder.encode(name+':'+pass);
 		var packet = BufferView.alloc(13+info.length);
-		packet.setInt32(MSG_AUTHRESPONSE,0);
-		packet.setInt32(info.length+1,4);
-		packet.setInt8(info.length,12);
+		packet.setInt32(0,MSG_AUTHRESPONSE);
+		packet.setInt32(4,info.length+1);
+		packet.setInt8(12,info.length);
 		packet.set(this.crypt.Encrypt(info),13);
 		this.send(packet);
 	}
 
 	sendRegistration() {
 		var reg = BufferView.alloc(140);
-		reg.setInt32(MSG_LOGON,0);
-		reg.setInt32(128,4); //fixed packet length
+		reg.setInt32(0,MSG_LOGON);
+		reg.setInt32(4,128); //fixed packet length
 
-		reg.setInt32(this.regi.crc,12);
-		reg.setInt32(this.regi.counter,16);
+		reg.setInt32(12,this.regi.crc);
+		reg.setInt32(16,this.regi.counter);
 
 		var name = this.textEncoder.encode(prefs.general.userName);
-		reg.setInt8(name.length,20);
+		reg.setInt8(20,name.length);
 		reg.set(name,21);//should truncate to 31 bytes max
 
 		if (/^win/.test(process.platform)) { //add linux/unix identifier.
-			reg.setUint32(0x80000004,84); //must validate since value is
+			reg.setUint32(84,0x80000004); //must validate since value is
 		} else {
-			reg.setUint32(0x80000002,84);
+			reg.setUint32(84,0x80000002);
 		}
 
-		reg.setInt32(this.puid.counter,88);
-		reg.setInt32(this.puid.crc,92);
+		reg.setInt32(88,this.puid.counter);
+		reg.setInt32(92,this.puid.crc);
 
-		reg.setInt32(0x00011940,96);
-		reg.setInt32(0x00011940,100);
-		reg.setInt32(0x00011940,104);
-		//reg.setInt16(0,108); //optional room ID to land in (if server allows it)
+		reg.setInt32(96,0x00011940);
+		reg.setInt32(100,0x00011940);
+		reg.setInt32(104,0x00011940);
+		//reg.setInt16(108); //optional room ID to land in (if server allows it,0)
 		reg.set(this.textEncoder.encode('PC5'+remote.app.getVersion().replace(/\./g, '')),110);
 
-		reg.setInt32(0x00000041,120);
+		reg.setInt32(120,0x00000041);
 		if (this.retryRegistration === true ) {
-			reg.setInt32(0x00000111,124); //original value required by a security pserver plugin
+			reg.setInt32(124,0x00000111); //original value required by a security pserver plugin
 		} else {
-			reg.setInt32(0x00000151,124); //a protocol required by a different security pserver plugins
+			reg.setInt32(124,0x00000151); //a protocol required by a different security pserver plugins
 		}
-		reg.setInt32(0x00000001,128);
-		reg.setInt32(0x00000001,132);
+		reg.setInt32(128,0x00000001);
+		reg.setInt32(132,0x00000001);
 
 		this.send(reg);
 	}
@@ -1123,10 +1109,10 @@ class PalaceProtocol {
 
 	sendAssetQuery(id) { // request a legacy prop
 		var packet = BufferView.alloc(24);
-		packet.setInt32(MSG_ASSETQUERY,0);
-		packet.setInt32(12,4);
-		packet.setInt32(0x50726F70,12); // asset name 'Prop'
-		packet.setInt32(id,16);
+		packet.setInt32(0,MSG_ASSETQUERY);
+		packet.setInt32(4,12);
+		packet.setInt32(12,0x50726F70); // asset name 'Prop'
+		packet.setInt32(16,id);
 		this.send(packet);
 	}
 
@@ -1474,7 +1460,7 @@ class PalaceRegistration {
 		var crc = PalaceRegistration.CRC_MAGIC;
 		var p = BufferView.alloc(4);
 		p.littleEndian = false;
-		p.setInt32(v,0);
+		p.setInt32(0,v);
 		for (var i = 0; i < 4; i++) {
 			if ((crc & 0x80000000) == 0) {
 				crc = (crc << 1) ^ mask[p.getUint8(i)];
@@ -1563,7 +1549,7 @@ class LegacyPropDecoder {
 		c.height = 44;
 		this.ctx = c.getContext("2d");
 		this.imageData = this.ctx.getImageData(0, 0, 44, 44);
-		this.colors = this.colorPalette;
+		this.colors = LegacyPropDecoder.colorPalette;
 	}
 
 	PROP_20BIT(flags) { return Boolean(flags & 64); }
@@ -1703,7 +1689,7 @@ class LegacyPropDecoder {
 
 
 
-	get colorPalette() {
+	static get colorPalette() {
 		return [
 			// XBGR
 			0xFFFEFEFE, 0xFFFFFFCC, 0xFFFFFF99, 0xFFFFFF66, 0xFFFFFF33, 0xFFFFFF00, 0xFFFFDFFF, 0xFFFFDFCC,
