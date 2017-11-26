@@ -26,17 +26,17 @@ body {
 }
 
 .spinloading {
-  top           : 0;
-  right         : 0;
-  bottom        : 0;
-  left          : 0;
-  width         : 200px;
-  height        : 200px;
-  margin        : auto;
-  border        : 16px solid #9f9f9f;
-  border-top    : 16px solid #666;
-  border-radius : 50%;
-  animation     : spin 0.6s infinite;
+  top              : 0;
+  right            : 0;
+  bottom           : 0;
+  left             : 0;
+  width            : 200px;
+  height           : 200px;
+  margin           : auto;
+  border           : 16px solid #9f9f9f;
+  border-top-color : #666;
+  border-radius    : 50%;
+  animation        : spin 0.6s infinite;
 }
 
 @keyframes spin {
@@ -629,10 +629,12 @@ body {
     opacity   : 0;
     transform : scale(0);
   }
+
   99% {
     opacity   : 1;
     transform : scale(1.03);
   }
+
   100% {
     opacity   : 1;
     transform : none;
