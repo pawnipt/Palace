@@ -123,19 +123,33 @@ function uploadProp(url,pid) {
 		var d = atob(getImageData(aProp.img).replace(/^data:image\/png;base64,/, ""));
 		var l = d.length;
 		var array = new Uint8Array(l);
-        for (var i = 0; i < l; i++) array[i] = d.charCodeAt(i);
+        for (var i = 0; i < l; i++) {
+            array[i] = d.charCodeAt(i);
+        }
 		var blob = new Blob([array], { type: 'application/octet-stream'});
 		formData.append('prop', blob);
-		httpPostAsync(url,propImageUploadCallBack,formData);
+		httpPostAsync(
+            url,
+            function(response) {
+                try {
+                    let json = JSON.parse(response);
+                    if (json.success !== true) {
+                        logmsg('Prop upload failed (server error), prop id: '+pid);
+                    }
+                }
+                catch(err) {
+                    logmsg('Prop upload failed (unexpected server response): '+response);
+                }
+            },function(status,response) { // handle error, maybe retry upload
+                logmsg('Prop upload failed (HTTP ERROR): '+status+'\n\n'+response);
+            },
+            formData
+        );
 	} else {
-		localmsg('Prop '+pid+' failed to upload: image data not available');
+		logmsg('Prop '+pid+' failed to upload: image data not available');
 	}
 }
 
-
-function propImageUploadCallBack(response) { // add error handling!
-	/* logmsg('response: '+response); */
-}
 
 function downloadPropInfoCallBack(response) { // need to handle possible http error and retry props (store array of requested)
 	var propsInfo = JSON.parse(response);
@@ -185,7 +199,15 @@ function loadProps(pids,fromSelf,callback) {
                 callback();
 			}
 		}
-		if (toLoad.props.length > 0)
-			httpPostAsync(palace.mediaUrl + 'webservice/props/get/',downloadPropInfoCallBack,JSON.stringify(toLoad));
+		if (toLoad.props.length > 0) {
+			httpPostAsync(
+                palace.mediaUrl + 'webservice/props/get/',
+                downloadPropInfoCallBack,
+                function(status,response) { // handle error, maybe retry upload
+                    logmsg('Prop download failed (HTTP ERROR): '+status+'\n\n'+response);
+                },
+                JSON.stringify(toLoad)
+            );
+        }
 	}
 }

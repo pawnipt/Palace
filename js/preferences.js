@@ -40,17 +40,21 @@ function addPropToDB(prop) {
 		var tx = db.transaction("props", "readwrite")
 		var store = tx.objectStore("props");
 
-		store.add({id: prop.id, name: prop.name, prop: {
-					x: prop.x,
-					y: prop.y,
-					w: prop.w,
-					h: prop.h,
-					head: prop.head,
-					ghost: prop.ghost,
-					animated: prop.animated,
-					bounce: prop.bounce,
-					img: getImageData(prop.img)
-		}});
+		store.add({
+			id: prop.id,
+			name: prop.name,
+			prop: {
+				x: prop.x,
+				y: prop.y,
+				w: prop.w,
+				h: prop.h,
+				head: prop.head,
+				ghost: prop.ghost,
+				animated: prop.animated,
+				bounce: prop.bounce,
+				img: getImageData(prop.img)
+			}
+		});
 
 		propBagList.unshift(prop.id);
 		store.put({id: 'propList', list: propBagList});
@@ -95,7 +99,14 @@ function cacheBagProp(id,toUpload,callback) {
 					offsets:{x:aProp.x,y:aProp.y},flags:aProp.encodePropFlags,
 					id:aProp.id,crc:0}
 				]};
-			httpPostAsync(palace.mediaUrl + 'webservice/props/new/',propUploadCallBack,JSON.stringify(p));
+			httpPostAsync(
+				palace.mediaUrl + 'webservice/props/new/',
+				propUploadCallBack,
+				function(status,response) {
+					logmsg('Prop upload request failed (HTTP ERROR): '+status+'\n\n'+response);
+				},
+				JSON.stringify(p)
+			);
 		}
 	};
 }
@@ -111,10 +122,11 @@ function createPropID() {
 
 function createNewProps(list) {
 
-	for (var i = 0, files = new Array(list.length); i < list.length; i++)
+	for (var i = 0, files = new Array(list.length); i < list.length; i++) {
 		files[i] = list[i]; // moving the list to an actual array so pop works , lol
+	}
 
-	var imp = function() {
+	var importFile = function() {
 		if (files.length > 0) {
 			var file = files.pop();
 			var img = document.createElement('img');
@@ -124,14 +136,27 @@ function createNewProps(list) {
 			img.onload = function() {
 				var id = createPropID();
 				var p = createNewProp(this);
-				var prop = {id:id,name:'Palace Prop',w:p.w,h:p.h,x:(-Math.trunc(p.w/2))+22,y:(-Math.trunc(p.h/2))+22,head:true,ghost:false,animated:false,bounce:false,img:p.imgData};
+				var prop = {
+					id:id,
+					name:'Palace Prop',
+					w:p.w,
+					h:p.h,
+					x:(-Math.trunc(p.w/2))+22,
+					y:(-Math.trunc(p.h/2))+22,
+					head:true,
+					ghost:false,
+					animated:false,
+					bounce:false,
+					img:p.imgData
+				};
+
 				addPropToDB(prop);
 				imp();
 			};
 			img.src = file.path;
 		}
 	};
-	imp();
+	importFile();
 
 
 

@@ -88,8 +88,8 @@ class PalaceUser {
 		var half = (w/2);
 		var x = this.x*this.scale;
 		var y = this.y*this.scale;
-		var bgw = bgEnv.width*this.scale;
-		var bgh = bgEnv.height*this.scale;
+		var bgw = palace.roomWidth*this.scale;
+		var bgh = palace.roomHeight*this.scale;
 
 		if (x-half < 0) x = half;
 		if (x > bgw-half) x = bgw-half;
@@ -176,7 +176,7 @@ class PalaceUser {
 			var bub = quedBubbles[a];
 			if (this == bub.user) {
 				bub.user = null;
-				overLayer.removeChild(bub.p);
+				palace.container.removeChild(bub.p);
 				quedBubbles.splice(a,1);
 			}
 		}

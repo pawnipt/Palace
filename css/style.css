@@ -75,7 +75,7 @@ body {
   background-repeat : no-repeat;
 }
 
-#bgVideo {
+#videobg {
   z-index  : -1;
   display  : none;
   position : absolute;

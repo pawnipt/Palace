@@ -322,7 +322,7 @@ class PalaceProtocol {
 				this.parseBlowThru(packet);
 				break;
 			case MSG_AUTHENTICATE:
-				this.passData(packet);
+				this.handOffData(packet);
 				break;
 			case MSG_SERVERDOWN:
 				this.parseServerDown(packet);
@@ -350,13 +350,13 @@ class PalaceProtocol {
 			size:{w:44, h:44},
 			name:p.data.pString(44,new TextDecoder('utf-8')), //prop assets names from the pserver are utf8
 			img:p.data.sliceUint8Clamped(88,p.data.getInt32(40)+76)};
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseServerDown(p) {
 		p.data = {refnum:p.reference,
 			msg:p.data.cString(12,this.textDecoder)};
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseBlowThru(p) {
@@ -372,7 +372,7 @@ class PalaceProtocol {
 			spotid:p.data.getInt16(14),
 			x:p.data.getInt16(18),
 			y:p.data.getInt16(16)};
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parsePicMove(p) {
@@ -380,7 +380,7 @@ class PalaceProtocol {
 			spotid:p.data.getInt16(14),
 			x:p.data.getInt16(18),
 			y:p.data.getInt16(16)};
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseSpotState(p) {
@@ -388,7 +388,7 @@ class PalaceProtocol {
 			spotid:p.data.getInt16(14),
 			state:p.data.getInt16(16),
 			lock:null};
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseDoorLock(p) {
@@ -396,7 +396,7 @@ class PalaceProtocol {
 			spotid:p.data.getInt16(14),
 			state:1,
 			lock:true};
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseDoorUnlock(p) {
@@ -404,12 +404,12 @@ class PalaceProtocol {
 			spotid:p.data.getInt16(14),
 			state:0,
 			lock:false};
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseHttpServer(p) {
 		p.data = p.data.cString(12,this.textDecoder).replace(/\/?$/, '/'); // make sure it ends with a forward slash!
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseRoom(p) {
@@ -500,12 +500,12 @@ class PalaceProtocol {
 		}
 
 		p.data = room;
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseNavError(p) {
 		p.data = p.reference;
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseRoomList(p) {
@@ -521,7 +521,7 @@ class PalaceProtocol {
 			add = add+9+((nameLen + ( 4 - (nameLen & 3))) - 1);
 		}
 		p.data = list;
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseUserList(p) {
@@ -537,49 +537,49 @@ class PalaceProtocol {
 			add = add+9+((nameLen + ( 4 - (nameLen & 3))) - 1);
 		}
 		p.data = list;
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parsePropDelete(p) {
 		p.data = p.data.getInt32(12);
-		this.passData(p);
+		this.handOffData(p);
 	}
 	parsePropNew(p) {
 		p.data = {x:p.data.getInt16(22),
 			y:p.data.getInt16(20),
 			id:p.data.getInt32(12),
 			crc:p.data.getInt32(16)};
-		this.passData(p);
+		this.handOffData(p);
 	}
 	parsePropMove(p) {
 		p.data = {x:p.data.getInt16(18),
 			y:p.data.getInt16(16),
 			index:p.data.getInt32(12)};
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseUserStatus(p) {
 		p.data = {id:p.reference,
 			status:p.data.getInt16(12)};
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseServerInfo(p) {
 		p.data = {flags:p.data.getInt32(12),
 			name:p.data.pString(16,this.textDecoder)};
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 
 	parseUserFace(p) {
 		p.data = {id:p.reference,
 			face:p.data.getInt16(12)};
-		this.passData(p);
+		this.handOffData(p);
 	}
 	parseUserColor(p) {
 		p.data = {id:p.reference,
 			color:p.data.getInt16(12)};
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseUserProp(p) {
@@ -589,7 +589,7 @@ class PalaceProtocol {
 		}
 		p.data = {id:p.reference,
 			props:props};
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseUserDesc(p) {
@@ -601,70 +601,70 @@ class PalaceProtocol {
 			face:p.data.getInt16(12),
 			color:p.data.getInt16(14),
 			props:props};
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseUserName(p) {
 		p.data = {id:p.reference,
 			name:p.data.pString(12,this.textDecoder)};
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseUserLog(p) {
 		p.data = {id:p.reference,
 			count:p.data.getInt32(12)};
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseLogOff(p) {
 		p.data = {id:p.reference,
 			count:p.data.getInt32(12)};
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseUserMove(p) {
 		p.data = {id:p.reference,
 			x:p.data.getInt16(14),
 			y:p.data.getInt16(12)};
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseWhisper(p) {
 		p.data = {id:0,
 			chatstr:p.data.cString(12,this.textDecoder),
 			whisper:true};
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseTalk(p) {
 		p.data = {id:p.reference,
 			chatstr:p.data.cString(12,this.textDecoder),
 			whisper:false};
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseXtalk(p) {
 		p.data = {id:p.reference,
 			chatstr:this.crypt.Decrypt(p.data.sliceUint8Clamped(14,11+p.data.getInt16(12)),this.textDecoder),
 			whisper:false};
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseXwhisper(p) {
 		p.data = {id:p.reference,
 			chatstr:this.crypt.Decrypt(p.data.sliceUint8Clamped(14,11+p.data.getInt16(12)),this.textDecoder),
 			whisper:true};
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseUserExit(p) {
 		p.data = {id:p.reference};
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseDrawing(p) {
 		p.data = this.parseDraw(p.data.slice(22,p.data.length),p.data.getUint16(16));
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseUser(p) {
@@ -682,7 +682,7 @@ class PalaceProtocol {
 		}
 
 		p.data = user;
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 	parseUsers(p) {
@@ -707,7 +707,7 @@ class PalaceProtocol {
 		}
 
 		p.data = users;
-		this.passData(p);
+		this.handOffData(p);
 	}
 
 
@@ -1124,14 +1124,220 @@ class PalaceClient extends PalaceProtocol {
 		let reg = new PalaceRegistration(regi,puid);
 		super({crc:reg.crc,counter:reg.counter},{crc:reg.puidCrc,counter:reg.puidCounter});
 		this.propDecoder = new LegacyPropDecoder();
+
+		this.background = document.getElementById('background');
+		this.videobg = document.getElementById('videobg');
+		this.container = document.getElementById('container');
+		this.canvas = document.getElementById('mainlayer');
+
+		this.sounds = {
+			signon:PalaceClient.preloadAudio('SignOn'),
+			signoff:PalaceClient.preloadAudio('SignOff'),
+			whisper:PalaceClient.preloadAudio('Whispered'),
+			doorclose:PalaceClient.preloadAudio('DoorClose'),
+			dooropen:PalaceClient.preloadAudio('DoorOpen')
+		};
+
+		this.videobg.onloadeddata = function () {
+			if (this.webkitAudioDecodedByteCount > 0) {
+				document.getElementById('muteaudio').style.display = 'block';
+			}
+		};
+
+		this.videobg.onloadedmetadata = () => {
+			this.lastLoadedBG = this.videobg.src; /* to prevent reloading the video when authoring */
+			this.videobg.width = this.videobg.videoWidth;
+		    this.videobg.height = this.videobg.videoHeight;
+			this.setRoomBG(this.videobg.videoWidth,this.videobg.videoHeight,'');
+		    this.videobg.style.display = 'block';
+		};
+
+		// building right click menu for users and loose props
+		let menuStore = {};
+		const loosePropMenu = new Menu();
+		loosePropMenu.append(new MenuItem({label: 'Save Prop', click:
+		() => {
+			saveProp(menuStore.looseprop.id);
+		}}));
+		loosePropMenu.append(new MenuItem({type: 'separator'}));
+		loosePropMenu.append(new MenuItem({label: 'Remove Prop', click:
+		() => {
+			var index = this.theRoom.looseProps.indexOf(menuStore.looseprop);
+			if (index > -1) {
+				super.sendPropDelete(index);
+			}
+		}}));
+
+		const userMenu = new Menu();
+		userMenu.append(new MenuItem({label: 'Whisper ',type: 'checkbox', click:
+		() => {
+				var user = this.theRoom.getUser(menuStore.userid);
+				if (user) {
+					this.theRoom.enterWhisperMode(user.id,user.name);
+				}
+			}
+		}));
+		userMenu.append(new MenuItem({type: 'separator'}));
+		userMenu.append(new MenuItem({label: 'Offer avatar', click:
+		() => { super.sendWhisper("'offer",menuStore.userid); }
+		}));
+		userMenu.append(new MenuItem({label: 'Accept avatar', click:
+		() => { super.sendXtlk("'accept"); }
+		}));
+		userMenu.append(new MenuItem({type: 'separator'}));
+		userMenu.append(new MenuItem({label: 'Prop mute',type: 'checkbox', click:
+		() => {
+			var user = this.theRoom.getUser(menuStore.userid);
+			if (user) {
+				user.propMuted = !user.propMuted;
+				this.theRoom.reDraw();
+			}
+		}}));
+
+		this.canvas.addEventListener('contextmenu', (e) => {
+			if (this.theRoom) {
+				e.preventDefault();
+
+				var x = (e.layerX/viewScale).fastRound();
+				var y = ((e.layerY + (45*webFrame.getZoomFactor() - 45)) /viewScale).fastRound(); // get excess toolbar height if windows is scaling
+
+				var user = this.theRoom.mouseOverUser(x,y);
+
+				if (user && user != this.theUser) {
+					menuStore.userid = user.id;
+					userMenu.items[0].checked = Boolean(this.theRoom.whisperUserID);
+					userMenu.items[5].checked = Boolean(user.propMuted);
+					userMenu.items[2].enabled = this.theUser.props.length > 0;
+					userMenu.popup(remote.getCurrentWindow(),{x:e.x,y:e.y,async:true});
+				} else {
+					var lpIndex = this.theRoom.mouseOverLooseProp(x,y);
+					if (lpIndex != null) {
+						var lp = this.theRoom.looseProps[lpIndex];
+						loosePropMenu.items[0].enabled = (propBagList.indexOf(lp.id) < 0);
+						menuStore.looseprop = lp;
+						loosePropMenu.popup(remote.getCurrentWindow(),{x:e.x,y:e.y,async:true});
+					}
+				}
+			}
+		}, false);
 	}
 
 	connecting() {
 		this.serverDown();
-		setEnviornment(window.innerWidth-logField.offsetWidth,window.innerHeight-45-document.getElementById('chatbox').offsetHeight,'');
-		toggleLoadingBG(true);
+		this.setRoomBG(window.innerWidth-logField.offsetWidth,window.innerHeight-this.container.offsetTop-document.getElementById('chatbox').offsetHeight,'');
+		this.toggleLoadingBG(true);
 		setUserInterfaceAvailability(true);
 	}
+
+	goto(url) {
+		//window.status = 'setname '+getGeneralPref('userName'); ??
+		var blah = url.trim().replace('palace://','').split(':'); //should use forgiving regex
+		this.retryRegistration = false;
+		this.connect(blah[0],blah[1]);
+	}
+
+	static preloadAudio(name) {
+		var a = document.createElement("audio");
+		a.src = 'audio/system/' + name + '.wav';
+		return a;
+	}
+
+	setBackGroundVideo(url) {
+		this.unloadBgVideo();
+		this.videobg.src = url;
+	}
+
+	setBackGround(url) {
+		this.unloadBgVideo();
+
+		var bg = document.createElement('img');
+		bg.onload = () => {
+			if (this.currentBG == bg.src && this.lastLoadedBG != bg.src) {
+				if (bg.naturalWidth > 0) {
+					this.lastLoadedBG = bg.src; /* to prevent reloading the image when authoring */
+					this.setRoomBG(bg.naturalWidth,bg.naturalHeight,"url("+bg.src+")");
+				} else {
+					bg.onerror();
+				}
+			}
+		};
+		bg.onerror = () => {
+			if (this.currentBG == bg.src) {
+				this.setRoomBG(window.innerWidth-logField.offsetWidth,window.innerHeight-this.container.offsetTop,"url(img/error.png)");
+			}
+		};
+		bg.src = url;
+
+		var preCheck = setInterval(() => {
+			if (bg.naturalWidth > 0 || this.currentBG != bg.src) {
+				bg.onload();
+				clearInterval(preCheck);
+			}
+		},50);
+	}
+
+
+	toggleLoadingBG(on) {
+		if (on) {
+			this.background.style.width = '200px';
+			this.background.style.height = '200px';
+			this.background.className = 'spinloading';
+		} else {
+			this.background.className = '';
+		}
+	}
+
+
+
+
+	unloadBgVideo() {
+		document.getElementById('muteaudio').style.display = 'none';
+		this.videobg.style.display = 'none';
+		if (this.videobg.src != '') {
+			this.videobg.src = '';
+		}
+	}
+
+	setRoomBG(w,h,bg) {
+		this.toggleLoadingBG(false);
+		this.setRoomSize(w,h);
+		this.background.style.backgroundImage = bg;
+	    Bubble.resetDisplayedBubbles();
+	    if (this.theRoom) {
+			this.theRoom.refresh();
+		}
+	}
+
+	setRoomSize(w,h) {
+		this.canvas.width = w;
+		this.canvas.height = h;
+
+		if (this.theRoom) {
+			this.theRoom.context.lineJoin = 'round';
+			this.theRoom.context.lineCap = 'round';
+			this.theRoom.context.imageSmoothingEnabled = false;
+		}
+		scale2Fit();
+		this.background.style.width = w+'px';
+	    this.background.style.height = h+'px';
+		this.container.style.width = w+'px';
+	    this.container.style.height = h+'px';
+
+	    document.body.style.height = this.roomHeight + this.container.offsetTop + document.getElementById('chatbox').offsetHeight + 'px';
+	    setBodyWidth();
+	}
+
+
+
+	get roomWidth() {
+		return this.canvas.width;
+	}
+
+	get roomHeight() {
+		return this.canvas.height;
+	}
+
+
 
 	serverDownMsg(ref,msg) {
 		switch (ref) {
@@ -1174,6 +1380,24 @@ class PalaceClient extends PalaceProtocol {
 
 	}
 
+	passUrl(s) {
+		var url = s.trim().replace(/ /g,'%20');
+		return (url.indexOf('http') === 0)? url:this.mediaUrl+url;
+	}
+
+	removeSpotPicElements() { //removeAllSpotPics
+		var childs = this.container.children;
+		for (var i = childs.length; --i >= 0;) {
+			let child = childs[i];
+			if (child.className.indexOf('spot') === 0) {
+				if (child.constructor === window.HTMLImageElement) {
+					child.onload = null;
+				}
+				this.container.removeChild(child);
+			}
+		}
+	}
+
 	serverDown(msg) { // still gotta implement this in the protocol lol
 		this.mediaUrl = "";
 		allProps = {};
@@ -1185,14 +1409,13 @@ class PalaceClient extends PalaceProtocol {
 		this.roomList = null;
 		this.userList = null;
 		this.lastLoadedBG = '';
-		PalaceRoom.removeAllSpotPics();
+		this.removeSpotPicElements();
 		Bubble.deleteAllBubbles();
-		unloadBgVideo();
+		this.unloadBgVideo();
 		toggleZoomPanel('authenticate',0);
 
 		if (this.theRoom) {
 			this.theRoom.stopAllUserAnimations();
-			//delete this.theRoom;
 			this.theRoom.spots = [];
 			this.theRoom.draws = [];
 			this.theRoom.looseProps = [];
@@ -1202,7 +1425,7 @@ class PalaceClient extends PalaceProtocol {
 		}
 
 		if (msg) {
-			setEnviornment(window.innerWidth-logField.offsetWidth,window.innerHeight-45,"url(img/error.png)");
+			this.setRoomBG(window.innerWidth-logField.offsetWidth,window.innerHeight-this.container.offsetTop,"url(img/error.png)");
 			logmsg(msg);
 		}
 
@@ -1231,7 +1454,7 @@ class PalaceClient extends PalaceProtocol {
 
 	userLogOn(info) {
 		this.lastUserLogOnID = info.id;
-		this.lastUserLogOnTime = ticks();
+		this.lastUserLogOnTime = PalaceClient.ticks();
 		this.serverUserCount = info.count;
 		if (this.theRoom) this.theRoom.setUserCount();
 	}
@@ -1239,7 +1462,7 @@ class PalaceClient extends PalaceProtocol {
 		this.serverUserCount = info.count;
 		if (this.theRoom) {
 			info.logoff = true; // tell removeUser that it is a logoff event.
-			if (this.theRoom.removeUser(info) && !prefs.general.disableSounds) systemAudio.signoff.play();
+			if (this.theRoom.removeUser(info) && !prefs.general.disableSounds) this.sounds.signoff.play();
 			this.theRoom.setUserCount();
 		}
 	}
@@ -1267,9 +1490,77 @@ class PalaceClient extends PalaceProtocol {
 		}
 	}
 
+	static datetime() {
+		return Math.trunc(microseconds()/1000);
+	}
+
+	static ticks() {
+		return Math.trunc(microseconds()/16.666666666666667);
+	}
+
+	playSound(name) {
+		if (!prefs.general.disableSounds) {
+			var player = document.getElementById('soundplayer');
+			player.onerror = () => {
+				var parts = player.src.split('.');
+				var ext = parts.pop();
+				if (ext == 'wav' && ext != 'mp3') {
+					player.src = parts[0] + '.mp3';
+				} else { // try server
+					player.src = this.mediaUrl+name;
+				}
+			};
+			player.src = 'audio/' + (name.split('.').length == 1 ? name+'.wav' : name);
+		}
+	}
+
+	localmsg(msg) {
+		PalaceUser.userChat({chatstr:String(msg)});
+	}
+
+	donprop(pid) {
+		if (this.addSelfProp(pid)) {
+			this.selfPropChange();
+			loadProps([pid],true);
+		}
+	}
+
+	removeprop(pid) {
+		if (this.removeSelfProp(pid)) {
+			this.selfPropChange();
+			loadProps(this.theUser.props,true);
+		}
+	}
+
+
+	setprops(pids) {
+		if (this.theUser && this.theUser.changeUserProps(pids,true)) {
+			this.selfPropChange();
+		}
+	}
+
+	gotoroom(id) {
+		super.sendRoomNav(id);
+	}
+
+	setpos(x,y) {
+		if (x < 22) x = 22;
+		if (y < 22) y = 22;
+		if (x > this.roomWidth-22) x = this.roomWidth-22;
+		if (y > this.roomHeight-22) y = this.roomHeight-22;
+		super.sendUserLocation(x,y);
+		this.theRoom.userMove({id:this.theUserID,x:x,y:y});
+	}
+
+	move(x,y) {
+		if (this.theUser) {
+			this.setpos(this.theUser.x+x,this.theUser.y+y);
+		}
+	}
+
 	selfPropChange() {
 		if (this.theUser) {
-			this.sendPropDress(this.theUser.props);
+			super.sendPropDress(this.theUser.props);
 		}
 		this.theUser.propsChanged = false;
 		enablePropButtons();
@@ -1285,7 +1576,7 @@ class PalaceClient extends PalaceProtocol {
 		}
 	}
 
-	passData(p) {
+	handOffData(p) {
 		//console.log(p);
 		switch(p.type) {
 			case MSG_TALK:

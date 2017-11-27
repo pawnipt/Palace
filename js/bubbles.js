@@ -50,8 +50,8 @@ class Bubble {
 			this.padA += bubbleConsts.padding*2;
 			this.padB += bubbleConsts.padding*4;
 		}
-		this.p.style.maxHeight = (bgEnv.height - this.padB*2+this.padA)+'px';
-		overLayer.appendChild(this.p); /* append to DOM before measurements are possible */
+		this.p.style.maxHeight = (palace.roomHeight - this.padB*2+this.padA)+'px';
+		palace.container.appendChild(this.p); /* append to DOM before measurements are possible */
 		this.textWidth = this.p.offsetWidth;
 		this.textHeight = this.p.offsetHeight;
 		if (this.textHeight < this.padB && !this.shout) this.textHeight = this.padB;
@@ -67,8 +67,8 @@ class Bubble {
 		this.originY = this.storedOriginY;
 		if (this.originX < 0) this.originX = 0;
 		if (this.originY < 0) this.originY = 0;
-		if (this.originX > bgEnv.width) this.originX = bgEnv.width;
-		if (this.originY > bgEnv.height) this.originY = bgEnv.height;
+		if (this.originX > palace.roomWidth) this.originX = palace.roomWidth;
+		if (this.originY > palace.roomHeight) this.originY = palace.roomHeight;
 	}
 	remove(now) {
 		if (now) {
@@ -79,7 +79,7 @@ class Bubble {
 				if (this.popTimer) clearTimeout(this.popTimer);
 				this.popTimer = null;
 				this.user = null; // needed in case it's sticky, because circular reference
-				overLayer.removeChild(this.p);
+				palace.container.removeChild(this.p);
 				chatBubs.splice(index,1);
 			}
 		} else {
@@ -261,7 +261,7 @@ class Bubble {
 			}
 		})) return true;
 
-		if ((x1 < 0 || y1 < 0 || x1+w1 > bgEnv.width || y1+h1 > bgEnv.height)) {// is bubble offscreen
+		if ((x1 < 0 || y1 < 0 || x1+w1 > palace.roomWidth || y1+h1 > palace.roomHeight)) {// is bubble offscreen
 
 			return true;
 		}
@@ -272,7 +272,7 @@ class Bubble {
 		return (x1>=x2+w2 || x1+w1<=x2 || y1>=y2+h2 || y1+h1<=y2)===false;
 	}
 	awaitDirection() {
-		var side = (bgEnv.width/2 < this.originX);
+		var side = (palace.roomWidth/2 < this.originX);
 		var offsetOrigin = 42;
 		if (this.sticky) offsetOrigin = -this.textWidth/2;
 		var iterations = 0;
@@ -294,13 +294,13 @@ class Bubble {
 			}
 			y -= this.textHeight/2;
 
-			if (y+this.textHeight+this.padB > bgEnv.height)
-				y = bgEnv.height-(this.textHeight+this.padB);
+			if (y+this.textHeight+this.padB > palace.roomHeight)
+				y = palace.roomHeight-(this.textHeight+this.padB);
 			if (y-this.padA < 0)
 				y = this.padA;
 
-			if (x+this.textWidth+this.padB > bgEnv.width && (this.right === false || this.sticky || this.shout))
-				x = bgEnv.width-(this.textWidth+this.padB);
+			if (x+this.textWidth+this.padB > palace.roomWidth && (this.right === false || this.sticky || this.shout))
+				x = palace.roomWidth-(this.textWidth+this.padB);
 			if (x-this.padA < 0 && (this.right === true || this.sticky || this.shout))
 				x = this.padA;
 
@@ -315,17 +315,7 @@ class Bubble {
 
 
 
-	static playThemeSound(name) {
-		if (!prefs.general.disableSounds) {
-			var player = document.getElementById('soundplayer');
-			player.onerror = function() {
-				var parts = player.src.split('.');
-				var ext = parts.pop();
-				if (ext == 'wav' && ext != 'mp3') this.src = parts[0] + '.mp3';
-			};
-			player.src = 'audio/' + (name.split('.').length == 1 ? name+'.wav' : name);
-		}
-	}
+
 
 	static processChatType(chatstr) {
 		var i, r, end;
@@ -345,7 +335,7 @@ class Bubble {
 				case ')':
 					r = bubbleConsts.sound.exec(chatstr.substr(i+1));
 					if (r && r[1].length > 0) {
-						Bubble.playThemeSound(r[1]);
+						palace.playSound(r[1]);
 						i += r[0].length;
 					}
 					break;
@@ -376,7 +366,7 @@ class Bubble {
 			chatBubs[i].remove(true);
 		}
 		for (i = quedBubbles.length; --i >= 0;) {
-			overLayer.removeChild(quedBubbles[i].p);
+			palace.container.removeChild(quedBubbles[i].p);
 			quedBubbles.splice(i,1);
 		}
 		if (palace.theRoom && palace.theRoom.sticky) {
