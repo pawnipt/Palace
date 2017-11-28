@@ -1222,18 +1222,21 @@ class PalaceClient extends PalaceProtocol {
 		}, false);
 	}
 
+	maximizeRoomView(img) {
+		this.setRoomBG(window.innerWidth-logField.offsetWidth,window.innerHeight-this.container.offsetTop-document.getElementById('chatbox').offsetHeight,img);
+	}
+
 	connecting() {
+		this.maximizeRoomView('');
 		this.serverDown();
-		this.setRoomBG(window.innerWidth-logField.offsetWidth,window.innerHeight-this.container.offsetTop-document.getElementById('chatbox').offsetHeight,'');
 		this.toggleLoadingBG(true);
 		setUserInterfaceAvailability(true);
 	}
 
 	goto(url) {
-		//window.status = 'setname '+getGeneralPref('userName'); ??
 		var blah = url.trim().replace('palace://','').split(':'); //should use forgiving regex
 		this.retryRegistration = false;
-		this.connect(blah[0],blah[1]);
+		super.connect(blah[0],blah[1]);
 	}
 
 	static preloadAudio(name) {
@@ -1250,9 +1253,22 @@ class PalaceClient extends PalaceProtocol {
 	setBackGround(url) {
 		this.unloadBgVideo();
 
-		var bg = document.createElement('img');
+		let bg = document.createElement('img');
+
+		let count = 0;
+		let preLoad = setInterval(() => {
+			if (bg.naturalWidth > 0 || this.currentBG !== bg.src) {
+				bg.onload();
+			}
+			count++;
+			if (count > 500) {
+				clearInterval(preLoad);
+			}
+		},50);
+
 		bg.onload = () => {
-			if (this.currentBG == bg.src && this.lastLoadedBG != bg.src) {
+			clearInterval(preLoad);
+			if (this.currentBG === bg.src && this.lastLoadedBG !== bg.src) {
 				if (bg.naturalWidth > 0) {
 					this.lastLoadedBG = bg.src; /* to prevent reloading the image when authoring */
 					this.setRoomBG(bg.naturalWidth,bg.naturalHeight,"url("+bg.src+")");
@@ -1261,19 +1277,15 @@ class PalaceClient extends PalaceProtocol {
 				}
 			}
 		};
+
 		bg.onerror = () => {
-			if (this.currentBG == bg.src) {
-				this.setRoomBG(window.innerWidth-logField.offsetWidth,window.innerHeight-this.container.offsetTop,"url(img/error.png)");
+			clearInterval(preLoad);
+			if (this.currentBG === bg.src) {
+				this.maximizeRoomView("url(img/error.png)");
 			}
 		};
-		bg.src = url;
 
-		var preCheck = setInterval(() => {
-			if (bg.naturalWidth > 0 || this.currentBG != bg.src) {
-				bg.onload();
-				clearInterval(preCheck);
-			}
-		},50);
+		bg.src = url;
 	}
 
 
@@ -1425,7 +1437,7 @@ class PalaceClient extends PalaceProtocol {
 		}
 
 		if (msg) {
-			this.setRoomBG(window.innerWidth-logField.offsetWidth,window.innerHeight-this.container.offsetTop,"url(img/error.png)");
+			this.maximizeRoomView("url(img/error.png)");
 			logmsg(msg);
 		}
 
