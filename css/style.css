@@ -94,7 +94,7 @@ body {
   -webkit-font-smoothing : subpixel-antialiased;
   word-wrap              : break-word;
   backface-visibility    : hidden;
-  transform              : translateZ(0);
+  /*transform              : translateZ(0);*/
   pointer-events         : none;
 
 }
