@@ -616,18 +616,15 @@ class PalaceRoom extends Renderer {
 		return ai;
 	}
 
-	static setRoomFocus() {
-		if (document.activeElement !== document.body) {
-			document.activeElement.blur();
-		}
-	}
 
 	get noPainting() {
 		return Boolean(this.flags & 0x0004);
 	}
 
 	mouseDown(event) {
-		PalaceRoom.setRoomFocus();
+		if (document.activeElement !== document.body) {
+			document.activeElement.blur();
+		}
 		if (palace.theUser && event.button == 0) {
 			event.preventDefault();
 			let isDrawing = document.getElementById('drawcheckbox').checked;
@@ -756,9 +753,9 @@ class PalaceRoom extends Renderer {
 	}
 
 	setSpotImg(spot) {
-		var statepic = spot.statepics[spot.state];
+		let statepic = spot.statepics[spot.state];
 		if (statepic && this.pics[statepic.id]) {
-			var img = this.pics[statepic.id].img;
+			let img = this.pics[statepic.id].img;
 			if (img.naturalWidth > 0) {
 				let left = spot.x+statepic.x-Math.trunc(img.naturalWidth/2)+'px';
 				let top = spot.y+statepic.y-Math.trunc(img.naturalHeight/2)+'px';
@@ -778,14 +775,14 @@ class PalaceRoom extends Renderer {
 				}
 			}
 		} else if (spot.img && spot.img.className !== 'spotholder') { /* spot is not displaying a pic so put in placeholder */
-			var img = PalaceRoom.createSpotPicPlaceholder();
+			let img = PalaceRoom.createSpotPicPlaceholder();
 			palace.container.replaceChild(img,spot.img);
 			spot.img = img;
 		}
 	}
 
 	spotStateChange(info) {
-		var spot = this.getSpot(info.spotid);
+		let spot = this.getSpot(info.spotid);
 		if (this.id === info.roomid && spot) {
 			spot.state = info.state;
 			this.setSpotImg(spot);
@@ -912,25 +909,27 @@ class PalaceRoom extends Renderer {
 		loadProps(dude.props);
 		dude.animator();
 		dude.grow(10);
-		this.setUserCount(); // add to palace client class
+		this.setUserCount();
 	}
+
 	getUser(uid) {
 		return this.users.find(function(user){return uid == user.id;});
 	}
+
 	loadUsers(infos) {
 		this.stopAllUserAnimations();
 
 		var dudes = [];
-		infos.find(function(info){dudes.push(new PalaceUser(info))});
+		infos.forEach(function(info){dudes.push(new PalaceUser(info))});
 
 		this.users = dudes;
 
 		var pids = [];
-		dudes.find(function(dude){pids = dude.props.concat(pids)});
+		dudes.forEach(function(dude){pids = dude.props.concat(pids)});
 		this.looseProps.find(function(prop){pids.push(prop.id)});
 
 		loadProps(pids.dedup());
-		dudes.find(function(dude){dude.animator()});
+		dudes.forEach(function(dude){dude.animator()});
 
 		this.setUserCount();
 
