@@ -62,9 +62,6 @@ const	MSG_ASSETNEW = 0x61417374,
 		MSG_SMSG = 0x736d7367,
 		MSG_ALTLOGONREPLY = 0x72657032;
 
-
-
-const zlib = require('zlib'); // needed for legacy props
 const net = require('net');
 
 class BufferView extends DataView {
@@ -1978,14 +1975,12 @@ class LegacyPropDecoder {
 	}
 
 	decode(flags,uint8ary) {
-		if (this.PROP_S20BIT(flags)) { // node zlib returns a node Buffer but it will be read just like a Uint8Array later on
-			return this.decodeS20bit(zlib.inflateSync(uint8ary));
+		if (this.PROP_S20BIT(flags)) {
+			return this.decodeS20bit(pako.inflate(uint8ary));
 		} else if (this.PROP_20BIT(flags)) {
-			return this.decode20bit(zlib.inflateSync(uint8ary));
+			return this.decode20bit(pako.inflate(uint8ary));
 		} else if (this.PROP_32BIT(flags)) {
-			return this.decode32bit(zlib.inflateSync(uint8ary));
-		//} else if (this.PROP_16BIT(flags)) {
-			//return this.decode16bit(zlib.inflateSync(uint8ary));
+			return this.decode32bit(pako.inflate(uint8ary));
 		} else {
 			return this.decode8bit(uint8ary);
 		}
