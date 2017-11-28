@@ -131,7 +131,8 @@ function createNewProps(list) {
 			var file = files.pop();
 			var img = document.createElement('img');
 			img.onerror = function() {
-				imp();
+				logmsg('test');
+				importFile();
 			};
 			img.onload = function() {
 				var id = createPropID();
@@ -151,7 +152,7 @@ function createNewProps(list) {
 				};
 
 				addPropToDB(prop);
-				imp();
+				importFile();
 			};
 			img.src = file.path;
 		}
