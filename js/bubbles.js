@@ -51,9 +51,15 @@ class Bubble {
 			this.padB += bubbleConsts.padding*4;
 		}
 		this.p.style.maxHeight = (palace.roomHeight - this.padB*2+this.padA)+'px';
+		if (palace.roomWidth < 400) {
+			this.p.style.maxWidth = palace.roomWidth/4 + 'px';
+		}
 		palace.container.appendChild(this.p); /* append to DOM before measurements are possible */
 		this.textWidth = this.p.offsetWidth;
 		this.textHeight = this.p.offsetHeight;
+		if (this.isOverflown) {
+			this.p.style.pointerEvents = 'auto';
+		}
 		if (this.textHeight < this.padB && !this.shout) this.textHeight = this.padB;
 
 		if (!this.awaitDirection()) {
@@ -61,6 +67,9 @@ class Bubble {
 		} else {
 			quedBubbles.push(this);
 		}
+	}
+	get isOverflown() {
+    	return this.p.scrollHeight > this.p.clientHeight || this.p.scrollWidth > this.p.clientWidth;
 	}
 	adjustOrigin() {
 		this.originX = this.storedOriginX;
@@ -73,12 +82,12 @@ class Bubble {
 	remove(now) {
 		if (now) {
 			var index = chatBubs.indexOf(this);
+			if (this.timer) clearInterval(this.timer);
+			this.timer = null;
+			if (this.popTimer) clearTimeout(this.popTimer);
+			this.popTimer = null;
+			this.user = null;
 			if (index > -1) {
-				if (this.timer) clearInterval(this.timer);
-				this.timer = null;
-				if (this.popTimer) clearTimeout(this.popTimer);
-				this.popTimer = null;
-				this.user = null; // needed in case it's sticky, because circular reference
 				palace.container.removeChild(this.p);
 				chatBubs.splice(index,1);
 			}
@@ -253,7 +262,7 @@ class Bubble {
 				var y2 = boob.y-boob.padA;
 				var w2 = boob.textWidth+boob.padB;
 				var h2 = boob.textHeight+boob.padB;
-				var overLaps = Bubble.rectsOverlap(x1,y1,w1,h1,x2,y2,w2,h2);
+				var overLaps = (x1>=x2+w2 || x1+w1<=x2 || y1>=y2+h2 || y1+h1<=y2)===false;
 				if (((bub.sticky && boob.sticky) || (!boob.deflated && !boob.sticky)) && overLaps)
 					return true;
 				if (!bub.sticky && boob.sticky && overLaps)
@@ -268,9 +277,7 @@ class Bubble {
 
 		submissives.forEach(function(sub){sub.deflate(false)});
 	}
-	static rectsOverlap(x1,y1,w1,h1,x2,y2,w2,h2) {
-		return (x1>=x2+w2 || x1+w1<=x2 || y1>=y2+h2 || y1+h1<=y2)===false;
-	}
+
 	awaitDirection() {
 		var side = (palace.roomWidth/2 < this.originX);
 		var offsetOrigin = 42;
@@ -362,13 +369,14 @@ class Bubble {
 
 	static deleteAllBubbles() {
 		var i = 0;
+		for (i = quedBubbles.length; --i >= 0;) {
+			palace.container.removeChild(quedBubbles[i].p);
+		}
+		quedBubbles = [];
 		for (i = chatBubs.length; --i >= 0;) {
 			chatBubs[i].remove(true);
 		}
-		for (i = quedBubbles.length; --i >= 0;) {
-			palace.container.removeChild(quedBubbles[i].p);
-			quedBubbles.splice(i,1);
-		}
+
 		if (palace.theRoom && palace.theRoom.sticky) {
 			palace.theRoom.sticky.remove(true);
 			palace.theRoom.sticky = null;
@@ -376,16 +384,16 @@ class Bubble {
 	}
 
 	static pushBubbles() {
-		for (var i = 0; i < quedBubbles.length; i++) {
-			var bub = quedBubbles[i];
+		for (let i = 0; i < quedBubbles.length; i++) {
+			let bub = quedBubbles[i];
 			if (!bub.awaitDirection()) {
 				quedBubbles.splice(i,1);
 				bub.show();
 				i--;
 			}
 		}
-		for (var i = chatBubs.length; --i >= 0;) {
-			var bub = chatBubs[i];
+		for (let i = chatBubs.length; --i >= 0;) {
+			let bub = chatBubs[i];
 			if (bub.sticky && bub.deflated && !bub.awaitDirection()) {
 				bub.inflate();
 			}
