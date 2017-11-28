@@ -88,7 +88,7 @@ body {
   max-width              : 169px;
   margin                 : 0px;
   padding                : 1px;
-  overflow               : visible;
+  overflow               : auto;
   text-align             : center;
   font-size              : medium;
   -webkit-font-smoothing : subpixel-antialiased;
@@ -96,11 +96,7 @@ body {
   backface-visibility    : hidden;
   transform              : translateZ(0);
   pointer-events         : none;
-  /**
-  * appears to fix strange layering bug when outside original parent scale
-  * overflow, perhaps because it forces hw acceleration?
-  */
-  /* performance, idk? */
+
 }
 
 #navsearch {
@@ -1058,16 +1054,18 @@ body {
 #chatbox {
   z-index          : 101;
   display          : block;
+  box-sizing       : border-box;
   position         : fixed;
   bottom           : 0px;
   width            : 100%;
-  height           : 18px;
+  height           : 24px;
   margin           : 0px;
   padding          : 1px;
+  padding-left     : 21px;
   border-width     : 2px;
   background-color : RGBA(255,255,255,0.8);
-  text-indent      : 21px;
   font-size        : small;
+  transition       : width 0.3s;
 }
 
 #props {
