@@ -27,7 +27,7 @@ class Bubble {
 			y = bubInfo.y;
 		}
 
-		this.p = document.createElement('p');
+		this.p = document.createElement('div');
 		this.p.className = 'chatBubble';
 		if (chat.whisper) this.p.style.fontStyle = 'italic';
 
@@ -51,8 +51,8 @@ class Bubble {
 			this.padB += bubbleConsts.padding*4;
 		}
 		this.p.style.maxHeight = (palace.roomHeight - this.padB*2+this.padA)+'px';
-		if (palace.roomWidth < 400) {
-			this.p.style.maxWidth = palace.roomWidth/4 + 'px';
+		if (palace.roomWidth < 550) {
+			this.p.style.maxWidth = Math.max(50,Math.trunc(palace.roomWidth/3.5)) + 'px';
 		}
 		palace.container.appendChild(this.p); /* append to DOM before measurements are possible */
 		this.textWidth = this.p.offsetWidth;
