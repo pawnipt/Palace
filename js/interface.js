@@ -222,10 +222,10 @@ let contextMenuListener = new ContextMenuListener((info) => {
 				if (lastPid == null) {
 					selectedBagProps = [newPid];
 				} else {
-					var lastIdx = propBagList.indexOf(lastPid);
-					var newIdx = propBagList.indexOf(newPid);
-					var max = Math.max(newIdx,lastIdx);
-					var min = Math.min(newIdx,lastIdx);
+					let lastIdx = propBagList.indexOf(lastPid);
+					let newIdx = propBagList.indexOf(newPid);
+					let max = Math.max(newIdx,lastIdx);
+					let min = Math.min(newIdx,lastIdx);
 					selectedBagProps = propBagList.slice(min,max+1);
 					if (newIdx < lastIdx) {
 						selectedBagProps.reverse();
@@ -236,20 +236,19 @@ let contextMenuListener = new ContextMenuListener((info) => {
 			}
 		} else if (event.x-this.offsetLeft < 2) {
 			event.preventDefault();
-			var initialX = event.pageX-window.scrollX;
-			var initialW = this.offsetWidth;
+			let initialX = event.pageX-window.scrollX;
+			let initialW = this.offsetWidth;
 
-			var mouseMovePropBag = (event) => {
+			let mouseMovePropBag = (event) => {
 				this.style.cursor = 'col-resize';
 				event.stopImmediatePropagation();
-				var w = initialX-event.x+initialW;
+				let w = initialX-event.x+initialW;
 				this.style.width = w+'px';
-				//setBodyWidth();
 				setGeneralPref('propBagWidth',w);
 				refreshPropBagView();
 				return false;
 			};
-			var mouseUpPropBag = function(event) {
+			let mouseUpPropBag = function(event) {
 				event.stopImmediatePropagation();
 				window.removeEventListener('mouseup',mouseUpPropBag,true);
 				window.removeEventListener('mousemove',mouseMovePropBag,true);
@@ -444,9 +443,11 @@ let contextMenuListener = new ContextMenuListener((info) => {
 
 				event.stopImmediatePropagation();
 				var w = initialX-event.x+initialW;
+
 				chatLogScrollLock(() => {
 					this.style.width = w+'px';
 				});
+
 				setBodyWidth();
 				setGeneralPref('chatLogWidth',w);
 				scale2Fit();
@@ -486,20 +487,10 @@ let contextMenuListener = new ContextMenuListener((info) => {
 		f.click();
 		document.body.removeChild(f);
 	};
-	document.getElementById('removeprops').onclick = function(){setprops([])}; // get naked button
-	document.getElementById('editprop').onclick = function() { // edit selected bag prop
-		// var tile = selectedBagProps[0];
-		// 	if (!PropEdit) PropEdit = new PropEditor(tile);
-		// 	PropEdit.loadProp(tile.dataset.pid);
-		// 	if (PropEdit.editor.dataset.state == 0) {
-		// 		//PropEdit.editor.style.left = propBag.offsetLeft+'px';
-		// 		toggleToolBarControl(PropEdit.editor.id);
-		// 		setTimeout(function(){
-		// 			PropEdit.editor.style.opacity = '1';
-		// 			PropEdit.editor.style.transform = PropEdit.trans;
-		// 		},0);
-		// 	}
-	};
+	document.getElementById('removeprops').onclick = function(){palace.setprops([])}; // get naked button
+	// document.getElementById('editprop').onclick = function() {
+    //
+	// };
 
 
 	// setup draw controls
@@ -814,30 +805,35 @@ function scale2Fit() {
 		clearTimeout(viewScaleTimer);
 		viewScaleTimer = null;
 	}
-	var chatBoxHeight = document.getElementById('chatbox').offsetHeight;
+	var chatBox = document.getElementById('chatbox');
+	var chatBoxHeight = chatBox.offsetHeight;
 	var logWidth = logField.offsetWidth;
 
-	if (!prefs.general.viewScales && (prefs.general.viewScaleAll || (palace.roomWidth > window.innerWidth-logWidth || palace.roomHeight > window.innerHeight-45-chatBoxHeight))) {
+	if (!prefs.general.viewScales && (prefs.general.viewScaleAll || (palace.roomWidth > window.innerWidth-logWidth || palace.roomHeight > window.innerHeight-palace.container.offsetTop-chatBoxHeight))) {
 		viewScaleTimer = setTimeout(function(){
 			document.body.scrollTop = 0;
 			document.body.scrollLeft = 0;
 			document.body.style.overflow = 'hidden';
 			var scaleW = ((window.innerWidth - logWidth) / palace.roomWidth);
-			var scaleH = ((window.innerHeight-45 - chatBoxHeight) / palace.roomHeight);
+			var scaleH = ((window.innerHeight- palace.container.offsetTop - chatBoxHeight) / palace.roomHeight);
 			var scale = scaleW < scaleH?scaleW:scaleH;
 			if (viewScale != scale) palace.container.style.transform = 'scale('+scale+') translateZ(0)';
 			viewScale = scale;
+			chatBox.style.width = (palace.roomWidth*scale)+'px';
 		},50);
 	} else {
 		document.body.style.overflow = 'auto';
 		palace.container.style.transform = '';
 		viewScale = 1;
+		chatBox.style.width = palace.roomWidth +'px';
 	}
 
 }
 
 function setBodyWidth() {
-	document.body.style.width = palace.roomWidth + logField.offsetWidth + 'px';
+	var space = 0;
+	if (logField.dataset.state == 1) space = logField.offsetWidth;
+	document.body.style.width = palace.roomWidth + space + 'px';
 }
 
 
