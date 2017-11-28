@@ -569,6 +569,9 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	document.getElementById('prefdisablesounds').onchange = function() {
 		setGeneralPref('disableSounds',this.checked);
 	};
+	document.getElementById('prefautoplayvideos').onchange = function() {
+		setGeneralPref('autoplayvideos',this.checked);
+	};
 
 
 
@@ -790,6 +793,9 @@ function createChatVideoPlayer(type,info,source) {
 		}
 		info.container.appendChild(pb);
 	});
+	if (prefs.general.autoplayvideos) {
+		pb.click();
+	}
 }
 
 function chatLogScrollLock(callback) { // keeps the chat log scrolled down if the user hasn't scrolled up

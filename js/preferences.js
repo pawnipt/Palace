@@ -218,7 +218,7 @@ window.onunload = function(e) {
 
 (function () { // LOAD PREFERENCES
 	var a;
-	if (localStorage.preferences) {
+	if (localStorage.preferences) { // redo preferences!
 		prefs = JSON.parse(localStorage.preferences);
 		document.getElementById('drawcolor').style.backgroundColor = prefs.draw.color;
 		document.getElementById('drawfill').style.backgroundColor = prefs.draw.fill;
@@ -235,6 +235,8 @@ window.onunload = function(e) {
 		if (a) document.getElementById('prefviewscaleall').checked = a;
 		a = getGeneralPref('disableSounds');
 		if (a) document.getElementById('prefdisablesounds').checked = a;
+		a = getGeneralPref('autoplayvideos');
+		if (a) document.getElementById('prefautoplayvideos').checked = a;
 		setDrawType();
 	} else { //default
 		prefs.registration = {regi:getRandomInt(100,2147483647),puid:getRandomInt(1,2147483647)};
