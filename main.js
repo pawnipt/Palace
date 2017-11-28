@@ -62,10 +62,6 @@ const template = [
   {
     label: 'View',
     submenu: [
-      {role: 'reload'},
-      {role: 'forcereload'},
-      {role: 'toggledevtools'},
-      {type: 'separator'},
       {role: 'resetzoom'},
       {role: 'zoomin'},
       {role: 'zoomout'},
@@ -73,12 +69,28 @@ const template = [
       {role: 'togglefullscreen'}
     ]
   },
+  {
+	label: 'Developer',
+	submenu: [
+	  {role: 'reload'},
+	  {role: 'forcereload'},
+	  {label: 'Clear Cache...',
+	   click() {
+		   win.webContents.session.clearCache(function(){
+		   //some callback.
+		   });
+	   }
+	  },
+	  {type: 'separator'},
+	  {role: 'toggledevtools'}
+	]
+  },
   // {
-    // role: 'window',
-    // submenu: [
-      // {role: 'minimize'},
-      // {role: 'close'}
-    // ]
+  //   role: 'window',
+  //   submenu: [
+  //     {role: 'minimize'},
+  //     {role: 'close'}
+  //   ]
   // },
   {
     role: 'help',
@@ -120,13 +132,13 @@ if (process.platform === 'darwin') {
   )
 
   // Window menu
-  template[3].submenu = [
-    {role: 'close'},
-    {role: 'minimize'},
-    {role: 'zoom'},
-    {type: 'separator'},
-    {role: 'front'}
-  ]
+  // template[3].submenu = [
+  //   {role: 'close'},
+  //   {role: 'minimize'},
+  //   {role: 'zoom'},
+  //   {type: 'separator'},
+  //   {role: 'front'}
+  // ]
 } else {
   template.unshift({
     label: 'File',
