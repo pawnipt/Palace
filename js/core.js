@@ -421,13 +421,15 @@ class PalaceRoom extends Renderer {
 		info.pictures.forEach((pict) => {
 			let newImg = document.createElement('img');
 			newImg.onload = () => {
-				this.spots.forEach((spot) => {
-					if (!spot.img) {
-						spot.img = PalaceRoom.createSpotPicPlaceholder();
-						palace.container.appendChild(spot.img);
-					}
-					this.setSpotImg(spot);
-				});
+				if (this === palace.theRoom) { // check because async...
+					this.spots.forEach((spot) => {
+						if (!spot.img) {
+							spot.img = PalaceRoom.createSpotPicPlaceholder();
+							palace.container.appendChild(spot.img);
+						}
+						this.setSpotImg(spot);
+					});
+				}
 			};
 			pict.img = newImg;
 			this.pics[pict.id] = pict;
@@ -758,10 +760,12 @@ class PalaceRoom extends Renderer {
 		if (statepic && this.pics[statepic.id]) {
 			var img = this.pics[statepic.id].img;
 			if (img.naturalWidth > 0) {
+				let left = spot.x+statepic.x-Math.trunc(img.naturalWidth/2)+'px';
+				let top = spot.y+statepic.y-Math.trunc(img.naturalHeight/2)+'px';
 				if (spot.img.src !== img.src) {
 					img = img.cloneNode(false);
-					img.style.left = spot.x+statepic.x-(img.naturalWidth/2).fastRound()+'px';
-					img.style.top = spot.y+statepic.y-(img.naturalHeight/2).fastRound()+'px';
+					img.style.left = left;
+					img.style.top = top;
 					img.className = 'spotpic';
 					if (Boolean(spotConsts.PicturesAboveAll & spot.flags || spotConsts.PicturesAboveProps & spot.flags || spotConsts.PicturesAboveNameTags & spot.flags)) {
 						img.className += ' ontop';
@@ -769,8 +773,8 @@ class PalaceRoom extends Renderer {
 					palace.container.replaceChild(img,spot.img); // was an error with this, not sure if it is fixed
 					spot.img = img;
 				} else {
-					spot.img.style.left = spot.x+statepic.x-(spot.img.naturalWidth/2).fastRound()+'px';
-					spot.img.style.top = spot.y+statepic.y-(spot.img.naturalHeight/2).fastRound()+'px';
+					spot.img.style.left = left;
+					spot.img.style.top = top;
 				}
 			}
 		} else if (spot.img && spot.img.className !== 'spotholder') { /* spot is not displaying a pic so put in placeholder */
