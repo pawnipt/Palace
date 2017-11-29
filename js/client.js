@@ -149,10 +149,11 @@ class BufferView extends DataView {
 
 
 class PalaceProtocol {
-	constructor(regi,puid) {
+	constructor(regi,puid,version) {
 		this.crypt = new PalaceCrypt(1);
 		this.regi = regi;
 		this.puid = puid;
+		this.clientVersion = version;
 	}
 
 	connect(ip,port) {
@@ -1089,7 +1090,7 @@ class PalaceProtocol {
 		reg.setInt32(100,0x00011940);
 		reg.setInt32(104,0x00011940);
 		//reg.setInt16(108); //optional room ID to land in (if server allows it,0)
-		reg.set(this.textEncoder.encode('PC5'+remote.app.getVersion().replace(/\./g, '')),110);
+		reg.set(this.textEncoder.encode(this.clientVersion),110);
 
 		reg.setInt32(120,0x00000041);
 		if (this.retryRegistration === true ) {
@@ -1115,11 +1116,22 @@ class PalaceProtocol {
 
 }
 
+
+
 class PalaceClient extends PalaceProtocol {
 	constructor(regi,puid) {
+		let {remote} = require('electron');
+		let {Menu, MenuItem} = remote;
 
 		let reg = new PalaceRegistration(regi,puid);
-		super({crc:reg.crc,counter:reg.counter},{crc:reg.puidCrc,counter:reg.puidCounter});
+		super(
+			{crc:reg.crc,counter:reg.counter},
+			{crc:reg.puidCrc,counter:reg.puidCounter},
+			'PC5'+remote.app.getVersion().replace(/\./g, '').slice(-3)
+		);
+
+		this.webFrame = require('electron').webFrame;
+
 		this.propDecoder = new LegacyPropDecoder();
 
 		this.background = document.getElementById('background');
@@ -1196,7 +1208,7 @@ class PalaceClient extends PalaceProtocol {
 				e.preventDefault();
 
 				var x = (e.layerX/viewScale).fastRound();
-				var y = ((e.layerY + (45*webFrame.getZoomFactor() - 45)) /viewScale).fastRound(); // get excess toolbar height if windows is scaling
+				var y = ((e.layerY + this.zoomFactorY) /viewScale).fastRound(); // get excess toolbar height if windows is scaling
 
 				var user = this.theRoom.mouseOverUser(x,y);
 
@@ -1217,6 +1229,10 @@ class PalaceClient extends PalaceProtocol {
 				}
 			}
 		}, false);
+	}
+
+	get zoomFactorY() {
+		return (this.container.offsetTop*this.webFrame.getZoomFactor() - this.container.offsetTop);
 	}
 
 	maximizeRoomView(img) {

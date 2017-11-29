@@ -485,7 +485,7 @@ class PalaceRoom extends Renderer {
 			}
 
 			var x = (event.layerX/viewScale).fastRound();
-			var y = ((event.layerY+(45*webFrame.getZoomFactor() - 45))/viewScale).fastRound();
+			var y = ((event.layerY+palace.zoomFactorY)/viewScale).fastRound();
 
 			if (!this.grabbedProp) {
 
@@ -570,7 +570,7 @@ class PalaceRoom extends Renderer {
 	mouseUp(event) {
 		if (this.grabbedProp) {
 			let x = (event.layerX/viewScale).fastRound();
-			let y = ((event.layerY+(45*webFrame.getZoomFactor() - 45))/viewScale).fastRound();
+			let y = ((event.layerY+palace.zoomFactorY)/viewScale).fastRound();
 			let overSelf = (palace.theUser && palace.theUser.x-22 < x && palace.theUser.x+22 > x && palace.theUser.y-22 < y && palace.theUser.y+22 > y);
 			if (!this.grabbedProp.looseprop) {
 				if (!overSelf) {
@@ -629,7 +629,7 @@ class PalaceRoom extends Renderer {
 			event.preventDefault();
 			let isDrawing = document.getElementById('drawcheckbox').checked;
 			let x = (event.layerX/viewScale).fastRound();
-			let y = ((event.layerY + (45*webFrame.getZoomFactor() - 45)) /viewScale).fastRound(); // get excess toolbar height if windows is scaling
+			let y = ((event.layerY + palace.zoomFactorY) /viewScale).fastRound(); // get excess toolbar height if windows is scaling
 			if (isDrawing) {
 				if (!palace.allowPainting && !palace.isOperator) {
 					logmsg('Painting is not allowed on this server.');

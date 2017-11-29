@@ -13,9 +13,6 @@ var smileys = {},
 	keysDown = [];
 
 
-const {shell, webFrame, remote} = require('electron');
-const {Menu, MenuItem} = remote;
-
 const electronSpellchecker = require('electron-spellchecker');
 const SpellCheckHandler = electronSpellchecker.SpellCheckHandler;
 const ContextMenuListener = electronSpellchecker.ContextMenuListener;
@@ -213,7 +210,9 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	};
 	propBag.onmousedown = function(event) {
 		var newTarget = this.clickedProp(event.target);
-		if (event.target.nodeName != 'IMG') event.preventDefault();
+		if (event.target.nodeName != 'IMG') {
+			event.preventDefault();
+		}
 		if (newTarget && (newTarget.className == '' || event.shiftKey || event.metaKey)) {
 			var newPid = Number(newTarget.dataset.pid);
 			if (newPid != null) {
@@ -627,7 +626,7 @@ function makeHyperLinks(str,parent) { /* fix this, oddly; numbers fail! */
 					a.onfocus=function(){this.blur()};
 					a.addEventListener('click', function (e) {
 						e.preventDefault();
-						shell.openExternal(this.href);
+						require('electron').shell.openExternal(this.href);
 					});
 					a.appendChild(txt);
 					a.href = link;
@@ -862,7 +861,7 @@ function refreshPropBagView(refresh) {
 	var bagWidth = propBag.clientWidth,
 		tileSize = prefs.general.propBagTileSize,
 		visibleColumns = (bagWidth / tileSize).fastRound(),
-		visibleRows = ((window.innerHeight - 45) / tileSize).fastRound(), // 45 is main toolbar height
+		visibleRows = ((window.innerHeight - palace.container.offsetTop) / tileSize).fastRound(), // 45 is main toolbar height
 		count = visibleRows * visibleColumns,
 		max = propBagList.length,
 		scroll = (propBag.scrollTop/tileSize).fastRound(),
