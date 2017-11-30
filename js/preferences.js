@@ -35,38 +35,41 @@ function initializePropBagDB() {
 }
 initializePropBagDB();
 
-function addPropToDB(prop) {
-	if (propBagList.indexOf(prop.id) < 0 && (prop.img.length > 0 || (prop.img && prop.img.naturalWidth > 0))) { //does prop exist in the bag already?
-		var tx = db.transaction("props", "readwrite")
-		var store = tx.objectStore("props");
+function addPropsToDB(props) {
+	var tx = db.transaction("props", "readwrite")
+	var store = tx.objectStore("props");
 
-		store.add({
-			id: prop.id,
-			name: prop.name,
-			prop: {
-				x: prop.x,
-				y: prop.y,
-				w: prop.w,
-				h: prop.h,
-				head: prop.head,
-				ghost: prop.ghost,
-				animated: prop.animated,
-				bounce: prop.bounce,
-				img: getImageData(prop.img)
-			}
-		});
+	tx.onerror = function() {
+		logmsg('Error adding prop to DB: '+tx.error);
+	};
+	tx.oncomplete = function() {
+		refreshPropBagView();
+	};
 
-		propBagList.unshift(prop.id);
-		store.put({id: 'propList', list: propBagList});
+	props.forEach(function(prop) {
+		if (propBagList.indexOf(prop.id) < 0 && (prop.img.length > 0 || (prop.img && prop.img.naturalWidth > 0))) { //does prop exist in the bag already?
 
-		tx.onerror = function() {
-			logmsg('Error adding prop to DB: '+tx.error);
-		};
-		tx.oncomplete = function() {
-			//logmsg('Prop added successfully to DB.');
-			refreshPropBagView();
-		};
-	}
+			store.add({
+				id: prop.id,
+				name: prop.name,
+				prop: {
+					x: prop.x,
+					y: prop.y,
+					w: prop.w,
+					h: prop.h,
+					head: prop.head,
+					ghost: prop.ghost,
+					animated: prop.animated,
+					bounce: prop.bounce,
+					img: getImageData(prop.img)
+				}
+			});
+
+			propBagList.unshift(prop.id);
+		}
+	});
+
+	store.put({id: 'propList', list: propBagList});
 }
 
 
@@ -74,7 +77,7 @@ function addPropToDB(prop) {
 
 function saveProp(id,flush) {
 	var prop = allProps[id];
-	if (prop) addPropToDB(prop);
+	if (prop) addPropsToDB([prop]);
 }
 
 function getBagProp(id,img) {
@@ -122,9 +125,6 @@ function createPropID() {
 
 
 function resizeGif(gif) {
-	console.log(gif)
-	let frames = gif.decompressFrames(true);
-
 	let gifCanvas = document.createElement('canvas');
 	gifCanvas.width = gif.raw.lsd.width;
 	gifCanvas.height = gif.raw.lsd.height;
@@ -133,61 +133,54 @@ function resizeGif(gif) {
 	let tempcanvas = document.createElement('canvas');
 	let tempctx = tempcanvas.getContext("2d");
 
-	let imgData;
+	let props = [],dispose = 0,imgData;
 
-	// var bgColor = gif.raw.gct[gif.raw.lsd.backgroundColorIndex];
-    //
-	// gifctx.fillStyle = 'RGB('+bgColor[0]+','+bgColor[1]+','+bgColor[2]+')';
-	// gifctx.fillRect(0, 0, gifCanvas.width, gifCanvas.height)
+	for(let i = 0; i< gif.raw.frames.length; i++){
+		let rawFrame = gif.raw.frames[i];
+		if (rawFrame.image) {
+			let frame = gif.decompressFrame(i, true);
+			let dims = frame.dims;
 
-	let props = [];
-	let dispose = 0;
-	for (let i = 0; i < frames.length; i++) {
-		let frame = frames[i];
-		let dims = frame.dims;
-		console.log(frame)
-		if(!imgData || dims.width != imgData.width || dims.height != imgData.height){
-			tempcanvas.width = dims.width;
-			tempcanvas.height = dims.height;
-			imgData = tempctx.createImageData(dims.width, dims.height);
+			//console.log(frame)
+			if(!imgData || dims.width != imgData.width || dims.height != imgData.height){
+				tempcanvas.width = dims.width;
+				tempcanvas.height = dims.height;
+				imgData = tempctx.createImageData(dims.width, dims.height);
+			}
+
+			if (dispose >= 2) {
+				gifctx.clearRect(0, 0, gifCanvas.width, gifCanvas.height);
+			}
+			dispose = frame.disposalType;
+
+			imgData.data.set(frame.patch);
+			tempctx.putImageData(imgData,0,0);
+
+			gifctx.drawImage(tempcanvas, dims.left, dims.top);
+
+			props.unshift(createNewProp(gifCanvas,true));
 		}
-
-		if (dispose >= 2) {
-			gifctx.clearRect(0, 0, gifCanvas.width, gifCanvas.height);
-		}
-		dispose = frame.disposalType;
-
-		imgData.data.set(frame.patch);
-		tempctx.putImageData(imgData,0,0);
-
-		gifctx.drawImage(tempcanvas, dims.left, dims.top);
-
-		props.push(createNewProp(gifCanvas,true));
-
 	}
-
-	for (let i = props.length; --i >= 0;) {
-		addPropToDB(props[i]);
-	}
+	
+	addPropsToDB(props);
 }
 
 
 
 function createNewProps(list) {
-
 	for (var i = 0, files = new Array(list.length); i < list.length; i++) {
 		files[i] = list[i]; // moving the list to an actual array so pop works , lol
 	}
 
-	var importFile = function() {
+	let importFile = function() {
 		if (files.length > 0) {
-			var file = files.pop();
+			let file = files.pop();
+
 
 			if (file.type == 'image/gif') {
-				var reader = new FileReader();
+				let reader = new FileReader();
 				reader.onload = function(event) {
-					var gif = new GIF(event.target.result);
-					resizeGif(gif);
+					resizeGif(new GIF(event.target.result));
 					importFile();
 				};
 				reader.onerror = function(err) {
@@ -199,12 +192,12 @@ function createNewProps(list) {
 			} else {
 
 
-				var img = document.createElement('img');
+				let img = document.createElement('img');
 				img.onerror = function() {
 					importFile();
 				};
 				img.onload = function() {
-					addPropToDB(createNewProp(this));
+					addPropsToDB([createNewProp(this)]);
 					importFile();
 				};
 				img.src = file.path;
@@ -215,9 +208,9 @@ function createNewProps(list) {
 }
 
 function createNewProp(img,animated) {
-	var id = createPropID();
-	var d = calculateAspectRatio(img.width,img.height,220);
-	var c = document.createElement('canvas');
+	let id = createPropID();
+	let d = calculateAspectRatio(img.width,img.height,220);
+	let c = document.createElement('canvas');
 
 	c.width = d.w.fastRound();
 	c.height = d.h.fastRound();
@@ -226,7 +219,7 @@ function createNewProp(img,animated) {
 	c.imageSmoothingQuality = 'high';
 	c.drawImage(img,0,0,img.width,img.height,0,0,c.canvas.width,c.canvas.height);
 
-	var prop = {
+	let prop = {
 		id:id,
 		name:'Palace Prop',
 		w:c.canvas.width,

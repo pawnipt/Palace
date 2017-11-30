@@ -224,7 +224,12 @@ let contextMenuListener = new ContextMenuListener((info) => {
 				}
 
 				if (event.metaKey) {
-					selectedBagProps.push(newPid);
+					let already = selectedBagProps.indexOf(newPid);
+					if (already > -1) {
+						selectedBagProps.splice(already,1);
+					} else {
+						selectedBagProps.push(newPid);
+					}
 				} else if (!lastPid) {
 					selectedBagProps = [newPid];
 				} else {

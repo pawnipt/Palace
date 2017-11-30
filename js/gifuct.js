@@ -266,10 +266,13 @@ GIF.prototype.decompressFrame = function(index, buildPatch){
 		if(frame.gce){
 			image.delay = (frame.gce.delay || 10) * 10; // convert to ms
 			image.disposalType = frame.gce.extras.disposal;
+
 			// transparency
 			if(frame.gce.extras.transparentColorGiven){
 				image.transparentIndex = frame.gce.transparentColorIndex;
 			}
+		} else {
+			image.disposalType = 2;
 		}
 
 		// create canvas usable imagedata if desired
@@ -418,24 +421,22 @@ GIF.prototype.decompressFrame = function(index, buildPatch){
 	// TODO: could potentially squeeze some performance by doing a direct 32bit write per iteration
 
 	// converted to 32bit writing, for a significant performance increase.
-	function generatePatch(image){
+	function generatePatch(image) {
 
 		var totalPixels = image.pixels.length;
-		var patchData = new Uint8ClampedArray(totalPixels * 4);
-		var patch32 = new Uint32Array(patchData.buffer);
+		var patch32 = new Uint32Array(totalPixels);
 
-		for(var i=0; i<totalPixels; i++){
-			//var pos = i * 4;
+		for(var i = 0; i < totalPixels; i++) {
 			var colorIndex = image.pixels[i];
 			var color = image.colorTable[colorIndex];
 
-			patch32[i] = ((colorIndex !== image.transparentIndex ? 255 : 0) << 24) +
-				(color[2] << 16) +
-				(color[1] << 8) +
-				color[0];
+			patch32[i] = ((colorIndex !== image.transparentIndex ? 255 : 0) << 24)
+				+ (color[2] << 16)
+				+ (color[1] << 8)
+				+ color[0];
 
 		}
-		return patchData;
+		return new Uint8ClampedArray(patch32.buffer);
 	}
 };
 

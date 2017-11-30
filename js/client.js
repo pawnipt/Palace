@@ -1942,18 +1942,8 @@ class LegacyPropDecoder {
 		return this.ctx.canvas.toDataURL();
 	}
 
-	decode32bit(b) {
-		let buf = new ArrayBuffer(7744),
-			buf8 = new Uint8ClampedArray(buf);
-
-		for (let i = 0; i < 7744; i+=4) {
-			buf8[i+2] = b[i+2];
-			buf8[i+1] = b[i+1];
-			buf8[i] = b[i];
-			buf8[i+3] = b[i+3];
-		}
-
-		this.imageData.data.set(buf8);
+	decode32bit(b) { // lol
+		this.imageData.data.set(new Uint8ClampedArray(b.buffer));
 		this.ctx.putImageData(this.imageData,0,0);
 		return this.ctx.canvas.toDataURL();
 	}
