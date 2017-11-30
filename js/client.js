@@ -1124,6 +1124,7 @@ class PalaceClient extends PalaceProtocol {
 		let {Menu, MenuItem} = remote;
 
 		let reg = new PalaceRegistration(regi,puid);
+
 		super(
 			{crc:reg.crc,counter:reg.counter},
 			{crc:reg.puidCrc,counter:reg.puidCounter},
@@ -1138,6 +1139,7 @@ class PalaceClient extends PalaceProtocol {
 		this.videobg = document.getElementById('videobg');
 		this.container = document.getElementById('container');
 		this.canvas = document.getElementById('mainlayer');
+
 
 		this.sounds = {
 			signon:PalaceClient.preloadAudio('SignOn'),
@@ -1229,7 +1231,42 @@ class PalaceClient extends PalaceProtocol {
 				}
 			}
 		}, false);
+
+
+		// window.addEventListener("message", (event) => {
+		// 	// check source and see if a palace function was executed
+		// 	if (event.source === this.sandbox && typeof event.data !== 'undefined') {
+		// 		this.scriptEvent(event.data);
+		// 	}
+		// }, false);
+        //
+        //
+		// const sandframe = document.createElement('iframe');
+		// sandframe.sandbox = 'allow-scripts';
+		// sandframe.className = 'sandbox';
+		// document.body.appendChild(sandframe);
+		// sandframe.src = 'http://pchat.org/sandbox/';
+		// this.sandbox = sandframe.contentWindow;
+
 	}
+
+	// script(code) {
+	// 	this.sandbox.postMessage(code,'*');
+	// }
+    //
+	// scriptEvent(data) {
+	// 	console.log(data);
+	// 	switch (data.type) {
+	// 		case 'say':
+	// 			super.sendXtlk(data.params[0]);
+	// 			break;
+	// 		case 'alert':
+	// 			alert(this.servername + ' says: ' + data.params[0]);
+	// 			break;
+	// 		default:
+	// 			break;
+	// 	}
+	// }
 
 	get zoomFactorY() {
 		return (this.container.offsetTop*this.webFrame.getZoomFactor() - this.container.offsetTop);
@@ -1532,6 +1569,7 @@ class PalaceClient extends PalaceProtocol {
 				if (ext == 'wav' && ext != 'mp3') {
 					player.src = parts[0] + '.mp3';
 				} else { // try server
+					player.onerror = null; // don't retry
 					player.src = this.mediaUrl+name;
 				}
 			};
