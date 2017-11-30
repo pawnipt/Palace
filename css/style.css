@@ -94,9 +94,24 @@ body {
   -webkit-font-smoothing : subpixel-antialiased;
   word-wrap              : break-word;
   backface-visibility    : hidden;
-  /*transform              : translateZ(0);*/
   pointer-events         : none;
-
+  /**
+  * transform
+  *
+  *
+  *
+  *
+  *
+  *
+  *
+  *
+  *
+  *
+  *
+  *
+  *
+  * : translateZ(0);
+  */
 }
 
 #navsearch {
@@ -1147,6 +1162,16 @@ input[type=range]::-webkit-slider-thumb {
                          white,
                          lightgray
                        );
+}
+
+.loadingbutton {
+  box-sizing       : border-box;
+  border           : 4px solid #9f9f9f;
+  border-top-color : #666;
+  border-radius    : 50%;
+  background-size  : 0%;
+  animation        : spin 0.6s infinite;
+  pointer-events   : none;
 }
 
 /**

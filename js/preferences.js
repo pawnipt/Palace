@@ -114,54 +114,54 @@ function cacheBagProp(id,toUpload,callback) {
 	};
 }
 
-function createPropID() {
-	var pid = 0;
-	do {
-		pid = (Math.random()*2147483647).fastRound();
-		if (pid % 2) pid = -pid;
-	} while (propBagList.indexOf(pid) > -1);
-	return pid;
-}
+
 
 
 function resizeGif(gif) {
 	let gifCanvas = document.createElement('canvas');
-	gifCanvas.width = gif.raw.lsd.width;
-	gifCanvas.height = gif.raw.lsd.height;
+	gifCanvas.width = gif.width;
+	gifCanvas.height = gif.height;
 	let gifctx = gifCanvas.getContext("2d");
 
 	let tempcanvas = document.createElement('canvas');
 	let tempctx = tempcanvas.getContext("2d");
 
-	let props = [],dispose = 0,imgData;
+	let props = [],dispose = 0,imgData,buff32;
 
-	for(let i = 0; i< gif.raw.frames.length; i++){
-		let rawFrame = gif.raw.frames[i];
-		if (rawFrame.image) {
-			let frame = gif.decompressFrame(i, true);
-			let dims = frame.dims;
+	for(let i = 0; i< gif.frames.length; i++){
+		let frame = gif.frames[i];
+		let dims = frame.dims;
 
-			//console.log(frame)
-			if(!imgData || dims.width != imgData.width || dims.height != imgData.height){
-				tempcanvas.width = dims.width;
-				tempcanvas.height = dims.height;
-				imgData = tempctx.createImageData(dims.width, dims.height);
-			}
-
-			if (dispose >= 2) {
-				gifctx.clearRect(0, 0, gifCanvas.width, gifCanvas.height);
-			}
-			dispose = frame.disposalType;
-
-			imgData.data.set(frame.patch);
-			tempctx.putImageData(imgData,0,0);
-
-			gifctx.drawImage(tempcanvas, dims.left, dims.top);
-
-			props.unshift(createNewProp(gifCanvas,true));
+		if(!imgData || dims.width != imgData.width || dims.height != imgData.height){
+			tempcanvas.width = dims.width;
+			tempcanvas.height = dims.height;
+			imgData = tempctx.createImageData(dims.width, dims.height);
+			buff32 = new Uint32Array(imgData.data.buffer);
 		}
+
+		if (dispose >= 2) {
+			gifctx.clearRect(0, 0, gifCanvas.width, gifCanvas.height);
+		}
+		dispose = frame.disposalType;
+
+		var totalPixels = frame.pixels.length;
+		for (let j = 0; j < totalPixels; j++) {
+			let colorIndex = frame.pixels[j];
+			let color = frame.colorTable[colorIndex];
+
+			buff32[j] = ((colorIndex !== frame.transparentIndex ? 255 : 0) << 24)
+				+ (color[2] << 16)
+				+ (color[1] << 8)
+				+ color[0];
+
+		}
+
+		tempctx.putImageData(imgData,0,0);
+		gifctx.drawImage(tempcanvas, dims.left, dims.top);
+
+		props.unshift(createNewProp(gifCanvas,true));
 	}
-	
+
 	addPropsToDB(props);
 }
 
@@ -178,17 +178,27 @@ function createNewProps(list) {
 
 
 			if (file.type == 'image/gif') {
-				let reader = new FileReader();
-				reader.onload = function(event) {
-					resizeGif(new GIF(event.target.result));
-					importFile();
-				};
-				reader.onerror = function(err) {
-					console.log(err);
+				let gifWorker = new Worker('js/gifuct.js');
+				var button = document.getElementById('newprops');
+				button.className += ' loadingbutton';//style.animation = 'spin 0.6s infinite';
 
+				gifWorker.addEventListener('message', function(e) {
+					button.className = 'tbcontrol tbbutton';
+					this.terminate();
+
+					resizeGif(e.data);
 					importFile();
-				};
-				reader.readAsArrayBuffer(file);
+
+				});
+
+				gifWorker.addEventListener('error', function(e) {
+					button.className = 'tbcontrol tbbutton';
+					this.terminate();
+					importFile();
+				});
+
+
+				gifWorker.postMessage(file);
 			} else {
 
 
@@ -207,8 +217,25 @@ function createNewProps(list) {
 	importFile();
 }
 
+function calculateAspectRatio(w,h,newSize) {
+	if (w > newSize) {
+		h=h*(newSize/w);
+		w=newSize;
+	}
+	if (h > newSize) {
+		w=w*(newSize/h);
+		h=newSize;
+	}
+	return {w:w,h:h};
+}
 function createNewProp(img,animated) {
-	let id = createPropID();
+	let id = 0;
+
+	do {
+		id = Math.round(Math.random()*2147483647);
+		if (id % 2) id = -id;
+	} while (propBagList.indexOf(id) > -1);
+
 	let d = calculateAspectRatio(img.width,img.height,220);
 	let c = document.createElement('canvas');
 

@@ -113,21 +113,6 @@ function toHex(str) {
 }
 
 
-function calculateAspectRatioFit(srcWidth, srcHeight, maxWidth, maxHeight) {
-	var ratio = Math.min(maxWidth / srcWidth, maxHeight / srcHeight);
-	return {w:srcWidth*ratio, h:srcHeight*ratio};
-}
-function calculateAspectRatio(w,h,newSize) {
-	if (w > newSize) {
-		h=h*(newSize/w);
-		w=newSize;
-	}
-	if (h > newSize) {
-		w=w*(newSize/h);
-		h=newSize;
-	}
-	return {w:w,h:h};
-}
 function httpPostAsync(theUrl, callback, error, postContent) {
 	var xmlHttp = new XMLHttpRequest();
 	xmlHttp.onerror = function() {

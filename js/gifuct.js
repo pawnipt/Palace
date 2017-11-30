@@ -1,6 +1,3 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-
-// Stream object for reading off bytes from a byte array
 
 function ByteStream(data){
 	this.data = data;
@@ -64,12 +61,9 @@ ByteStream.prototype.readUnsigned = function(littleEndian){
 	}
 };
 
-module.exports = ByteStream;
-},{}],2:[function(require,module,exports){
 
 // Primary data parsing object used to parse byte arrays
 
-var ByteStream = require('./bytestream');
 
 function DataParser(data){
 	this.stream = new ByteStream(data);
@@ -147,8 +141,6 @@ DataParser.prototype.parseBits = function(details){
 	return out;
 };
 
-module.exports = DataParser;
-},{"./bytestream":1}],3:[function(require,module,exports){
 
 // a set of common parsers used with DataParser
 
@@ -190,28 +182,20 @@ var Parsers = {
 	}
 };
 
-module.exports = Parsers;
-},{}],4:[function(require,module,exports){
+
 // export wrapper for exposing library
 
-var GIF = window.GIF || {};
 
-GIF = require('./gif');
-
-window.GIF = GIF;
-},{"./gif":5}],5:[function(require,module,exports){
 
 // object used to represent array buffer data for a gif file
 
-var DataParser = require('../bower_components/js-binary-schema-parser/src/dataparser');
-var gifSchema = require('./schema');
 
 function GIF(arrayBuffer){
 	// convert to byte array
 	var byteData = new Uint8Array(arrayBuffer);
 	var parser = new DataParser(byteData);
 	// parse the data
-	this.raw = parser.parse(gifSchema);
+	this.raw = parser.parse(schemaGIF);
 
 	// set a flag to make sure the gif contains at least one image
 	this.raw.hasImages = false;
@@ -237,11 +221,13 @@ GIF.prototype.decompressFrame = function(index, buildPatch){
 		var totalPixels = frame.image.descriptor.width * frame.image.descriptor.height;
 
 		// do lzw decompression
+
 		var pixels = lzw(frame.image.data.minCodeSize, frame.image.data.blocks, totalPixels);
 
 		// deal with interlacing if necessary
 		if(frame.image.descriptor.lct.interlaced){
 			pixels = deinterlace(pixels, frame.image.descriptor.width);
+
 		}
 
 		// setup usable image object
@@ -263,7 +249,7 @@ GIF.prototype.decompressFrame = function(index, buildPatch){
 		}
 
 		// add per frame relevant gce information
-		if(frame.gce){
+		if (frame.gce) {
 			image.delay = (frame.gce.delay || 10) * 10; // convert to ms
 			image.disposalType = frame.gce.extras.disposal;
 
@@ -271,8 +257,17 @@ GIF.prototype.decompressFrame = function(index, buildPatch){
 			if(frame.gce.extras.transparentColorGiven){
 				image.transparentIndex = frame.gce.transparentColorIndex;
 			}
-		} else {
-			image.disposalType = 2;
+		} else if (this.raw.frames[index-1]) { // hack, not sure if specification worthy but fixes a bug in one gif transparency.
+			let lastFrame = this.raw.frames[index-1];
+			if (lastFrame.gce) {
+				image.delay = (lastFrame.gce.delay || 10) * 10; // convert to ms
+				image.disposalType = lastFrame.gce.extras.disposal;
+
+				// transparency
+				if(lastFrame.gce.extras.transparentColorGiven){
+					image.transparentIndex = lastFrame.gce.transparentColorIndex;
+				}
+			}
 		}
 
 		// create canvas usable imagedata if desired
@@ -452,14 +447,6 @@ GIF.prototype.decompressFrames = function(buildPatch){
 	return frames;
 };
 
-module.exports = GIF;
-},{"../bower_components/js-binary-schema-parser/src/dataparser":2,"./schema":6}],6:[function(require,module,exports){
-
-// Schema for the js file parser to use to parse gif files
-// For js object convenience (re-use), the schema objects are approximately reverse ordered
-
-// common parsers available
-var Parsers = require('../bower_components/js-binary-schema-parser/src/parsers');
 
 // a set of 0x00 terminated subblocks
 var subBlocks = {
@@ -658,5 +645,21 @@ var schemaGIF = [
 	frames // content frames
 ];
 
-module.exports = schemaGIF;
-},{"../bower_components/js-binary-schema-parser/src/parsers":3}]},{},[4])
+
+
+self.addEventListener('message', function(e) {
+	if (e.data) {
+		let reader = new FileReader();
+		reader.onload = function(event) {
+			var gif = new GIF(event.target.result);
+			self.postMessage({width:gif.raw.lsd.width,height:gif.raw.lsd.height,frames:gif.decompressFrames()});
+
+		};
+		reader.onerror = function(err) {
+			console.log(err);
+			self.postMessage(err);
+		};
+		reader.readAsArrayBuffer(e.data);
+	}
+
+});

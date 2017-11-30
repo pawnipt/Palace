@@ -489,7 +489,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 
 	document.getElementById('newprops').onclick = function() { // hax (import image files as new props)
 		var f = document.createElement('input');
-		f.style.display = 'none';
+		//f.style.display = 'none';
 		f.setAttribute('multiple', 'multiple');
 		f.type = 'file';
 		f.name = 'file';
