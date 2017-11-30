@@ -223,7 +223,9 @@ let contextMenuListener = new ContextMenuListener((info) => {
 					selectedBagProps = [];
 				}
 
-				if (lastPid == null) {
+				if (event.metaKey) {
+					selectedBagProps.push(newPid);
+				} else if (!lastPid) {
 					selectedBagProps = [newPid];
 				} else {
 					let lastIdx = propBagList.indexOf(lastPid);
@@ -273,9 +275,11 @@ let contextMenuListener = new ContextMenuListener((info) => {
 				store.delete(pid);
 			}
 		});
+		selectedBagProps = [];
 		store.put({id: 'propList', list: propBagList});
 		refreshPropBagView(true);
 		setPropButtons();
+		enablePropButtons();
 	};
 	document.getElementById('saveprop').onclick = function() {
 		for (var i = palace.theUser.props.length; --i >= 0;) saveProp(palace.theUser.props[i]);
@@ -850,9 +854,11 @@ function setBodyWidth() {
 
 function enablePropButtons() {
 	var saved = true;
-	palace.theUser.props.find(function(pid){if (propBagList.indexOf(pid) < 0) saved = false;});
-	document.getElementById('saveprop').disabled = saved;
-	document.getElementById('removeprops').disabled = (palace.theUser.props.length == 0);
+	if (palace.theUser) {
+		palace.theUser.props.find(function(pid){if (propBagList.indexOf(pid) < 0) saved = false;});
+		document.getElementById('saveprop').disabled = saved;
+		document.getElementById('removeprops').disabled = (palace.theUser.props.length == 0);
+	}
 }
 
 
@@ -1320,20 +1326,18 @@ function requestDirectory() {
 
 function loadDirectoryList(directList) {
 
-	directoryList = directList;
-	if (typeof directList === 'string')
-		directoryList = JSON.parse(directoryList);
+	directoryList = typeof directList === 'string'?JSON.parse(directList):directList;
 
-	var listbox = document.getElementById('navlistbox'),
+	let listbox = document.getElementById('navlistbox'),
 		navframe = document.getElementById('navframe'),
 		scount = directoryList.directory.length,
 		serverList, li, s, s2, cl;
 
 	if (navframe.dataset.ctrlname === 'servers') {
 		clearListBox(listbox);
-		var word = document.getElementById('navsearch').value.toLowerCase();
+		let word = document.getElementById('navsearch').value.toLowerCase();
 
-		for (var i = 0; i < scount; i++) {
+		for (let i = 0; i < scount; i++) {
 			serverList = directoryList.directory[i];
 			if (word == '' || serverList.name.toLowerCase().indexOf(word) > -1) {
 				li = document.createElement("li");
