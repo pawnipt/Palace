@@ -120,6 +120,59 @@ function createPropID() {
 	return pid;
 }
 
+
+function resizeGif(gif) {
+	console.log(gif)
+	let frames = gif.decompressFrames(true);
+
+	let gifCanvas = document.createElement('canvas');
+	gifCanvas.width = gif.raw.lsd.width;
+	gifCanvas.height = gif.raw.lsd.height;
+	let gifctx = gifCanvas.getContext("2d");
+
+	let tempcanvas = document.createElement('canvas');
+	let tempctx = tempcanvas.getContext("2d");
+
+	let imgData;
+
+	// var bgColor = gif.raw.gct[gif.raw.lsd.backgroundColorIndex];
+    //
+	// gifctx.fillStyle = 'RGB('+bgColor[0]+','+bgColor[1]+','+bgColor[2]+')';
+	// gifctx.fillRect(0, 0, gifCanvas.width, gifCanvas.height)
+
+	let props = [];
+	let dispose = 0;
+	for (let i = 0; i < frames.length; i++) {
+		let frame = frames[i];
+		let dims = frame.dims;
+		console.log(frame)
+		if(!imgData || dims.width != imgData.width || dims.height != imgData.height){
+			tempcanvas.width = dims.width;
+			tempcanvas.height = dims.height;
+			imgData = tempctx.createImageData(dims.width, dims.height);
+		}
+
+		if (dispose >= 2) {
+			gifctx.clearRect(0, 0, gifCanvas.width, gifCanvas.height);
+		}
+		dispose = frame.disposalType;
+
+		imgData.data.set(frame.patch);
+		tempctx.putImageData(imgData,0,0);
+
+		gifctx.drawImage(tempcanvas, dims.left, dims.top);
+
+		props.push(createNewProp(gifCanvas,true));
+
+	}
+
+	for (let i = props.length; --i >= 0;) {
+		addPropToDB(props[i]);
+	}
+}
+
+
+
 function createNewProps(list) {
 
 	for (var i = 0, files = new Array(list.length); i < list.length; i++) {
@@ -129,42 +182,41 @@ function createNewProps(list) {
 	var importFile = function() {
 		if (files.length > 0) {
 			var file = files.pop();
-			var img = document.createElement('img');
-			img.onerror = function() {
-				logmsg('test');
-				importFile();
-			};
-			img.onload = function() {
-				var id = createPropID();
-				var p = createNewProp(this);
-				var prop = {
-					id:id,
-					name:'Palace Prop',
-					w:p.w,
-					h:p.h,
-					x:(-Math.trunc(p.w/2))+22,
-					y:(-Math.trunc(p.h/2))+22,
-					head:true,
-					ghost:false,
-					animated:false,
-					bounce:false,
-					img:p.imgData
-				};
 
-				addPropToDB(prop);
-				importFile();
-			};
-			img.src = file.path;
+			if (file.type == 'image/gif') {
+				var reader = new FileReader();
+				reader.onload = function(event) {
+					var gif = new GIF(event.target.result);
+					resizeGif(gif);
+					importFile();
+				};
+				reader.onerror = function(err) {
+					console.log(err);
+
+					importFile();
+				};
+				reader.readAsArrayBuffer(file);
+			} else {
+
+
+				var img = document.createElement('img');
+				img.onerror = function() {
+					importFile();
+				};
+				img.onload = function() {
+					addPropToDB(createNewProp(this));
+					importFile();
+				};
+				img.src = file.path;
+			}
 		}
 	};
 	importFile();
-
-
-
 }
 
-function createNewProp(img) {
-	var d = calculateAspectRatio(img.naturalWidth,img.naturalHeight,220);
+function createNewProp(img,animated) {
+	var id = createPropID();
+	var d = calculateAspectRatio(img.width,img.height,220);
 	var c = document.createElement('canvas');
 
 	c.width = d.w.fastRound();
@@ -172,9 +224,23 @@ function createNewProp(img) {
 	c = c.getContext('2d');
 	c.imageSmoothingEnabled = true;
 	c.imageSmoothingQuality = 'high';
-	c.drawImage(img,0,0,img.naturalWidth,img.naturalHeight,0,0,c.canvas.width,c.canvas.height);
-	return {imgData:c.canvas.toDataURL("image/png"),
-			w:c.canvas.width,h:c.canvas.height};
+	c.drawImage(img,0,0,img.width,img.height,0,0,c.canvas.width,c.canvas.height);
+
+	var prop = {
+		id:id,
+		name:'Palace Prop',
+		w:c.canvas.width,
+		h:c.canvas.height,
+		x:(-Math.trunc(c.canvas.width/2))+22,
+		y:(-Math.trunc(c.canvas.height/2))+22,
+		head:true,
+		ghost:false,
+		animated:Boolean(animated),
+		bounce:false,
+		img:c.canvas.toDataURL("image/png")
+	};
+
+	return prop;
 }
 
 
