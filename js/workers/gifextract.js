@@ -14,7 +14,7 @@ self.addEventListener('message', function(e) {
                 if (gif.raw.frames[i].image) indexes.push(i);
             }
 
-            var lastIndex = gif.raw.frames.length-1;
+            var lastIndex = indexes[indexes.length-1];
             indexes.forEach(function(i) {
                 var frame = gif.decompressFrame(i, true);
                 self.postMessage({frame:frame,finished:(lastIndex === i)},[frame.patch.buffer]);
