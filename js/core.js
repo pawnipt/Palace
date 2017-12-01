@@ -52,7 +52,7 @@ class Renderer {
 
 	reDraw() {
 		if (!this.drawTimer) {
-			this.drawTimer = setTimeout(() => {this.refresh();},1);
+			this.drawTimer = setTimeout(() => {this.refresh();},15);
 		}
 	}
 
