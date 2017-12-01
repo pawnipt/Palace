@@ -234,11 +234,9 @@ function createNewProps(list) {
 		if (files.length > 0) {
 			let file = files.pop();
 
-
 			if (file.type == 'image/gif') {
 				extractGifFrames(file,importFile);
 			} else {
-
 
 				let img = document.createElement('img');
 				img.onerror = function() {

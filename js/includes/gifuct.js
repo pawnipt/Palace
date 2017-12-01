@@ -16,20 +16,14 @@ ByteStream.prototype.peekByte = function(){
 
 // read an array of bytes
 ByteStream.prototype.readBytes = function(n){
-	var bytes = this.data.slice(this.pos,this.pos+n);//new Array(n);
+	var bytes = this.data.slice(this.pos,this.pos+n); // much faster
 	this.pos += n;
-	// for(var i=0; i<n; i++){
-	// 	bytes[i] = this.readByte();
-	// }
 	return bytes;
 };
 
 // peek at an array of bytes without updating the stream position
 ByteStream.prototype.peekBytes = function(n){
-	var bytes = new Array(n);
-	for(var i=0; i<n; i++){
-		bytes[i] = this.data[this.pos + i];
-	}
+	var bytes = this.data.slice(this.pos,this.pos+n);
 	return bytes;
 };
 
@@ -44,10 +38,10 @@ ByteStream.prototype.readString = function(len){
 
 // read a single byte and return an array of bit booleans
 ByteStream.prototype.readBitArray = function(){
-	var arr = [];
+	var arr = new Array(8);
 	var bite = this.readByte();
 	for (var i = 7; i >= 0; i--) {
-		arr.push(!!(bite & (1 << i)));
+		arr[7-i] = !!(bite & (1 << i));
 	}
 	return arr;
 };
@@ -251,7 +245,8 @@ GIF.prototype.decompressFrame = function(index, buildPatch){
 		}
 
 
-		// apply
+		// apply gce from the last frame if there isn't one
+		// fixes a rare transparency bug and doesn't seem to cause issues
 		let lastFrame = this.raw.frames[index-1];
 		if (!frame.gce && lastFrame && lastFrame.gce) {
 			frame.gce = lastFrame.gce;
