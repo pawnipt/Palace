@@ -271,17 +271,8 @@ let contextMenuListener = new ContextMenuListener((info) => {
 		}
 	};
 	document.getElementById('deleteprops').onclick = function() {
-		var tx = db.transaction("props", "readwrite"); // maybe move database code to preferences file with the rest of it.
-		var store = tx.objectStore("props");
-		selectedBagProps.forEach(function(pid) {
-			var index = propBagList.indexOf(pid);
-			if (index > -1) {
-				propBagList.splice(index,1);
-				store.delete(pid);
-			}
-		});
+		deletePropsFromDB(selectedBagProps);
 		selectedBagProps = [];
-		store.put({id: 'propList', list: propBagList});
 		refreshPropBagView(true);
 		setPropButtons();
 		enablePropButtons();
@@ -897,7 +888,7 @@ function refreshPropBagView(refresh) {
 		var pid = children[i].dataset.pid;
 		var preTile = toView[pid];
 		var tile = children[i];
-		if (tile != propBagRetainer && (refresh || !preTile || preTile.x != parseInt(tile.style.left) || preTile.y != parseInt(tile.style.top))) {
+		if (tile !== propBagRetainer && (refresh || !preTile || preTile.x !== parseInt(tile.style.left) || preTile.y !== parseInt(tile.style.top))) {
 			cachedTiles[pid] = children[i];
 			propBag.removeChild(children[i]);
 		}
@@ -908,6 +899,16 @@ function refreshPropBagView(refresh) {
 			if (id == Number(children[i].dataset.pid)) return children[i];
 		}
 	};
+
+	// free up transaction queue...
+	for (var key in toView) {
+		delete getTransactions[key];
+	}
+	for (let pid in getTransactions) {
+		let trans = getTransactions[pid];
+		if (trans) trans.abort();
+	}
+	getTransactions = {};
 
 	for (var key in toView) {
 		var e = toView[key];
@@ -932,6 +933,8 @@ function refreshPropBagView(refresh) {
 		}
 		pc.className = selectedBagProps.indexOf(pid) > -1?'selectedbagprop':'';
 	}
+
+
 }
 
 

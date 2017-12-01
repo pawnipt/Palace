@@ -24,6 +24,23 @@ function initializePropBagDB() {
 				refreshPropBagView();
 			}
 		};
+
+		// var getAllKeysRequest = store.getAllKeys(); // purge props that aren't listed ()
+		// getAllKeysRequest.onsuccess = function() {
+		// 	if (propBagList.length > 0) {
+		// 		let keys = getAllKeysRequest.result;
+		// 		let notFound = [];
+		// 		keys.forEach(function(key) {
+		// 			if (propBagList.indexOf(key) === -1 && typeof key === 'number') {
+		// 				notFound.push(key);
+		// 			}
+		// 		});
+		// 		if (notFound.length > 0) {
+		// 			logmsg('Purging '+notFound.length+' unlisted props.')
+		// 			deletePropsFromDB(notFound);
+		// 		}
+		// 	}
+		// }
 	};
 
 	DBOpenRequest.onupgradeneeded = function() {
@@ -34,6 +51,21 @@ function initializePropBagDB() {
 	};
 }
 initializePropBagDB();
+
+
+function deletePropsFromDB(propIds) {
+	var tx = db.transaction("props", "readwrite");
+	var store = tx.objectStore("props");
+	propIds.forEach(function(pid) {
+		var index = propBagList.indexOf(pid);
+		if (index > -1) {
+			propBagList.splice(index,1);
+		}
+		store.delete(pid);
+	});
+	store.put({id: 'propList', list: propBagList});
+}
+
 
 function addPropsToDB(props,dontUpdateIds) {
 	var tx = db.transaction("props", "readwrite")
@@ -81,12 +113,21 @@ function saveProp(id,flush) {
 	if (prop) addPropsToDB([prop]);
 }
 
+let getTransactions = {};
 function getBagProp(id,img) {
-	var store = db.transaction("props","readonly").objectStore("props");
+	var transaction = db.transaction("props","readonly");
+	getTransactions[id] = transaction;
+	var store = transaction.objectStore("props");
 	var result = store.get(id);
 	result.onsuccess = function(event) {
+		delete getTransactions[id];
 		if (result.result.prop.ghost) img.className = 'bagprop ghost';
 		img.src = result.result.prop.img;
+
+	};
+	transaction.onabort = function(event) {
+
+		delete getTransactions[id];
 	};
 }
 
@@ -118,14 +159,14 @@ function cacheBagProp(id,toUpload,callback) {
 
 function extractGifFrames(file,callback) {
 
-	var gifCanvas = document.createElement('canvas');
-	var gifctx = gifCanvas.getContext("2d");
-	var tempcanvas = document.createElement('canvas');
-	var tempctx = tempcanvas.getContext("2d");
+	let gifCanvas = document.createElement('canvas');
+	let gifctx = gifCanvas.getContext("2d");
+	let tempcanvas = document.createElement('canvas');
+	let tempctx = tempcanvas.getContext("2d");
 
-	var dispose = 0,imgData,propIds = [],store;
+	let dispose = 0,imgData,propIds = [],store;
 
-	var gifWorker = new Worker('js/workers/gifextract.js');
+	let gifWorker = new Worker('js/workers/gifextract.js');
 
 	gifWorker.addEventListener('message', function(e) {
 
@@ -195,9 +236,7 @@ function createNewProps(list) {
 
 
 			if (file.type == 'image/gif') {
-				extractGifFrames(file,function() {
-					importFile();
-				});
+				extractGifFrames(file,importFile);
 			} else {
 
 
