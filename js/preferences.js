@@ -178,14 +178,13 @@ function createNewProps(list) {
 
 
 			if (file.type == 'image/gif') {
-				let gifWorker = new Worker('js/gifuct.js');
+				let gifWorker = new Worker('js/workers/gifextract.js');
 				var button = document.getElementById('newprops');
-				button.className += ' loadingbutton';//style.animation = 'spin 0.6s infinite';
+				button.className += ' loadingbutton';
 
 				gifWorker.addEventListener('message', function(e) {
 					button.className = 'tbcontrol tbbutton';
 					this.terminate();
-
 					resizeGif(e.data);
 					importFile();
 
