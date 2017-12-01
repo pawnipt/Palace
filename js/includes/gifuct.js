@@ -16,10 +16,11 @@ ByteStream.prototype.peekByte = function(){
 
 // read an array of bytes
 ByteStream.prototype.readBytes = function(n){
-	var bytes = new Array(n);
-	for(var i=0; i<n; i++){
-		bytes[i] = this.readByte();
-	}
+	var bytes = this.data.slice(this.pos,this.pos+n);//new Array(n);
+	this.pos += n;
+	// for(var i=0; i<n; i++){
+	// 	bytes[i] = this.readByte();
+	// }
 	return bytes;
 };
 
@@ -224,10 +225,11 @@ GIF.prototype.decompressFrame = function(index, buildPatch){
 
 		var pixels = lzw(frame.image.data.minCodeSize, frame.image.data.blocks, totalPixels);
 
+
+
 		// deal with interlacing if necessary
 		if(frame.image.descriptor.lct.interlaced){
 			pixels = deinterlace(pixels, frame.image.descriptor.width);
-
 		}
 
 		// setup usable image object
@@ -248,6 +250,13 @@ GIF.prototype.decompressFrame = function(index, buildPatch){
 			image.colorTable = this.raw.gct;
 		}
 
+
+		// apply
+		let lastFrame = this.raw.frames[index-1];
+		if (!frame.gce && lastFrame && lastFrame.gce) {
+			frame.gce = lastFrame.gce;
+		}
+
 		// add per frame relevant gce information
 		if (frame.gce) {
 			image.delay = (frame.gce.delay || 10) * 10; // convert to ms
@@ -257,22 +266,12 @@ GIF.prototype.decompressFrame = function(index, buildPatch){
 			if(frame.gce.extras.transparentColorGiven){
 				image.transparentIndex = frame.gce.transparentColorIndex;
 			}
-		} else if (this.raw.frames[index-1]) { // hack, not sure if specification worthy but fixes a bug in one gif transparency.
-			let lastFrame = this.raw.frames[index-1];
-			if (lastFrame.gce) {
-				image.delay = (lastFrame.gce.delay || 10) * 10; // convert to ms
-				image.disposalType = lastFrame.gce.extras.disposal;
-
-				// transparency
-				if(lastFrame.gce.extras.transparentColorGiven){
-					image.transparentIndex = lastFrame.gce.transparentColorIndex;
-				}
-			}
 		}
 
 		// create canvas usable imagedata if desired
 		if(buildPatch){
 			image.patch = generatePatch(image);
+			image.pixels = null;
 		}
 
 		return image;
@@ -372,6 +371,7 @@ GIF.prototype.decompressFrame = function(index, buildPatch){
 						code_mask += available;
 					}
 				}
+				if(available > MAX_STACK_SIZE) console.log('max exceeded');
 				old_code = in_code;
 			}
 			// Pop a pixel off the pixel stack.
@@ -452,11 +452,26 @@ GIF.prototype.decompressFrames = function(buildPatch){
 var subBlocks = {
 	label: 'blocks',
 	parser: function(stream){
-		var out = [];
+
 		var terminator = 0x00;
+
+		var pos = stream.pos;
+		var calcSize = 0;
+
 		for(var size=stream.readByte(); size!==terminator; size=stream.readByte()){
-			out = out.concat(stream.readBytes(size));
+			stream.pos += size;
+			calcSize += size; // precalculate buffer allocation size
 		}
+		stream.pos = pos; // reset stream position
+
+		var out = new Uint8Array(calcSize); // create
+
+		var buffPos = 0;
+		for(var size=stream.readByte(); size!==terminator; size=stream.readByte()){
+			out.set(stream.readBytes(size),buffPos);
+			buffPos += size;
+		}
+
 		return out;
 	}
 };

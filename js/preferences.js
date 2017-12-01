@@ -35,7 +35,7 @@ function initializePropBagDB() {
 }
 initializePropBagDB();
 
-function addPropsToDB(props) {
+function addPropsToDB(props,dontUpdateIds) {
 	var tx = db.transaction("props", "readwrite")
 	var store = tx.objectStore("props");
 
@@ -43,7 +43,7 @@ function addPropsToDB(props) {
 		logmsg('Error adding prop to DB: '+tx.error);
 	};
 	tx.oncomplete = function() {
-		refreshPropBagView();
+		if (!dontUpdateIds) refreshPropBagView();
 	};
 
 	props.forEach(function(prop) {
@@ -65,11 +65,12 @@ function addPropsToDB(props) {
 				}
 			});
 
-			propBagList.unshift(prop.id);
+			if (!dontUpdateIds) propBagList.unshift(prop.id);
 		}
 	});
 
-	store.put({id: 'propList', list: propBagList});
+	if (!dontUpdateIds) store.put({id: 'propList', list: propBagList});
+	return store;
 }
 
 
@@ -115,62 +116,78 @@ function cacheBagProp(id,toUpload,callback) {
 }
 
 
+function extractGifFrames(file,callback) {
 
+	var gifCanvas = document.createElement('canvas');
+	var gifctx = gifCanvas.getContext("2d");
+	var tempcanvas = document.createElement('canvas');
+	var tempctx = tempcanvas.getContext("2d");
 
-function resizeGif(gif) {
-	let gifCanvas = document.createElement('canvas');
-	gifCanvas.width = gif.width;
-	gifCanvas.height = gif.height;
-	let gifctx = gifCanvas.getContext("2d");
+	var dispose = 0,imgData,propIds = [],store;
 
-	let tempcanvas = document.createElement('canvas');
-	let tempctx = tempcanvas.getContext("2d");
+	var gifWorker = new Worker('js/workers/gifextract.js');
 
-	let props = [],dispose = 0,imgData,buff32;
+	gifWorker.addEventListener('message', function(e) {
 
-	for(let i = 0; i< gif.frames.length; i++){
-		let frame = gif.frames[i];
-		let dims = frame.dims;
+		if (e.data.frame) {
+			let frame = e.data.frame;
+			let dims = frame.dims;
 
-		if(!imgData || dims.width != imgData.width || dims.height != imgData.height){
-			tempcanvas.width = dims.width;
-			tempcanvas.height = dims.height;
-			imgData = tempctx.createImageData(dims.width, dims.height);
-			buff32 = new Uint32Array(imgData.data.buffer);
+			if(!imgData || dims.width != imgData.width || dims.height != imgData.height){
+				tempcanvas.width = dims.width;
+				tempcanvas.height = dims.height;
+				imgData = tempctx.createImageData(dims.width, dims.height);
+			}
+
+			if (dispose >= 2) {
+				gifctx.clearRect(0, 0, gifCanvas.width, gifCanvas.height);
+			}
+			dispose = frame.disposalType;
+
+			imgData.data.set(frame.patch);
+
+			tempctx.putImageData(imgData,0,0);
+			gifctx.drawImage(tempcanvas, dims.left, dims.top);
+
+			let prop = createNewProp(gifCanvas,true);
+			store = addPropsToDB([prop],true);
+			propIds.unshift(prop.id);
+
+			if (e.data.finished) {
+				if (store) {
+					propIds.forEach(function(pid) {
+						propBagList.unshift(pid);
+					});
+					let request = store.put({id: 'propList', list: propBagList});
+					request.onsuccess = function() {
+						refreshPropBagView();
+					};
+				}
+				this.terminate();
+				callback();
+			}
+		}
+		if (e.data.width) {
+			gifCanvas.width = e.data.width;
+			gifCanvas.height = e.data.height;
 		}
 
-		if (dispose >= 2) {
-			gifctx.clearRect(0, 0, gifCanvas.width, gifCanvas.height);
-		}
-		dispose = frame.disposalType;
+	});
 
-		var totalPixels = frame.pixels.length;
-		for (let j = 0; j < totalPixels; j++) {
-			let colorIndex = frame.pixels[j];
-			let color = frame.colorTable[colorIndex];
+	gifWorker.addEventListener('error', function(e) {
+		this.terminate();
+		callback();
+	});
 
-			buff32[j] = ((colorIndex !== frame.transparentIndex ? 255 : 0) << 24)
-				+ (color[2] << 16)
-				+ (color[1] << 8)
-				+ color[0];
-
-		}
-
-		tempctx.putImageData(imgData,0,0);
-		gifctx.drawImage(tempcanvas, dims.left, dims.top);
-
-		props.unshift(createNewProp(gifCanvas,true));
-	}
-
-	addPropsToDB(props);
+	gifWorker.postMessage(file);
 }
-
-
 
 function createNewProps(list) {
 	for (var i = 0, files = new Array(list.length); i < list.length; i++) {
 		files[i] = list[i]; // moving the list to an actual array so pop works , lol
 	}
+	var button = document.getElementById('newprops');
+	button.className += ' loadingbutton';
 
 	let importFile = function() {
 		if (files.length > 0) {
@@ -178,26 +195,9 @@ function createNewProps(list) {
 
 
 			if (file.type == 'image/gif') {
-				let gifWorker = new Worker('js/workers/gifextract.js');
-				var button = document.getElementById('newprops');
-				button.className += ' loadingbutton';
-
-				gifWorker.addEventListener('message', function(e) {
-					button.className = 'tbcontrol tbbutton';
-					this.terminate();
-					resizeGif(e.data);
-					importFile();
-
-				});
-
-				gifWorker.addEventListener('error', function(e) {
-					button.className = 'tbcontrol tbbutton';
-					this.terminate();
+				extractGifFrames(file,function() {
 					importFile();
 				});
-
-
-				gifWorker.postMessage(file);
 			} else {
 
 
@@ -211,6 +211,8 @@ function createNewProps(list) {
 				};
 				img.src = file.path;
 			}
+		} else {
+			button.className = 'tbcontrol tbbutton';
 		}
 	};
 	importFile();
