@@ -50,11 +50,10 @@ class PalaceProp {
 
     requestPropImage(url) {
     	this.img = document.createElement('img');
-        httpGetAsync(url, (blob) => {
+        httpGetAsync(url, 'blob', (blob) => {
         		this.img.src = URL.createObjectURL(blob);
                 this.blob = blob;
-        	},
-        	'blob'
+        	}
         );
     	this.img.onload = () => {
             URL.revokeObjectURL(this.src);

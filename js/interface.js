@@ -543,6 +543,9 @@ let contextMenuListener = new ContextMenuListener((info) => {
 		palace.sendUserName(this.value);
 		setGeneralPref('userName',this.value);
 	};
+	document.getElementById('senddebug').onchange = function() { // set username
+		setGeneralPref('senddebug',this.value);
+	};
 	document.getElementById('prefhomepalace').onchange = function() {
 		setGeneralPref('home',this.value);
 	};
@@ -802,15 +805,17 @@ function matchYoutubeUrl(url) {
     }
 }
 function createYoutubePlayer(info) {
-	httpGetAsync('https://www.googleapis.com/youtube/v3/videos?part=snippet&key=AIzaSyAHk4QfatpeEcQg-CPDrTqi9ozoJ55w5GE&id='+info.id, function(j) {
-		let yt = JSON.parse(j);
-		if (yt && yt.items && yt.items.length > 0) {
-			info.icon = yt.items[0].snippet.thumbnails.high.url;
-			info.title = yt.items[0].snippet.title;
-			 // direct youtube embeds in the app doesn't play restricted embeds, so I used pchat.org
-			createChatVideoPlayer('youtube',info,'http://pchat.org/api/youtube/?id='+info.id);
-		} // else display error probably...
-	});
+	httpGetAsync('https://www.googleapis.com/youtube/v3/videos?part=snippet&key=AIzaSyAHk4QfatpeEcQg-CPDrTqi9ozoJ55w5GE&id='+info.id,
+		'json',
+		function(yt) {
+			if (yt && yt.items && yt.items.length > 0) {
+				info.icon = yt.items[0].snippet.thumbnails.high.url;
+				info.title = yt.items[0].snippet.title;
+				 // direct youtube embeds in the app doesn't play restricted embeds, so I used pchat.org
+				createChatVideoPlayer('youtube',info,'http://pchat.org/api/youtube/?id='+info.id);
+			} // else display error probably...
+		}
+	);
 }
 
 function matchFacebookUrl(url) {
@@ -821,22 +826,24 @@ function matchFacebookUrl(url) {
 }
 function createFacebookPlayer(info) {
 	let source = 'https://www.facebook.com/plugins/video.php?href=';
-	httpGetAsync('https://graph.facebook.com/'+info.id[3]+'?fields=title,format,picture,embeddable,permalink_url,description&access_token=872564939584635|cc4b23aa93ddd3413884ab3e9875dd73', function(j) {
-		let fb = JSON.parse(j);
-		if (fb && fb.embeddable) {
-			let HQformat = fb.format[Math.floor((fb.format.length-1)/2)];
-			info.ratio = ((HQformat.height / HQformat.width) * 100);
-			info.icon = HQformat.picture || fb.picture;
-			info.title = fb.title || fb.description || '';
-			source = source + encodeURIComponent('https://www.facebook.com/'+fb.permalink_url)+'&autoplay=true&mute=0';
+	httpGetAsync('https://graph.facebook.com/'+info.id[3]+'?fields=title,format,picture,embeddable,permalink_url,description&access_token=872564939584635|cc4b23aa93ddd3413884ab3e9875dd73',
+		'json',
+		function(fb) {
+			if (fb && fb.embeddable) {
+				let HQformat = fb.format[Math.floor((fb.format.length-1)/2)];
+				info.ratio = ((HQformat.height / HQformat.width) * 100);
+				info.icon = HQformat.picture || fb.picture;
+				info.title = fb.title || fb.description || '';
+				source = source + encodeURIComponent('https://www.facebook.com/'+fb.permalink_url)+'&autoplay=true&mute=0';
+				createChatVideoPlayer('facebook',info,source);
+			}
+		},'',function (error) {
+			info.icon = ''; //generic facebook icon perhaps
+			info.title = 'Not facebook supported';
+			source = source + encodeURIComponent('https://www.facebook.com/'+info.id[1]+'/videos/'+info.id[3]+'/')+'&autoplay=true&mute=0';
 			createChatVideoPlayer('facebook',info,source);
 		}
-	},'',function (error) {
-		info.icon = ''; //generic facebook icon perhaps
-		info.title = 'Not facebook supported';
-		source = source + encodeURIComponent('https://www.facebook.com/'+info.id[1]+'/videos/'+info.id[3]+'/')+'&autoplay=true&mute=0';
-		createChatVideoPlayer('facebook',info,source);
-	});
+	);
 }
 
 function matchVimeoUrl(url) {
@@ -846,15 +853,17 @@ function matchVimeoUrl(url) {
     }
 }
 function createVimeoPlayer(info) {
-	httpGetAsync('https://api.vimeo.com/videos/'+info.id+'?access_token=3842fc48186684845f76f44e607ae85a', function(j) {
-		let vm = JSON.parse(j);
-		if (vm && vm.privacy.embed === 'public') {
-			info.icon = vm.pictures.sizes[Math.floor((vm.pictures.sizes.length-1)/2)].link;
-			info.title = vm.name;
-			info.ratio = ((vm.height / vm.width) * 100);
-			createChatVideoPlayer('vimeo',info,'https://player.vimeo.com/video/'+info.id+'?autoplay=1&title=1');
+	httpGetAsync('https://api.vimeo.com/videos/'+info.id+'?access_token=3842fc48186684845f76f44e607ae85a',
+		'json',
+		function(vm) {
+			if (vm && vm.privacy.embed === 'public') {
+				info.icon = vm.pictures.sizes[Math.floor((vm.pictures.sizes.length-1)/2)].link;
+				info.title = vm.name;
+				info.ratio = ((vm.height / vm.width) * 100);
+				createChatVideoPlayer('vimeo',info,'https://player.vimeo.com/video/'+info.id+'?autoplay=1&title=1');
+			}
 		}
-	});
+	);
 }
 
 
@@ -1224,7 +1233,7 @@ function toggleNavListbox(cname) {
 }
 
 function requestDirectory() {
-	httpGetAsync('http://pchat.org/webservice/directory/get/',loadDirectoryList,'json');
+	httpGetAsync('http://pchat.org/webservice/directory/get/','json',loadDirectoryList);
 }
 
 function loadDirectoryList(list) {

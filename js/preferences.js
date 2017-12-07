@@ -61,11 +61,9 @@ window.onunload = function(e) {
 		prefs.registration = {regi:getRandomInt(100,2147483647),puid:getRandomInt(1,2147483647)};
 		setGeneralPref('home','ee.fastpalaces.com:9991'); //avatarpalace.net:9998
 		setGeneralPref('userName','Palace User');
-		setGeneralPref('propBagTileSize',0.413636363636364);
+		setGeneralPref('propBagTileSize',91);
 		setGeneralPref('viewScaleAll',true);
-    setGeneralPref('senddebug',true);
-		//setGeneralPref('propBagWidth',200);
-
+    	setGeneralPref('senddebug',true);
 	}
 	document.getElementById('prefusername').value = getGeneralPref('userName');
 	document.getElementById('prefhomepalace').value = getGeneralPref('home');

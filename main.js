@@ -14,6 +14,7 @@ Raven.config('https://2e2f7f94e86c471189b46bc12abcf6c9@sentry.pchat.palaceworld.
         platform_release: os.release()
     }
 }).install();
+
 let win;
 
 app.commandLine.appendSwitch('high-dpi-support', 'true'); // might not be needed

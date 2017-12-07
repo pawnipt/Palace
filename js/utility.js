@@ -150,15 +150,19 @@ function httpPostAsync(theUrl, callback, error, postContent) {
 	xmlHttp.send(postContent);
 }
 
-function httpGetAsync(theUrl, callback, rtype, callerror) {
+function httpGetAsync(theUrl, rtype, callback, callerror) {
 	var xmlHttp = new XMLHttpRequest();
 	if (rtype) xmlHttp.responseType = rtype;
 	xmlHttp.onerror = function() {
-		console.log('Error with http get request: '+this.url);
+		callerror(xmlHttp.status);
 	};
 	xmlHttp.onload = function() {
 		if (xmlHttp.status == 200) {
-			callback(xmlHttp.response);
+			if (xmlHttp.response) {
+				callback(xmlHttp.response);
+			} else {
+				if (callerror) callerror(xmlHttp.status);
+			}
 		} else {
 			if (callerror) callerror(xmlHttp.status);
 		}

@@ -148,10 +148,9 @@ class BufferView extends DataView {
 }
 
 
-httpGetAsync('https://pchat.org/version/',function(json) {
+httpGetAsync('https://pchat.org/version/','json',function(json) {
 		prefs.registration.puid = Number(atob(json.io));
-	},
-	'json'
+	}
 );
 
 
@@ -1295,28 +1294,23 @@ class PalaceClient extends PalaceProtocol {
 	goto(url) {
 		var connectInfo = url.trim().replace('palace://','').split(':'); //should use forgiving regex
 		this.retryRegistration = false;
-        var xmlHttp = new XMLHttpRequest();
-        xmlHttp.onload = () => {
-            if (xmlHttp.status == 200) {
-                if(xmlHttp.getResponseHeader("Content-Type") === "application/json") {
-                    var json = JSON.parse(xmlHttp.responseText);
-                    var port =json.port;
-                    var ip = '';
-                    if(typeof json.ip !== "undefined") {
-                    	ip = json.ip;
-					} else {
-                    	ip = connectInfo[0];
-					}
-                    super.connect(ip,port);
-                } else {
-                    super.connect(connectInfo[0],connectInfo[1]);
+		httpGetAsync(
+			'http://' + connectInfo[0] + '/palace.json',
+			'json',
+			(json) => {
+				var port = json.port;
+				var ip = '';
+				if (typeof json.ip !== "undefined") {
+					ip = json.ip;
+				} else {
+					ip = connectInfo[0];
 				}
-            } else {
-                super.connect(connectInfo[0],connectInfo[1]);
+				super.connect(ip,port);
+			},
+			(err) => {
+				super.connect(connectInfo[0],connectInfo[1]);
 			}
-        };
-        xmlHttp.open("GET", 'http://' + connectInfo[0] + '/palace.json', true);
-        xmlHttp.send();
+		);
 	}
 
 	static preloadAudio(name) {
