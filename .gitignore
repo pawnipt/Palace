@@ -6,7 +6,9 @@
 # misc
 .DS_Store
 package-lock.json
+npm-debug.log
 .flowconfig
+.idea
 
 # release
 /release-builds
