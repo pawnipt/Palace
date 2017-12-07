@@ -2,7 +2,8 @@
 
 var allProps = {},
     nbrProps = 0, // keep record of the number of props loaded into memory because counting allProps object properties is inefficient
-    retryProps = [];
+    retryProps = [],
+    propBagDB;
 
 
 const   PROP_HEAD = 2,
@@ -37,16 +38,38 @@ class PalaceProp {
     	return (this.img && this.img.complete && this.img.naturalWidth > 0);
     }
 
+    showProp() {
+        for (let i = 0; i < palace.theRoom.users.length; i++) {
+            let user = palace.theRoom.users[i];
+            if ((this.animated || this.head) && user.props.indexOf(this.id) > -1) {
+                user.animator();
+            }
+        }
+        palace.theRoom.reDraw();
+    }
+
     requestPropImage(url) {
     	this.img = document.createElement('img');
+        httpGetAsync(url, (blob) => {
+        		this.img.src = URL.createObjectURL(blob);
+                this.blob = blob;
+        	},
+        	'blob'
+        );
     	this.img.onload = () => {
-    		for (var i = 0; i < palace.theRoom.users.length; i++) {
-    			var user = palace.theRoom.users[i];
-    			if (user.props.indexOf(this.id) > -1 && (this.animated || this.head)) user.animator();
-    		}
-    		palace.theRoom.reDraw();
+            URL.revokeObjectURL(this.src);
+    		this.showProp();
     	};
-    	this.img.src = url;
+    }
+
+    loadBlob(blob) {
+        this.blob = blob;
+        this.img = document.createElement('img');
+        this.img.onload = () => {
+            URL.revokeObjectURL(this.src);
+            this.showProp();
+        };
+        this.img.src = URL.createObjectURL(blob);
     }
 
     setInfo(info) {
@@ -66,7 +89,7 @@ class PalaceProp {
     		this.ghost = info.prop.ghost;
     		this.animated = info.prop.animated;
     		this.bounce = info.prop.bounce;
-    		this.requestPropImage(info.prop.img);
+    		this.loadBlob(info.prop.blob);
     	}
     }
 
@@ -91,18 +114,6 @@ class PalaceProp {
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 function propUploadCallBack(response) {
 	if (response.length > 0) {
 		var propsInfo = JSON.parse(response);
@@ -115,19 +126,17 @@ function propUploadCallBack(response) {
 	}
 }
 
+
+
+
 function uploadProp(url,pid) {
 	var aProp = allProps[pid];
 	if (aProp.img && aProp.img.naturalWidth > 0) {
-		var formData = new FormData();
+
+        var formData = new FormData();
 		formData.append('id', String(pid));
-		var d = atob(getImageData(aProp.img).replace(/^data:image\/png;base64,/, ""));
-		var l = d.length;
-		var array = new Uint8Array(l);
-        for (var i = 0; i < l; i++) {
-            array[i] = d.charCodeAt(i);
-        }
-		var blob = new Blob([array], { type: 'application/octet-stream'});
-		formData.append('prop', blob);
+		formData.append('prop', aProp.blob);
+
 		httpPostAsync(
             url,
             function(response) {
@@ -174,7 +183,7 @@ function downloadPropInfoCallBack(response) { // need to handle possible http er
 
 	if (retryProps.length > 0) {
 		setTimeout(function() {
-			loadProps(retryProps.dedup());
+			loadProps(dedup(retryProps));
 			retryProps = [];
 		}, 3200);
 	}
@@ -210,4 +219,651 @@ function loadProps(pids,fromSelf,callback) {
             );
         }
 	}
+}
+
+
+
+
+
+function initializePropBagDB() {
+	var DBOpenRequest = indexedDB.open("propBag",8);
+
+	DBOpenRequest.onerror = function(event) {
+		logmsg('Error loading Prop Bag.');
+	};
+
+	DBOpenRequest.onsuccess = function(event) {
+		// store the result of opening the database in the db variable.
+		// This is used a lot below.
+		propBagDB = DBOpenRequest.result;
+
+		var store = propBagDB.transaction("props").objectStore("props");
+		var request = store.get('propList');
+		request.onsuccess = function() {
+			if (request.result) {
+				propBagList = request.result.list;
+				//refreshPropBagView();
+			}
+		};
+
+		// var getAllKeysRequest = store.getAllKeys(); // purge props that aren't listed ()
+		// getAllKeysRequest.onsuccess = function() {
+		// 	if (propBagList.length > 0) {
+		// 		let keys = getAllKeysRequest.result;
+		// 		let notFound = [];
+		// 		keys.forEach(function(key) {
+		// 			if (propBagList.indexOf(key) === -1 && typeof key === 'number') {
+		// 				notFound.push(key);
+		// 			}
+		// 		});
+		// 		if (notFound.length > 0) {
+		// 			logmsg('Purging '+notFound.length+' unlisted props.')
+		// 			deletePropsFromDB(notFound);
+		// 		}
+		// 	}
+		// }
+	};
+
+	DBOpenRequest.onupgradeneeded = function(event) {
+        propBagDB = DBOpenRequest.result;
+
+        if (event.oldVersion < 4) { // initialize db, for some reason i started at version 4, oh well!
+    		let store = propBagDB.createObjectStore("props", {keyPath: "id"});
+    		let nameIndex = store.createIndex("name", "name", { unique: false });
+    		store.put({id: 'propList', list: propBagList});
+        }
+
+        if (event.oldVersion < 8) {
+            var tx = DBOpenRequest.transaction;
+            var store = tx.objectStore("props");
+
+    		var request = store.get('propList');
+    		request.onsuccess = function() {
+    			let pids = request.result.list;
+    			let doNext = function() {
+                    let pid = pids.shift();
+                    if (pid) {
+                        let get = store.get(pid);
+                        get.onerror = function() {
+                            console.log(get.error);
+                            tx.abort();
+                        };
+                        get.onsuccess = function(event) {
+                            let item = get.result;
+                            item.prop.blob = dataURItoBlob(item.prop.img);
+                            console.log(item)
+                    		delete item.prop.img;
+                            let put = store.put(item);
+                            put.onerror = function() {
+                                console.log(put.error);
+                                tx.abort();
+                            };
+                            doNext();
+                    	};
+                    }
+                };
+                doNext();
+    		};
+            request.onerror = function() {
+                console.log(request.error);
+            };
+            tx.oncomplete = function() {
+                console.log('Success converting your prop bag');
+            }
+        }
+	};
+}
+initializePropBagDB();
+
+function dataURItoBlob(dataURI) { // required for prop bag upgrade
+    var arr = dataURI.split(','), mime = arr[0].match(/:(.*?);/)[1];
+    var ary = Uint8Array.from(atob(arr[1]), c => c.charCodeAt(0))
+    return new Blob([ary], {type:mime});
+}
+
+function deletePropsFromDB(propIds) {
+	var tx = propBagDB.transaction("props", "readwrite");
+	var store = tx.objectStore("props");
+	propIds.forEach(function(pid) {
+		var index = propBagList.indexOf(pid);
+		if (index > -1) {
+			propBagList.splice(index,1);
+		}
+		store.delete(pid);
+	});
+	store.put({id: 'propList', list: propBagList});
+}
+
+
+function addPropsToDB(props) {
+	var tx = propBagDB.transaction("props", "readwrite");
+	var store = tx.objectStore("props");
+
+	tx.onerror = function() {
+		console.log('Error adding prop to DB: '+tx.error);
+	};
+	tx.oncomplete = function() {
+		refreshPropBagView();
+	};
+
+	props.forEach(function(prop) {
+		if (propBagList.indexOf(prop.id) < 0 && prop.blob && prop.blob.size > 0) { //does prop exist in the bag already?
+
+			store.add({
+				id: prop.id,
+				name: prop.name,
+				prop: {
+					x: prop.x,
+					y: prop.y,
+					w: prop.w,
+					h: prop.h,
+					head: prop.head,
+					ghost: prop.ghost,
+					animated: prop.animated,
+					bounce: prop.bounce,
+					blob: prop.blob
+				}
+			});
+
+			propBagList.unshift(prop.id);
+		}
+	});
+
+	store.put({id: 'propList', list: propBagList});
+	return store;
+}
+
+
+
+
+function saveProp(id,flush) {
+	var prop = allProps[id];
+	if (prop) addPropsToDB([prop]);
+}
+
+let getTransactions = {};
+function getBagProp(id,img) {
+	var transaction = propBagDB.transaction("props","readonly");
+	getTransactions[id] = transaction;
+	var store = transaction.objectStore("props");
+	var result = store.get(id);
+	result.onsuccess = function(event) {
+		delete getTransactions[id];
+		if (result.result.prop.ghost) img.className = 'bagprop ghost';
+        img.onload = function() {
+            URL.revokeObjectURL(this.src);
+        };
+        let prop = result.result.prop.blob;
+        img.title = String(prop.size/1000000).match(/^\d+\.0*[1-9]{1}/) + 'mb';
+		img.src = URL.createObjectURL(prop);
+	};
+	transaction.onabort = function(event) {
+
+		delete getTransactions[id];
+	};
+}
+
+function cacheBagProp(id,toUpload,callback) {
+	var store = propBagDB.transaction("props","readonly").objectStore("props");
+	var get = store.get(id);
+	get.onsuccess = function(event) {
+		var aProp = new PalaceProp(id,get.result);
+		allProps[id] = aProp;
+		if (callback) callback();
+		if (toUpload) {
+			var p = {props:[
+					{format:'png',name:aProp.name,size:{w:aProp.w,h:aProp.h},
+					offsets:{x:aProp.x,y:aProp.y},flags:aProp.encodePropFlags,
+					id:aProp.id,crc:0}
+				]};
+			httpPostAsync(
+				palace.mediaUrl + 'webservice/props/new/',
+				propUploadCallBack,
+				function(status,response) {
+					logmsg('Prop upload request failed (HTTP ERROR): '+status+'\n\n'+response);
+				},
+				JSON.stringify(p)
+			);
+		}
+	};
+}
+
+
+
+
+class GifDecoder {
+	constructor(file,start,frame,end) {
+		this.worker = new Worker('js/workers/gifextract.js');
+
+		this.worker.addEventListener('message',(e) => {this.message(e)});
+		this.worker.addEventListener('error',(e) => {this.error(e)});
+		this.worker.postMessage(file);
+
+		this.gifCanvas = document.createElement('canvas');
+		this.gifctx = this.gifCanvas.getContext("2d");
+		this.tempcanvas = document.createElement('canvas');
+		this.tempctx = this.tempcanvas.getContext("2d");
+
+		this.startCallBack = start;
+		this.receivedFrameCallBack = frame;
+		this.endedCallBack = end;
+	}
+
+	message(e) {
+		if (e.data.start) {
+			this.start(e.data.width,e.data.height);
+		} else if (e.data.frame) {
+			this.processFrame(e.data.frame);
+		}
+        if (e.data.finished) {
+			this.end();
+		}
+	}
+
+	start(w,h) {
+		this.gifCanvas.width = w;
+		this.gifCanvas.height = h;
+		this.startCallBack(w,h);
+	}
+
+	processFrame(frame) {
+		if(!this.imgData || frame.width !== this.imgData.width || frame.height !== this.imgData.height){
+			this.tempcanvas.width = frame.width;
+			this.tempcanvas.height = frame.height;
+			this.imgData = this.tempctx.createImageData(this.tempcanvas.width, this.tempcanvas.height);
+		}
+
+
+		this.imgData.data.set(frame.patch);
+		this.tempctx.putImageData(this.imgData,0,0);
+
+		let restorer;
+		if (frame.disposalType === 3) {
+			restorer = this.gifctx.getImageData(0, 0, this.gifCanvas.width, this.gifCanvas.height);
+		}
+
+		this.gifctx.drawImage(this.tempcanvas, frame.left, frame.top);
+
+		this.receivedFrameCallBack(this.gifCanvas,frame.transparent,frame.delay);
+
+		if (frame.disposalType === 2) {
+			this.gifctx.clearRect(0, 0, this.gifCanvas.width, this.gifCanvas.height);
+		} else if (restorer) {
+			this.gifctx.putImageData(restorer,0,0);
+		}
+        delete frame.patch;
+	}
+
+    end(e) {
+        this.endedCallBack(e);
+    }
+
+	error(e) {
+		console.log('Gif Decoder errored!');
+		console.log(e);
+		this.end(e);
+	}
+}
+
+
+
+class ImageDown {
+	constructor(maxSize,options) {
+        this.options = {};
+        if (options) this.options = options;
+        if (this.options.filter) {
+            this.options = options;
+            this.worker = new Worker('js/workers/resizeimage.js');
+            this.worker.addEventListener('message', (e) => {
+                this.receivedMessage(e);
+            });
+        }
+        this.maxSize = maxSize;
+		this.callbacks = [];
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+	}
+
+    receivedMessage(e) {
+        let response = e.data;
+        if (response.pixels) {
+            response = this.createImageData(response.pixels, response.width,response.height);
+            if (this.options.canvas) {
+                this.canvas.width = response.width;
+                this.canvas.height = response.height;
+                this.ctx.putImageData(response,response.width,response.height);
+                response = this.canvas;
+            }
+            let cb = this.callbacks.shift();
+            cb(response);
+        } else {
+            this.finished();
+            this.worker.terminate();
+        }
+    }
+
+    createImageData(data,w,h) {
+        var imgData = this.ctx.createImageData(w,h);
+        imgData.data.set(data);
+        return imgData;
+    }
+
+    finish(callback) {
+        if (this.worker) {
+            this.finished = callback;
+            this.worker.postMessage(0);
+        } else {
+            callback();
+        }
+    }
+
+    resize(src,callback) {
+        this.setNewSize(src.width,src.height);
+        if (this.worker) {
+            this.lanczos(src,callback);
+        } else {
+            this.ctx.clearRect(0,0,this.width,this.height);
+            this.native(src,callback);
+        }
+    }
+
+    lanczos(src,callback) {
+        var imgData;
+
+        if (src instanceof HTMLVideoElement || src instanceof HTMLImageElement) {
+            if (src.width !== this.canvas.width) {
+                this.canvas.width = src.width;
+            }
+            if (src.height !== this.canvas.height) {
+                this.canvas.height = src.height;
+            }
+            this.ctx.drawImage(src,0,0);
+            imgData = this.ctx.getImageData(0,0,src.width,src.height);
+        } else if (src instanceof HTMLCanvasElement) {
+            let ctx = src.getContext('2d');
+            imgData = ctx.getImageData(0,0,src.width,src.height);
+        }
+
+        this.callbacks.push(callback);
+
+        this.worker.postMessage(
+            {
+				src:imgData,
+				width:this.width,
+				height:this.height,
+                options:this.options
+			},
+            [imgData.data.buffer]
+        );
+    }
+
+	native(src,callback) {
+        if (this.width !== this.canvas.width) {
+            this.canvas.width = this.width;
+        }
+        if (this.height !== this.canvas.height) {
+            this.canvas.height = this.height;
+        }
+        this.ctx.imageSmoothingQuality = 'high';
+		this.ctx.drawImage(src,0,0,src.width,src.height,0,0,this.width,this.height);
+        if (this.options.canvas) {
+            callback(this.canvas);
+        } else {
+            let imgData = this.ctx.getImageData(0,0,this.width,this.height);
+            if (this.options.trimAlpha) {
+                this.trimAlpha(imgData.data,this.options.trimAlpha);
+            }
+            callback(imgData);
+        }
+	}
+
+    trimAlpha(pixels,alpha) {
+        for (let i = 3, len = pixels.length; i < len; i += 4) {
+            if (pixels[i] < alpha) {
+                pixels[i] = 0; // drop semi transparent pixels
+            }
+        }
+    }
+
+    destroy() {
+        if (this.worker) {
+            this.worker.terminate();
+        }
+    }
+
+	get result() {
+		return this.canvas;
+	}
+
+	dataUrl(mime) {
+		return this.canvas.toDataURL(mime);
+	}
+
+	get imageData() {
+		return this.ctx.getImageData(this.canvas.width,this.canvas.height);
+	}
+
+	setNewSize(w,h) {
+		if (w > this.maxSize) {
+			h = h * (this.maxSize / w);
+			w = this.maxSize;
+		}
+		if (h > this.maxSize) {
+			w = w * (this.maxSize / h);
+			h = this.maxSize;
+		}
+		this.width = Math.round(w);
+        this.height = Math.round(h);
+	}
+}
+
+function processVideo(file,dither,quality,resizer,endedCallBack) {
+	let vid = document.createElement('video'),
+		sampleInterval = Math.round(1000 / 20),
+		frameCount = 0,
+		gifEncoder;
+
+	vid.defaultMuted = true;
+
+	vid.onloadedmetadata = function() {
+        resizer.setNewSize(this.videoWidth, this.videoHeight);
+		vid.width = this.videoWidth;
+		vid.height = this.videoHeight;
+		gifEncoder = new GIF({
+			workers: 3,
+			quality: quality,
+			width:resizer.width,
+			height:resizer.height,
+			workerScript: 'js/workers/gif.worker.js',
+			dither: dither,
+			globalPalette: false
+		});
+		gifEncoder.on('finished', function(blob) {
+			endedCallBack(blob,gifEncoder.options.width,gifEncoder.options.height);
+		});
+	};
+	vid.onended = function() {
+		this.src = ''
+		resizer.finish(function() {
+            //console.log('rendering gif!');
+			gifEncoder.render();
+            resizer.destroy();
+        });
+	};
+	let doFrame = function() {
+		this.oncanplaythrough = null;
+		this.onerror = null;
+		if (this.currentTime >= this.duration) {
+			this.onseeked = null;
+		}
+		if (frameCount >= 300) {
+			vid.onended();
+			return;
+		}
+        resizer.resize(this,
+            function(data) { // video, dont-clear buffer canvas, async receive!
+                gifEncoder.addFrame(data,{delay:sampleInterval});
+            }
+        );
+		this.currentTime = this.currentTime + sampleInterval / 1000;
+        frameCount++
+		//console.log(Math.round(this.currentTime/this.duration*100) + '% frame:'+(frameCount++));
+	};
+	vid.oncanplaythrough = doFrame;
+	vid.onseeked = doFrame;
+
+	vid.onerror = function() {
+		if (gifEncoder) {
+            gifEncoder.abort();
+        }
+        console.log('error with video');
+    	resizer.destroy();
+		endedCallBack();
+	};
+
+	vid.src = file.path;
+}
+
+function processGif(file,dither,quality,resizer,endedCallBack) {
+
+	let gifEncoder;
+
+	let decoder = new GifDecoder(file,
+		function(w,h) { // start
+            resizer.setNewSize(w,h);
+			gifEncoder = new GIF({
+				workers: 3,
+				quality: quality,
+				width:resizer.width,
+				height:resizer.height,
+				workerScript: 'js/workers/gif.worker.js',
+				dither: dither, //FloydSteinberg-serpentine
+				globalPalette: false
+		 	});
+
+		 	gifEncoder.on('finished', function(blob) {
+				endedCallBack(blob,gifEncoder.options.width,gifEncoder.options.height);
+			});
+		},
+		function(image,transparent,delay) { // recieved frame
+            resizer.resize(image,function(data) {
+                gifEncoder.setOption('transparent',transparent);
+    			gifEncoder.addFrame(data, {delay:delay});
+            });
+		},
+		function(err) { // finished (err should be undefined)
+			if (err) {
+				endedCallBack();
+				gifEncoder.abort();
+    			gifEncoder.frames = [];
+			} else {
+                resizer.finish(function() {
+                    gifEncoder.render();
+                });
+			}
+		}
+	);
+
+}
+
+
+function createNewProps(list) {
+	for (var i = 0, files = new Array(list.length); i < list.length; i++) {
+		files[i] = list[i]; // moving the list to an actual array so pop works , lol
+	}
+	var button = document.getElementById('newprops');
+	button.className += ' loadingbutton';
+
+    let resizer = new ImageDown(220);
+    let dither = false;//'FloydSteinberg'; //FloydSteinberg-serpentine
+    let quality = 5;
+
+    let port = function(blob,w,h) {
+        if (blob) {
+            addPropsToDB([createNewProp(blob,w,h)]);
+        }
+        importFile();
+    };
+
+	let importFile = function() {
+		if (files.length > 0) {
+			let file = files.pop();
+
+			if (file.type == 'image/gif') {
+                resizer.options = {trimAlpha:100};
+				processGif(file,dither,quality,resizer,port); //
+			} else if (file.type.match(/^video\/.*/)){
+                resizer.options = {};
+				processVideo(file,dither,quality,resizer,port);
+			} else {
+                resizer.options = {canvas:true};
+                processImage(file,quality,resizer,port);
+			}
+		} else {
+			button.className = 'tbcontrol tbbutton';
+		}
+	};
+	importFile();
+}
+
+
+function processImage(file,hq,resizer,endedCallBack) {
+    let img = document.createElement('img');
+
+    img.onload = function() {
+        resizer.resize(this,function(canvas) {
+            canvas.toBlob(function(blob) {
+                endedCallBack(blob,resizer.width,resizer.height);
+            });
+        });
+    };
+
+    img.onerror = function() {
+        endedCallBack();
+    };
+
+    img.src = file.path;
+}
+
+
+function createNewProp(blob,w,h) {
+	let id = 0;
+
+	do {
+		id = Math.round(Math.random()*2147483647);
+		if (id % 2) id = -id;
+	} while (propBagList.indexOf(id) > -1);
+
+	let prop = {
+		id:id,
+		name:'Palace Prop',
+		w:w,
+		h:h,
+		x:(-Math.trunc(w/2))+22,
+		y:(-Math.trunc(h/2))+22,
+		head:true,
+		ghost:false,
+		animated:false,
+		bounce:false,
+		blob:blob
+	};
+
+	return prop;
+}
+
+document.onpaste = function(e){
+	var loadImage = function (file) {
+		var reader = new FileReader();
+		reader.onload = function(e){
+			createNewProps([{path:e.target.result}]);
+		};
+		reader.readAsDataURL(file);
+	};
+    var items = e.clipboardData.items;
+    for (var i = 0; i < items.length; i++) {
+        if (/^image\/(p?jpeg|gif|png)$/i.test(items[i].type)) {
+            loadImage(items[i].getAsFile());
+            return;
+        }
+    }
 }
