@@ -640,7 +640,7 @@ input[type="color"]::-webkit-color-swatch {
 }
 
 .preflabel {
-  width          : 120px;
+  width          : 160px;
   float          : left;
   text-align     : right;
   vertical-align : middle;
@@ -669,9 +669,10 @@ input[type="color"]::-webkit-color-swatch {
 #prefs {
   top         : 50%;
   left        : 50%;
-  width       : 330px;
+  width       : 370px;
   margin-top  : -106px;
   margin-left : -171px;
+  padding     : 10px;
 }
 
 #authenticate {
@@ -838,7 +839,6 @@ input[type="color"]::-webkit-color-swatch {
   overflow : hidden;
 }
 
-
 #palaceroom {
   bottom    : 6px;
   color     : #333;
@@ -993,15 +993,14 @@ input[type="color"]::-webkit-color-swatch {
   display      : inline-block;
   box-sizing   : border-box;
   position     : absolute;
-  left:0;
-  top:0;
+  top          : 0;
+  left         : 0;
   width        : 91px;
   height       : 91px;
   border-color : transparent;
   border-width : 2px;
   border-style : solid;
-  /*transition: transform 0.3s;*/
-
+  /* transition: transform 0.3s; */
 }
 
 .bagprop {
@@ -1077,6 +1076,7 @@ input[type=range]::-webkit-slider-thumb {
 }
 
 .fileselect {
+  z-index    : -1;
   display    : block;
   position   : absolute;
   top        : 0;
@@ -1084,5 +1084,4 @@ input[type=range]::-webkit-slider-thumb {
   opacity    : 0;
   text-align : right;
   cursor     : inherit;
-  z-index:-1;
 }
