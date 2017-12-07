@@ -448,14 +448,15 @@ class PalaceRoom extends Renderer {
 			var x = (event.layerX/viewScale).fastRound();
 			var y = (event.layerY/viewScale).fastRound();
 			var overSelf = (palace.theUser && palace.theUser.x-22 < x && palace.theUser.x+22 > x && palace.theUser.y-22 < y && palace.theUser.y+22 > y);
+			var dragpid = dragPropID;
 
-			loadProps([dragPropID],true,function() { //callback to drop the prop once it is loaded from the users bag
-				var prop = allProps[dragPropID];
+			loadProps([dragpid],true,function() { //callback to drop the prop once it is loaded from the users bag
+				var prop = allProps[dragpid];
 				if (prop) {
 					if (!overSelf) {
-						palace.sendPropDrop(x-prop.w/2,y-prop.h/2,dragPropID);
+						palace.sendPropDrop(x-prop.w/2,y-prop.h/2,dragpid);
 					} else {
-						palace.addSelfProp(dragPropID);
+						palace.addSelfProp(dragpid);
 						palace.selfPropChange(); //normally the mouse up even for the canvas would handle this but we're now async?
 					}
 				}
@@ -726,8 +727,8 @@ class PalaceRoom extends Renderer {
 			palace.sendDraw({
 				type:prefs.draw.type,
 				front:prefs.draw.front,
-				color:prefs.draw.color.getNbrs(),
-				fill:prefs.draw.fill.getNbrs(),
+				color:getNbrs(prefs.draw.color),
+				fill:getNbrs(prefs.draw.fill),
 				size:prefs.draw.size,
 				points:this.drawPoints
 			});
@@ -928,7 +929,7 @@ class PalaceRoom extends Renderer {
 		dudes.forEach(function(dude){pids = dude.props.concat(pids)});
 		this.looseProps.find(function(prop){pids.push(prop.id)});
 
-		loadProps(pids.dedup());
+		loadProps(dedup(pids));
 		dudes.forEach(function(dude){dude.animator()});
 
 		this.setUserCount();

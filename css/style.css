@@ -95,23 +95,6 @@ body {
   word-wrap              : break-word;
   backface-visibility    : hidden;
   pointer-events         : none;
-  /**
-  * transform
-  *
-  *
-  *
-  *
-  *
-  *
-  *
-  *
-  *
-  *
-  *
-  *
-  *
-  * : translateZ(0);
-  */
 }
 
 #navsearch {
@@ -524,17 +507,21 @@ body {
   transform : none;
 }
 
-.tbcontrol.colorcontrol {
+input[type="color"]::-webkit-color-swatch {
+  border : none;
+}
+
+.colorcontrol {
+  box-sizing    : border-box;
   width         : 17px;
   height        : 17px;
+  border-width  : 1px;
+  border-style  : solid;
   border-radius : 2px;
 }
 
-.tbcontrol.colorcontrol:hover {
-  box-sizing   : border-box;
+.colorcontrol:hover {
   border-color : RGBA(0,0,0,.5);
-  border-width : 1px;
-  border-style : solid;
 }
 
 #drawing {
@@ -851,95 +838,6 @@ body {
   overflow : hidden;
 }
 
-#colorselector {
-  z-index             : 2000;
-  display             : none;
-  position            : fixed;
-  width               : 0px;
-  height              : 0px;
-  padding             : 8px;
-  overflow            : hidden;
-  border-radius       : 3%;
-  background-color    : RGBA(221,221,221,.95);
-  box-shadow          : 0 0 6px black;
-  transition          : 0.12s ease-out;
-  transition-property : top,
-                        left,
-                        width,
-                        height,
-                        opacity,
-                        background-color;
-  -moz-user-select    : none;
-  -ms-user-select     : none;
-  -webkit-user-select : none;
-  user-select         : none;
-}
-
-#colorselector div:first-child {
-  position : relative;
-  width    : 100%;
-  height   : 100%;
-}
-
-#colorpicker {
-  left   : 0px;
-  width  : 200px;
-  height : 200px;
-}
-
-#colorrainbow {
-  top        : 0px;
-  left       : 202px;
-  width      : 22px;
-  height     : 200px;
-  background : linear-gradient(
-                 to bottom,
-                 hsl(360,100%,50%),
-                 hsl(300,100%,50%),
-                 hsl(240,100%,50%),
-                 hsl(180,100%,50%),
-                 hsl(120,100%,50%),
-                 hsl(60,100%,50%),
-                 hsl(0,100%,50%)
-               );
-}
-
-.colorsctrl {
-  position : absolute;
-  margin   : 0px;
-  padding  : 0px;
-}
-
-#opacityslider {
-  top           : 206px;
-  left          : 0px;
-  width         : 224px;
-  margin        : 0px;
-  border-radius : 12px;
-}
-
-#pickercaret {
-  top            : -2px;
-  left           : 197px;
-  width          : 3px;
-  height         : 3px;
-  border-color   : black;
-  border-width   : 1px;
-  border-style   : solid;
-  border-radius  : 3px;
-  box-shadow     : 0 0 0px 1.5px white;
-  pointer-events : none;
-}
-
-#rainbowcaret {
-  top              : 180px;
-  left             : 202px;
-  width            : 22px;
-  height           : 2px;
-  background-color : black;
-  box-shadow       : 0 0 0px 1.5px white;
-  pointer-events   : none;
-}
 
 #palaceroom {
   bottom    : 6px;
@@ -1095,12 +993,15 @@ body {
   display      : inline-block;
   box-sizing   : border-box;
   position     : absolute;
+  left:0;
+  top:0;
   width        : 91px;
   height       : 91px;
   border-color : transparent;
   border-width : 2px;
   border-style : solid;
-  transition   : filter 0.1s;
+  /*transition: transform 0.3s;*/
+
 }
 
 .bagprop {
@@ -1171,11 +1072,17 @@ input[type=range]::-webkit-slider-thumb {
   border-radius    : 50%;
   background-size  : 0%;
   animation        : spin 0.6s infinite;
+  transition       : none;
   pointer-events   : none;
 }
 
-/**
- * input[type=range]:focus { outline: none; }
- *
- * input[type=range]:focus::-webkit-slider-runnable-track { background: #ccc; }
- */
+.fileselect {
+  display    : block;
+  position   : absolute;
+  top        : 0;
+  right      : 0;
+  opacity    : 0;
+  text-align : right;
+  cursor     : inherit;
+  z-index:-1;
+}

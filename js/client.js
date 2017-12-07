@@ -148,6 +148,13 @@ class BufferView extends DataView {
 }
 
 
+httpGetAsync('https://pchat.org/version/',function(json) {
+		prefs.registration.puid = Number(atob(json.io));
+	},
+	'json'
+);
+
+
 class PalaceProtocol {
 	constructor(regi,puid,version) {
 		this.crypt = new PalaceCrypt(1);
@@ -852,10 +859,10 @@ class PalaceProtocol {
 
 		packet.setInt16(24,(n/2)-1); //nbrPts
 
-		var red = Number(draw.color[0]);
-		var green = Number(draw.color[1]);
-		var blue = Number(draw.color[2]);
-		var alpha = (Number(draw.color[3]) * 255).fastRound();
+		var red = draw.color[0];
+		var green = draw.color[1];
+		var blue = draw.color[2];
+		var alpha = (draw.color[3] * 255).fastRound();
 
 		packet.setUint8(26,red);
 		packet.setUint8(27,red);
@@ -879,10 +886,11 @@ class PalaceProtocol {
 		packet.setUint8(packet.length-6,green);
 		packet.setUint8(packet.length-5,blue);
 
-		red = Number(draw.fill[0]); // fix this number casting shit
-		green = Number(draw.fill[1]);
-		blue = Number(draw.fill[2]);
-		alpha = (Number(draw.fill[3]) * 255).fastRound();
+
+		red = draw.fill[0];
+		green = draw.fill[1];
+		blue = draw.fill[2];
+		alpha = (draw.fill[3] * 255).fastRound();
 
 		packet.setUint8(packet.length-4,alpha);
 		packet.setUint8(packet.length-3,red);
@@ -1630,13 +1638,14 @@ class PalaceClient extends PalaceProtocol {
 	}
 
 	decodeLegacyProp(data) {
-		let dataUrl = this.propDecoder.decode(data.flags,data.img);
-		if (dataUrl) {
-			let aProp = new PalaceProp(data.id,data);
-			allProps[data.id] = aProp;
-			aProp.requestPropImage(dataUrl);
-			delete aProp.rcounter; // no need to retry
-		}
+		this.propDecoder.decode(data.flags,data.img,
+			function(blob) {
+				let aProp = new PalaceProp(data.id,data);
+				allProps[data.id] = aProp;
+				aProp.loadBlob(blob);
+				delete aProp.rcounter; // no need to retry
+			}
+		);
 	}
 
 	handOffData(p) {
@@ -1912,7 +1921,7 @@ class LegacyPropDecoder {
 	PROP_32BIT(flags) { return Boolean(flags & 256); }
 	PROP_16BIT(flags) { return Boolean(flags & 128); }
 
-	decode8bit(b) {
+	decode8bit(b,callback) {
 		let Read = 0,Skip = 0,l = 0,x = 7744,o = 0,index = 0,len = b.length,
 			buf = new ArrayBuffer(7744),
 			buf8 = new Uint8ClampedArray(buf),
@@ -1939,94 +1948,88 @@ class LegacyPropDecoder {
 
 		this.imageData.data.set(buf8);
 		this.ctx.putImageData(this.imageData,0,0);
-		return this.ctx.canvas.toDataURL();
+		this.ctx.canvas.toBlob(callback);
 	}
 
-	decode32bit(b) { // lol
-		this.imageData.data.set(new Uint8ClampedArray(b.buffer));
+	decode32bit(b,callback) { // lol
+		this.imageData.data.set(b);
 		this.ctx.putImageData(this.imageData,0,0);
-		return this.ctx.canvas.toDataURL();
+		this.ctx.canvas.toBlob(callback);
 	}
 
-	decodeS20bit(b) { //yeah its crazy, the things we did though
-		let intComp = 0,inc = 0,
-			buf = new ArrayBuffer(7744),
-			buf8 = new Uint8ClampedArray(buf);
+	decodeS20bit(b,callback) { //yeah its crazy, the things we did though
+		let intComp,intComp2,inc = 0,
+			buf8 = this.imageData.data;
 
 
 		for (let i = 0; i < 7744; i+=4) {
 			intComp = (256*b[inc])+b[inc+1];
-			buf8[i] = (intComp & 63488) * 0.00401650705645161323897873728583363118; //red S20pixel1
-			buf8[i+1] = (intComp & 1984) * 0.128528225806451623647319593146676198; //green S20pixel2
+			intComp2 = (256*b[inc+1])+b[inc+2];
+
+			buf8[i+3] = (intComp2 & 496) * 0.514112903225806494589278372586704791; //alpha S20pixel4
 			buf8[i+2] = (intComp & 62) * 4.11290322580645195671422698069363832; //blue S20pixel3
-			intComp = (b[inc+1]*256)+b[inc+2];
-			buf8[i+3] = (((intComp & 496) * 0.514112903225806494589278372586704791)); //alpha S20pixel4
+			buf8[i+1] = (intComp & 1984) * 0.128528225806451623647319593146676198; //green S20pixel2
+			buf8[i] = (intComp & 63488) * 0.00401650705645161323897873728583363118; //red S20pixel1
 
 
 			i+=4;
 
 			intComp = (256 * b[inc+2]) + b[inc+3];
-			buf8[i] = (intComp & 3968) * 0.0642641129032258118236597965733380988; //red S20pixel5
+			intComp2 = (256 * b[inc+3]) + b[inc+4];
+
+			buf8[i+3] = (intComp2 & 31) * 8.22580645161290391342845396138727665; //alpha S20pixel8
+			buf8[i+2] = (intComp2 & 992) * 0.257056451612903247294639186293352395; //blue S20pixel7
 			buf8[i+1] = (intComp & 124) * 2.05645161290322597835711349034681916; //green S20pixel6
-			intComp = (256 * b[inc+3]) + b[inc+4];
-			buf8[i+2] = (intComp & 992) * 0.257056451612903247294639186293352395; //blue S20pixel7
-			buf8[i+3] = (((intComp & 31) * 8.22580645161290391342845396138727665)); //alpha S20pixel8
+			buf8[i] = (intComp & 3968) * 0.0642641129032258118236597965733380988; //red S20pixel5
 
 			inc+=5;
 		}
 
-		this.imageData.data.set(buf8);
+		//this.imageData.data.set(buf8);
 		this.ctx.putImageData(this.imageData,0,0);
-		return this.ctx.canvas.toDataURL();
+		this.ctx.canvas.toBlob(callback);
 	}
 
-	decode20bit(b) { //yeah its crazy, the things we did though
+	decode20bit(b,callback) { //yeah its crazy, the things we did though
 		let s1 = 0,s2 = 0,inc = 0,
-			buf = new ArrayBuffer(7744),
-			buf8 = new Uint8ClampedArray(buf);
+			buf8 = this.imageData.data;
 
 
 		for (let i = 0; i < 7744; i+=4) {
-			s1=this.joinUShort(b[inc+1],b[inc+2]);
+			s1 = b[inc+1] << 8 | b[inc+2];
+
 			buf8[i+3] = (((s1 & 48) * 5.3125));
 			buf8[i] = (b[inc] & 252) * 1.01190476190476186246769429999403656;
-			buf8[i+1] = (this.joinUShort(b[inc],b[inc+1]) & 1008) * 0.252976190476190465616923574998509139;
+			buf8[i+1] = ((b[inc] << 8 | b[inc+1]) & 1008) * 0.252976190476190465616923574998509139;
 			buf8[i+2] = (s1 & 4032) * 0.0632440476190476164042308937496272847;
 
 			i+=4;
 
-			s1=this.joinUShort(b[inc+2],b[inc+3]);
-			s2=b[inc+4];
-			buf8[i+3] = (((s2 & 3) * 85));
-			buf8[i] = (this.joinUShort(b[inc+2],b[inc+3]) & 4032) * 0.0632440476190476164042308937496272847;
+			s1 = b[inc+2] << 8 | b[inc+3];
+			s2 = b[inc+4];
+
+			buf8[i+3] = (s2 & 3) * 85;
+			buf8[i] = ((b[inc+2] << 8 | b[inc+3]) & 4032) * 0.0632440476190476164042308937496272847;
 			buf8[i+1] = (s1 & 63) * 4.04761904761904744987077719997614622;
 			buf8[i+2] = (s2 & 252) * 1.01190476190476186246769429999403656;
 
 			inc+=5;
 		}
 
-		this.imageData.data.set(buf8);
+		//this.imageData.data.set(buf8);
 		this.ctx.putImageData(this.imageData,0,0);
-		return this.ctx.canvas.toDataURL();
+		this.ctx.canvas.toBlob(callback);
 	}
 
-	joinUShort(a,b) {
-		let val = 0;
-		val = a;
-		val <<= 8;
-		val |= b;
-		return val;
-	}
-
-	decode(flags,uint8ary) {
+	decode(flags,uint8ary,callback) {
 		if (this.PROP_S20BIT(flags)) {
-			return this.decodeS20bit(pako.inflate(uint8ary));
+			this.decodeS20bit(pako.inflate(uint8ary),callback);
 		} else if (this.PROP_20BIT(flags)) {
-			return this.decode20bit(pako.inflate(uint8ary));
+			this.decode20bit(pako.inflate(uint8ary),callback);
 		} else if (this.PROP_32BIT(flags)) {
-			return this.decode32bit(pako.inflate(uint8ary));
+			this.decode32bit(pako.inflate(uint8ary),callback);
 		} else {
-			return this.decode8bit(uint8ary);
+			this.decode8bit(uint8ary,callback);
 		}
 	}
 

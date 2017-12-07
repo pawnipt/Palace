@@ -1,4 +1,3 @@
-
 function ByteStream(data){
 	this.data = data;
 	this.pos = 0;
@@ -211,14 +210,13 @@ GIF.prototype.decompressFrame = function(index, buildPatch){
 	if(index >= this.raw.frames.length){ return null; }
 
 	var frame = this.raw.frames[index];
+
 	if(frame.image){
 		// get the number of pixels
 		var totalPixels = frame.image.descriptor.width * frame.image.descriptor.height;
 
 		// do lzw decompression
-
 		var pixels = lzw(frame.image.data.minCodeSize, frame.image.data.blocks, totalPixels);
-
 
 
 		// deal with interlacing if necessary
@@ -228,21 +226,11 @@ GIF.prototype.decompressFrame = function(index, buildPatch){
 
 		// setup usable image object
 		var image = {
-			pixels: pixels,
-			dims: {
-				top: frame.image.descriptor.top,
-				left: frame.image.descriptor.left,
-				width: frame.image.descriptor.width,
-				height: frame.image.descriptor.height
-			}
+			left: frame.image.descriptor.left,
+			top: frame.image.descriptor.top,
+			width: frame.image.descriptor.width,
+			height: frame.image.descriptor.height
 		};
-
-		// color table
-		if(frame.image.descriptor.lct && frame.image.descriptor.lct.exists){
-			image.colorTable = frame.image.lct;
-		}else{
-			image.colorTable = this.raw.gct;
-		}
 
 
 		// apply gce from the last frame if there isn't one
@@ -250,24 +238,35 @@ GIF.prototype.decompressFrame = function(index, buildPatch){
 		let lastFrame = this.raw.frames[index-1];
 		if (!frame.gce && lastFrame && lastFrame.gce) {
 			frame.gce = lastFrame.gce;
+			console.log('applying last gce to frame')
 		}
+
+		// color table
+		var colorTable;
+		if(frame.image.descriptor.lct && frame.image.descriptor.lct.exists){
+			colorTable = frame.image.lct;
+		}else{
+			colorTable = this.raw.gct;
+		}
+
 
 		// add per frame relevant gce information
 		if (frame.gce) {
-			image.delay = (frame.gce.delay || 10) * 10; // convert to ms
 			image.disposalType = frame.gce.extras.disposal;
+			image.delay = (frame.gce.delay || 10) * 10; // convert to ms
 
 			// transparency
 			if(frame.gce.extras.transparentColorGiven){
 				image.transparentIndex = frame.gce.transparentColorIndex;
+				image.transparent = true;
 			}
 		}
 
-		// create canvas usable imagedata if desired
-		if(buildPatch){
-			image.patch = generatePatch(image);
-			image.pixels = null;
-		}
+
+
+		// create canvas usable imagedata
+		image.patch = generatePatch(image,pixels,colorTable);
+
 
 		return image;
 	}
@@ -324,7 +323,7 @@ GIF.prototype.decompressFrame = function(index, buildPatch){
 				datum >>= code_size;
 				bits -= code_size;
 				// Interpret the code
-				if ((code > available) || (code == end_of_information)) {
+				if ((code > available) || (code === end_of_information)) {
 					break;
 				}
 				if (code == clear) {
@@ -335,14 +334,14 @@ GIF.prototype.decompressFrame = function(index, buildPatch){
 					old_code = nullCode;
 					continue;
 				}
-				if (old_code == nullCode) {
+				if (old_code === nullCode) {
 					pixelStack[top++] = suffix[code];
 					old_code = code;
 					first = code;
 					continue;
 				}
 				in_code = code;
-				if (code == available) {
+				if (code === available) {
 					pixelStack[top++] = first;
 					code = old_code;
 				}
@@ -366,7 +365,7 @@ GIF.prototype.decompressFrame = function(index, buildPatch){
 						code_mask += available;
 					}
 				}
-				if(available > MAX_STACK_SIZE) console.log('max exceeded');
+
 				old_code = in_code;
 			}
 			// Pop a pixel off the pixel stack.
@@ -407,25 +406,25 @@ GIF.prototype.decompressFrame = function(index, buildPatch){
 		return newPixels;
 	}
 
-	// create a clamped byte array patch for the frame image to be used directly with a canvas
-	// TODO: could potentially squeeze some performance by doing a direct 32bit write per iteration
 
 	// converted to 32bit writing, for a significant performance increase.
-	function generatePatch(image) {
+	function generatePatch(image,pixels,colorTable) {
 
-		var totalPixels = image.pixels.length;
+		var totalPixels = pixels.length;
 		var patch32 = new Uint32Array(totalPixels);
 
 		for(var i = 0; i < totalPixels; i++) {
-			var colorIndex = image.pixels[i];
-			var color = image.colorTable[colorIndex];
+			var colorIndex = pixels[i];
+			var color = colorTable[colorIndex];
 
-			patch32[i] = ((colorIndex !== image.transparentIndex ? 255 : 0) << 24)
+			patch32[i] = //(255 << 24)
+					((colorIndex !== image.transparentIndex ? 255 : 0) << 24)
 				+ (color[2] << 16)
 				+ (color[1] << 8)
 				+ color[0];
 
 		}
+
 		return new Uint8ClampedArray(patch32.buffer);
 	}
 };
@@ -459,7 +458,7 @@ var subBlocks = {
 		}
 		stream.pos = pos; // reset stream position
 
-		var out = new Uint8Array(calcSize); // create
+		let out = new Uint8Array(calcSize); // create
 
 		var buffPos = 0;
 		for(var size=stream.readByte(); size!==terminator; size=stream.readByte()){
