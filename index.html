@@ -2,6 +2,10 @@
 <html>
 <head>
 <link href="css/style.css" rel="stylesheet" type="text/css"/>
+<script src="https://cdn.ravenjs.com/3.19.1/raven.min.js" crossorigin="anonymous"></script>
+	<script>
+        Raven.config('https://2e2f7f94e86c471189b46bc12abcf6c9@sentry.pchat.palaceworld.net/2').install()
+	</script>
 </head>
 <body>
 	<audio id="soundplayer" autoplay></audio>
@@ -87,6 +91,8 @@
 			<input id="prefdisablesounds" type="checkbox" class="prefinput">
 			<label class="preflabel" for="prefautoplayvideos">Autoplay log videos:</label>
 			<input id="prefautoplayvideos" type="checkbox" class="prefinput">
+			<label class="preflabel" for="senddebug">Automatic error reporting:</label>
+			<input id="senddebug" type="checkbox" class="prefinput">
 		</div>
 
 		<div id="authenticate" class="zoompanel" data-state=0>

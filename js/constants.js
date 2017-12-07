@@ -2,8 +2,23 @@
 
 window.onerror = function(e, url, line){
 	logerror(e + "<br>" + url.split('/').pop() + "&nbsp;&nbsp;&nbsp;&nbsp;Line:" + line + '<br><br>');
+    if(getGeneralPref('senddebug')) {
+        Raven.captureException(e);
+    }
+
 	// return true;
 };
+
+
+window.onunhandledrejection = function(evt) {
+    if(getGeneralPref('senddebug')) {
+        Raven.captureException(evt.reason);
+    }
+
+};
+
+
+
 
 const linkSearch = /(\bhttps?:\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/i;
 

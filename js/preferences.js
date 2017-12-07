@@ -361,6 +361,8 @@ window.onunload = function(e) {
 		if (a) document.getElementById('prefdisablesounds').checked = a;
 		a = getGeneralPref('autoplayvideos');
 		if (a) document.getElementById('prefautoplayvideos').checked = a;
+        a = getGeneralPref('senddebug');
+        if (a) document.getElementById('senddebug').checked = a;
 		setDrawType();
 	} else { //default
 		prefs.registration = {regi:getRandomInt(100,2147483647),puid:getRandomInt(1,2147483647)};
@@ -368,6 +370,7 @@ window.onunload = function(e) {
 		setGeneralPref('userName','Palace User');
 		setGeneralPref('propBagTileSize',91);
 		setGeneralPref('viewScaleAll',true);
+        setGeneralPref('senddebug',true);
 		//setGeneralPref('propBagWidth',200);
 	}
 	document.getElementById('prefusername').value = getGeneralPref('userName');
