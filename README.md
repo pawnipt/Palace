@@ -21,7 +21,6 @@ If you're on Windows installing spellchecker may require that windows-build-tool
 Installing this requires a PowerShell with administrative rights. (right-click on Powershell and run "as Administrator").
 ```
 npm install --global windows-build-tools
-npm install --global electron
 ```
 
 ### Finally
