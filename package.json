@@ -18,6 +18,7 @@
     "electron-rebuild": "^1.6.0"
   },
   "dependencies": {
-    "electron-spellchecker": "^1.1.2"
+    "electron-spellchecker": "^1.1.2",
+    "raven": "^2.2.1"
   }
 }
