@@ -564,6 +564,10 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	document.getElementById('prefautoplayvideos').onchange = function() {
 		setGeneralPref('autoplayvideos',this.checked);
 	};
+    document.getElementById('senddebug').onchange = function() {
+        setGeneralPref('senddebug',this.checked);
+        alert('this change requires a restart of the client.');
+    };
 
 
 

@@ -164,6 +164,7 @@ class PalaceProtocol {
 	}
 
 	connect(ip,port) {
+
 		this.textDecoder = new TextDecoder('windows-1252'); // default server encoding
 		this.textEncoder = new TextEncoder('windows-1252', { NONSTANDARD_allowLegacyEncoding: true }); // palace default! :\
 
@@ -1292,9 +1293,30 @@ class PalaceClient extends PalaceProtocol {
 	}
 
 	goto(url) {
-		var blah = url.trim().replace('palace://','').split(':'); //should use forgiving regex
+		var connectInfo = url.trim().replace('palace://','').split(':'); //should use forgiving regex
 		this.retryRegistration = false;
-		super.connect(blah[0],blah[1]);
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.onload = () => {
+            if (xmlHttp.status == 200) {
+                if(xmlHttp.getResponseHeader("Content-Type") === "application/json") {
+                    var json = JSON.parse(xmlHttp.responseText);
+                    var port =json.port;
+                    var ip = '';
+                    if(typeof json.ip !== "undefined") {
+                    	ip = json.ip;
+					} else {
+                    	ip = connectInfo[0];
+					}
+                    super.connect(ip,port);
+                } else {
+                    super.connect(connectInfo[0],connectInfo[1]);
+				}
+            } else {
+                super.connect(connectInfo[0],connectInfo[1]);
+			}
+        };
+        xmlHttp.open("GET", 'http://' + connectInfo[0] + '/palace.json', true);
+        xmlHttp.send();
 	}
 
 	static preloadAudio(name) {

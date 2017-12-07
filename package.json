@@ -1,23 +1,24 @@
 {
-    "name": "Palace",
-    "version": "0.0.4",
-    "repository": "https://github.com/pawnipt/Palace",
-    "description": "Palace visual chat app",
-    "main": "main.js",
-    "scripts": {
-        "start": "electron .",
-        "rebuild": "$(npm bin)/electron-rebuild",
-        "rebuild-win32": ".\\node_modules\\.bin\\electron-rebuild.cmd",
-        "build": "electron-packager . Palace --overwrite --ignore=\"(\\.gitignore|.*/test|node_modules/@paulcbetts/cld/(deps|build))\" --prune --out=release-builds"
-    },
-    "author": "Jameson Heesen",
-    "license": "MIT",
-    "devDependencies": {
-        "electron": "^1.8.2-beta.3",
-        "electron-packager": "^9.1.0",
-        "electron-rebuild": "^1.6.0"
-    },
-    "dependencies": {
-        "electron-spellchecker": "^1.1.2"
-    }
+  "name": "Palace",
+  "version": "0.0.4",
+  "repository": "https://github.com/pawnipt/Palace",
+  "description": "Palace visual chat app",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "rebuild": "$(npm bin)/electron-rebuild",
+    "rebuild-win32": ".\\node_modules\\.bin\\electron-rebuild.cmd",
+    "build": "electron-packager . Palace --overwrite --ignore=\"(\\.gitignore|.*/test|node_modules/@paulcbetts/cld/(deps|build))\" --prune --out=release-builds"
+  },
+  "author": "Jameson Heesen",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^1.8.2-beta.3",
+    "electron-packager": "^9.1.0",
+    "electron-rebuild": "^1.6.0"
+  },
+  "dependencies": {
+    "electron-spellchecker": "^1.1.2",
+    "raven": "^2.2.1"
+  }
 }
