@@ -9,15 +9,6 @@
 </head>
 <body>
 	<audio id="soundplayer" autoplay></audio>
-	<div id="colorselector" data-state=0>
-		<div>
-			<input id="opacityslider" class="colorsctrl" type="range" max="100" min="0" value="100">
-			<canvas id="colorpicker" class="colorsctrl" width="200" height="200"></canvas>
-			<div id="colorrainbow" class="colorsctrl"></div>
-			<div id="pickercaret" class="colorsctrl"></div>
-			<div id="rainbowcaret" class="colorsctrl"></div>
-		</div>
-	</div>
 	<div id="toolbar">
 		<button id="users" class="tbitem tbbutton" disabled></button>
 		<button id="rooms" class="tbitem tbbutton" disabled></button>
@@ -30,8 +21,8 @@
 			<div id="drawtype" class="tbcontrol tbbutton"></div>
 			<div id="drawundo" class="tbcontrol tbbutton"></div>
 			<div id="drawcheckers">
-				<div id="drawcolor" class="tbcontrol colorcontrol"></div>
-				<div id="drawfill" class="tbcontrol colorcontrol"></div>
+				<input type="color" id="drawcolor" class="tbcontrol colorcontrol">
+				<input type="color" id="drawfill" class="tbcontrol colorcontrol">
 			</div>
 			<canvas id="drawpreview" class="tbcontrol" width="66" height="36"></canvas>
 		</div>
@@ -55,7 +46,9 @@
 		<div id="propcontrols" data-state=0 class="tbitem tbcontroller tbright">
 			<button id="editprop" class="tbcontrol tbbutton" disabled></button>
 			<button id="removeprops" class="tbcontrol tbbutton" disabled></button>
-			<div id="newprops" class="tbcontrol tbbutton"></div>
+			<label id="newprops" for="fileprops" class="tbcontrol tbbutton">
+				<input id="fileprops" class="fileselect" type="file" name="file" multiple>
+			</label>
 			<button id="deleteprops" class="tbcontrol tbbutton" disabled></button>
 		</div>
 		<button id="saveprop" class="tbitem tbbutton tbright" disabled></button>
@@ -82,7 +75,7 @@
 			<label class="preflabel" for="prefhomepalace">Home:</label>
 			<input id="prefhomepalace" type="text" class="prefinput">
 			<label class="preflabel" for="prefpropbagsize">Prop bag tile size:</label>
-			<input id="prefpropbagsize" type="range" class="prefinput" type="range" max="220" min="44" value=91>
+			<input id="prefpropbagsize" type="range" class="prefinput" type="range" max="224" min="48" value=91>
 			<label class="preflabel" for="prefviewfitscale">Don't scale view:</label>
 			<input id="prefviewfitscale" type="checkbox" class="prefinput">
 			<label class="preflabel" for="prefviewscaleall">Always scale view:</label>
@@ -108,9 +101,10 @@
 	</div>
 	<input type="text" id="chatbox" placeholder="Chat..." autofocus>
 </body>
-<script src="js/includes/pako_inflate.min.js"></script>
-<script src="js/includes/encoding-indexes.js"></script>
-<script src="js/includes/encoding.js"></script>
+<script src="js/lib/pako_inflate.min.js"></script>
+<script src="js/lib/encoding-indexes.js"></script>
+<script src="js/lib/encoding.js"></script>
+<script src="js/lib/gif.js"></script>
 <script src="js/constants.js"></script>
 <script src="js/utility.js"></script>
 <script src="js/interface.js"></script>

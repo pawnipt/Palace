@@ -18,13 +18,13 @@ function timeStampStr(seconds) {
 	return time.join(":") + " " + suffix;
 }
 
-Array.prototype.dedup = function() {
-	return this.filter(
+function dedup(ary) {
+	return ary.filter(
 		function(e,i,a) {
 			return a.indexOf(e) == i;
 		}
 	);
-};
+}
 function getHsl(color,lightness) {
 	return 'hsl('+(22.5*color)+',50%,'+lightness+'%)';
 }
@@ -38,9 +38,29 @@ function getRandomIntInclusive(min, max) {
   max = Math.floor(max);
   return Math.floor(Math.random() * (max - min + 1)) + min; //The maximum is inclusive and the minimum is inclusive
 }
-String.prototype.getNbrs = function() {
-	return this.match(/([.0-9]+)/g);
-};
+
+function getNbrs(str) {
+	let nbrs = str.match(/[\.0-9]+/g);
+	nbrs.forEach(function(i,index) {
+		nbrs[index] = Number(i);
+	});
+	return nbrs;
+}
+
+function hexToRGBA(hex,opacity) {
+	let nbrs = hex.match(/[A-Fa-f0-9]{2}/g);
+	return 'RGBA('+parseInt(nbrs[0],16)+','+parseInt(nbrs[1],16)+','+parseInt(nbrs[2],16)+','+opacity+')';
+}
+
+function rgbToHex(rgba) { // discards opacity if RGBA
+	var nbrs = getNbrs(rgba);
+	nbrs.forEach(function(i,index) {
+		nbrs[index] = Number(i).toHex();
+	});
+	if (nbrs.length > 3) nbrs.pop();
+	return '#'+nbrs.join('');
+}
+
 function microseconds() {
 	var d = new Date();
     return d.getTime();
@@ -138,7 +158,7 @@ function httpGetAsync(theUrl, callback, rtype, callerror) {
 	};
 	xmlHttp.onload = function() {
 		if (xmlHttp.status == 200) {
-			callback(xmlHttp.responseText);
+			callback(xmlHttp.response);
 		} else {
 			if (callerror) callerror(xmlHttp.status);
 		}

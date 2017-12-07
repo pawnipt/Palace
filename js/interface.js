@@ -9,7 +9,6 @@ var smileys = {},
 	viewScale = 1,
 	viewScaleTimer = null,
 	dragPropID = null,
-	currentColorControl = null,
 	keysDown = [];
 
 
@@ -36,12 +35,14 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	buff = buff.getContext('2d');
 	var smile = document.createElement('img'); //maybe just store the images as canvases? im not sure which is more efficient given the substantial amount of times they are redrawn to the canvas
 	smile.onload = function() {
-		for (var x = 0; x < 13; x++) {
-			for (var y = 0; y < 16; y++) {
+		for (let x = 0; x < 13; x++) {
+			for (let y = 0; y < 16; y++) {
 				buff.clearRect(0,0,44,44);
 				buff.drawImage(this,x*45,y*45,44,44,0,0,44,44);
 				smileys[x+','+y] = document.createElement('img');
-				smileys[x+','+y].src = buff.canvas.toDataURL();
+				buff.canvas.toBlob(function(blob) {
+					smileys[x+','+y].src = URL.createObjectURL(blob);
+				});
 			}
 		}
 
@@ -189,8 +190,13 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	};
 	propBag.ondragstart = function(event) {
 		dragPropID = Number(event.target.parentNode.dataset.pid);
-		var img = event.target.cloneNode(false);
+		var img = event.target;
+		var n = img.parentNode.className;
+		img.parentNode.className = '';
 		event.dataTransfer.setDragImage(img,img.width/2,img.height/2);
+		setTimeout(function() {
+			img.parentNode.className = n;
+		},0);
 	};
 	propBag.clickedProp = function(target) { // adding function to element! lol
 		if (target.nodeName == 'DIV' || target.nodeName == 'IMG') {
@@ -213,17 +219,17 @@ let contextMenuListener = new ContextMenuListener((info) => {
 		if (event.target.nodeName != 'IMG') {
 			event.preventDefault();
 		}
-		if (newTarget && (newTarget.className == '' || event.shiftKey || event.metaKey)) {
+		if (newTarget && (newTarget.className == '' || event.shiftKey || platformCtrlKey(event))) {
 			var newPid = Number(newTarget.dataset.pid);
 			if (newPid != null) {
 
 				var lastPid;
-				if (!event.metaKey) {
+				if (!platformCtrlKey(event)) {
 					if (event.shiftKey) lastPid = selectedBagProps[0];
 					selectedBagProps = [];
 				}
 
-				if (event.metaKey) {
+				if (platformCtrlKey(event)) {
 					let already = selectedBagProps.indexOf(newPid);
 					if (already > -1) {
 						selectedBagProps.splice(already,1);
@@ -319,15 +325,13 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	};
 
 	window.addEventListener('keyup', function(e) {
-		var mac = /^darwin/.test(process.platform);
-		if (palace.theRoom && palace.theRoom.hideUserNames && !((mac && e.metaKey) || (!mac && e.ctrlKey)) && !e.altKey) {
+		if (palace.theRoom && palace.theRoom.hideUserNames && !platformCtrlKey(e) && !e.altKey) {
 			palace.theRoom.hideUserNames = false;
 			palace.theRoom.reDraw();
 		}
 	},true);
 	window.addEventListener('keydown', function(e) {
-		var mac = /^darwin/.test(process.platform);
-		if ((mac && e.metaKey) || (!mac && e.ctrlKey)) {
+		if (platformCtrlKey(e)) {
 			if (e.altKey && palace.theRoom) {
 				palace.theRoom.hideUserNames = true;
 				palace.theRoom.reDraw();
@@ -476,20 +480,21 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	document.getElementById('propbag').onclick = function() { // button to open/close prop bag (should rename the id)
 		toggleToolBarControl('props'); //toggle prop bag
 		toggleToolBarControl('propcontrols'); // toggle prop bag controls
-	};
+		// firstLoop: for (let url in propBlobUrls) {
+		// 	propBag.childred
+		// 	for (var i = propBag.children.length - 1; i >= 0; i--) {
+		// 		var tile = propBag.children[i];
+		// 		if (tile.firstChild && tile.dataset.pid === url) {
+		// 			continue firstLoop;
+		// 		}
+		// 	}
+		// 	URL.revokeObjectURL(propBlobUrls[url]);
+		// 	delete propBlobUrls[url];
+		// }
 
-	document.getElementById('newprops').onclick = function() { // hax (import image files as new props)
-		var f = document.createElement('input');
-		//f.style.display = 'none';
-		f.setAttribute('multiple', 'multiple');
-		f.type = 'file';
-		f.name = 'file';
-		document.body.appendChild(f);
-		f.onchange = function(event) {
-			createNewProps(event.target.files);
-		};
-		f.click();
-		document.body.removeChild(f);
+	};
+	document.getElementById('fileprops').onchange = function(event) {
+		createNewProps(event.target.files);
 	};
 	document.getElementById('removeprops').onclick = function(){palace.setprops([])}; // get naked button
 	// document.getElementById('editprop').onclick = function() {
@@ -517,32 +522,20 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	drawEraser.onclick = function() { // for clearing the last draw
 		palace.sendDrawClear(4);
 	};
-	document.getElementById('drawcolor').onclick = function(event) { // to change draw pen color
-		openDrawColor(event,function(color) { // pop open color selector with callback
-			prefs.draw.color = color;
-			updateDrawPreview();
-		});
+	document.getElementById('drawcolor').onchange = function(event) { // to change draw pen color
+		let opacity = 1;//getNbrs(prefs.draw.color)[3];
+		prefs.draw.color = hexToRGBA(this.value,opacity);
+		this.style.backgroundColor = prefs.draw.color;
+		updateDrawPreview();
 	};
-	document.getElementById('drawfill').onclick = function(event) { // to change draw fill color
-		openDrawColor(event,function(color) { // pop open color selector with callback
-			prefs.draw.fill = color;
-			updateDrawPreview();
-		});
+	document.getElementById('drawfill').onchange = function(event) { // to change draw fill color
+		let opacity = 1;//getNbrs(prefs.draw.fill)[3];
+		prefs.draw.fill = hexToRGBA(this.value,opacity);
+		this.style.backgroundColor = prefs.draw.fill;
+		updateDrawPreview();
 	};
 	document.getElementById('drawing').onclick = function() { // button for toggling drawing controls (should rename id)
 		toggleToolBarControl('drawcontrols');
-	};
-
-
-	// setup color picker events
-	document.getElementById('opacityslider').oninput = function() {
-		colorSelectRGB();
-	};
-	document.getElementById('colorpicker').onmousedown = function(event) {
-		colorSelectRGB(event);
-	};
-	document.getElementById('colorrainbow').onmousedown = function(event) {
-		colorSelectRainbow(event);
 	};
 
 	// setup preferences
@@ -579,6 +572,145 @@ let contextMenuListener = new ContextMenuListener((info) => {
 
 
 })();
+
+function platformCtrlKey(keyboardEvent) {
+	var windows = (/^win/.test(process.platform));
+	if (windows && keyboardEvent.ctrlKey) {
+		return false;
+	} else if (!windows && keyboardEvent.metaKey){
+		return true;
+	}
+}
+
+function updateDrawPreview() {
+	var drawCxt = document.getElementById('drawpreview').getContext("2d");
+
+	var genericSmiley = smileys[5+',0'];
+
+	var w = drawCxt.canvas.width;
+	var h = drawCxt.canvas.height;
+	var sw = genericSmiley.naturalWidth/2/2;
+	var sh = genericSmiley.naturalHeight/2/2;
+
+	drawCxt.canvas.onclick = function(){prefs.draw.front = !prefs.draw.front;updateDrawPreview();};
+
+	drawCxt.clearRect(0,0,w,h);
+	drawCxt.lineWidth = prefs.draw.size;
+	drawCxt.lineJoin = 'round';
+	drawCxt.lineCap = 'round';
+	drawCxt.fillStyle = prefs.draw.fill;
+	drawCxt.strokeStyle = prefs.draw.color;
+
+
+
+
+	if (prefs.draw.front === true) {
+		drawCxt.globalCompositeOperation = 'source-over';
+		drawCxt.filter = 'grayscale(100%)';
+		drawCxt.drawImage(genericSmiley,0,0,42,42,w/2-sw,h/2-sh,21,21);
+		drawCxt.filter = 'none';
+	}
+
+	if (prefs.draw.type === 2) {
+		drawCxt.globalCompositeOperation = 'destination-out';
+	} else {
+		drawCxt.globalCompositeOperation = 'source-over';
+	}
+
+	if (prefs.draw.type < 3) {
+		drawCxt.beginPath();
+		drawCxt.moveTo(12,h-12);
+		drawCxt.lineTo(w/2,12);
+		drawCxt.lineTo(w-12,h-12);
+
+		if (prefs.draw.type == 1) {
+			drawCxt.closePath();
+			drawCxt.fill();
+		}
+		drawCxt.stroke();
+	}
+
+	if (prefs.draw.front == false) {
+		drawCxt.globalCompositeOperation = 'source-over';
+		drawCxt.filter = 'grayscale(100%)';
+		drawCxt.drawImage(genericSmiley,0,0,42,42,w/2-sw,h/2-sh,21,21);
+		drawCxt.filter = 'none';
+	}
+
+}
+
+
+function setDrawType() {
+	let dt = document.getElementById('drawtype');
+	switch(prefs.draw.type) {
+		case 1:
+			dt.style.backgroundImage = 'url(img/bucket.png)';
+			break;
+		case 2:
+			dt.style.backgroundImage = 'url(img/eraser.png)';
+			break;
+		default:
+			dt.style.backgroundImage = 'url(img/pen.png)';
+	}
+}
+
+function updateDrawPreview() {
+	var drawCxt = document.getElementById('drawpreview').getContext("2d");
+
+	var genericSmiley = smileys[5+',0'];
+
+	var w = drawCxt.canvas.width;
+	var h = drawCxt.canvas.height;
+	var sw = genericSmiley.naturalWidth/2/2;
+	var sh = genericSmiley.naturalHeight/2/2;
+
+	drawCxt.canvas.onclick = function(){prefs.draw.front = !prefs.draw.front;updateDrawPreview();};
+
+	drawCxt.clearRect(0,0,w,h);
+	drawCxt.lineWidth = prefs.draw.size;
+	drawCxt.lineJoin = 'round';
+	drawCxt.lineCap = 'round';
+	drawCxt.fillStyle = prefs.draw.fill;
+	drawCxt.strokeStyle = prefs.draw.color;
+
+
+
+
+	if (prefs.draw.front === true) {
+		drawCxt.globalCompositeOperation = 'source-over';
+		drawCxt.filter = 'grayscale(100%)';
+		drawCxt.drawImage(genericSmiley,0,0,42,42,w/2-sw,h/2-sh,21,21);
+		drawCxt.filter = 'none';
+	}
+
+	if (prefs.draw.type === 2) {
+		drawCxt.globalCompositeOperation = 'destination-out';
+	} else {
+		drawCxt.globalCompositeOperation = 'source-over';
+	}
+
+	if (prefs.draw.type < 3) {
+		drawCxt.beginPath();
+		drawCxt.moveTo(12,h-12);
+		drawCxt.lineTo(w/2,12);
+		drawCxt.lineTo(w-12,h-12);
+
+		if (prefs.draw.type == 1) {
+			drawCxt.closePath();
+			drawCxt.fill();
+		}
+		drawCxt.stroke();
+	}
+
+	if (prefs.draw.front == false) {
+		drawCxt.globalCompositeOperation = 'source-over';
+		drawCxt.filter = 'grayscale(100%)';
+		drawCxt.drawImage(genericSmiley,0,0,42,42,w/2-sw,h/2-sh,21,21);
+		drawCxt.filter = 'none';
+	}
+
+}
+
 
 function log(data) {
 	logmsg(data.msg);
@@ -863,7 +995,6 @@ function enablePropButtons() {
 
 
 function refreshPropBagView(refresh) {
-
 	var bagWidth = propBag.clientWidth,
 		tileSize = prefs.general.propBagTileSize,
 		visibleColumns = (bagWidth / tileSize).fastRound(),
@@ -873,7 +1004,10 @@ function refreshPropBagView(refresh) {
 		scroll = (propBag.scrollTop/tileSize).fastRound(),
 		toView = {};
 
-	propBagRetainer.style.height = ((propBagList.length/visibleColumns).fastRound()*tileSize).fastRound() + 'px';
+	var cheight = ((propBagList.length/visibleColumns).fastRound()*tileSize).fastRound();
+	if (Number(propBagRetainer.dataset.height) !== cheight) propBagRetainer.style.height = cheight + 'px';
+	propBagRetainer.dataset.height = cheight;
+
 	if (visibleColumns < 1) visibleColumns = 1;
 	scroll -= 2; // -2 for a little extra loaded up top
 	if (scroll < 0) scroll = 0;
@@ -884,15 +1018,16 @@ function refreshPropBagView(refresh) {
 			if (max > propIndex) toView[propBagList[propIndex]] = {x:x*tileSize,y:y*tileSize};
 		}
 	}
+	var keys = Object.keys(toView);
 
 	var cachedTiles = {}; // prevent excessive database calls
 	var children = propBag.children;
 
 	for (var i = children.length - 1; i >= 0; i--) {
-		var pid = children[i].dataset.pid;
-		var preTile = toView[pid];
 		var tile = children[i];
-		if (tile !== propBagRetainer && (refresh || !preTile || preTile.x !== parseInt(tile.style.left) || preTile.y !== parseInt(tile.style.top))) {
+		var pid = tile.dataset.pid;
+		var preTile = toView[pid];
+		if (tile !== propBagRetainer && (refresh || !preTile || preTile.x !== Number(tile.dataset.left) || preTile.y !== Number(tile.dataset.top))) {
 			cachedTiles[pid] = children[i];
 			propBag.removeChild(children[i]);
 		}
@@ -900,39 +1035,56 @@ function refreshPropBagView(refresh) {
 
 	var alreadyInDom = function(id) {
 		for (var i = children.length - 1; i >= 0; i--) {
-			if (id == Number(children[i].dataset.pid)) return children[i];
+			if (id == Number(children[i].dataset.pid)) {
+				return children[i];
+			}
 		}
 	};
 
 	// free up transaction queue...
-	for (var key in toView) {
-		delete getTransactions[key];
+	for (let i = 0, l = keys.length; i < l; i++) {
+		delete getTransactions[keys[i]];
 	}
-	for (let pid in getTransactions) {
-		let trans = getTransactions[pid];
+	for (let i = 0, pids = Object.keys(getTransactions), l = keys.length; i < l; i++) {
+		let trans = getTransactions[pids[i]];
 		if (trans) trans.abort();
 	}
 	getTransactions = {};
 
-	for (var key in toView) {
-		var e = toView[key];
-		var pid = Number(key);
-		var pc = alreadyInDom(pid);
+
+	for (let i = 0, l = keys.length; i < l; i++) {
+		let key = keys[i];
+		let e = toView[key];
+		let pid = Number(key);
+		let pc = alreadyInDom(pid);
+		let img;
 		if (!pc) {
   			if (cachedTiles[key]) {
   				pc = cachedTiles[key];
   			} else {
+				justadded = true;
   				pc = document.createElement('div');
+
 				pc.dataset.pid = pid;
-				var img = document.createElement('img');
+				img = document.createElement('img');
 				img.className = 'bagprop';
 				getBagProp(pid,img);
 				pc.appendChild(img);
   			}
-  			pc.style.width = tileSize+'px';
-			pc.style.height = tileSize+'px';
-			pc.style.left = e.x + 'px';
-			pc.style.top = e.y + 'px';
+			if (Number(pc.dataset.size) !== tileSize) {
+				pc.style.width = tileSize+'px';
+				pc.style.height = tileSize+'px';
+				pc.dataset.size = tileSize;
+			}
+
+			if (Number(pc.dataset.left) !== e.x || Number(pc.dataset.top) !== e.y) {
+				pc.style.transform = 'translate('+e.x+'px,'+e.y+'px)';
+				// pc.style.left = e.x + 'px';
+				// pc.style.top = e.y + 'px';
+				pc.dataset.left = e.x;
+				pc.dataset.top = e.y;
+			}
+
 			propBag.appendChild(pc);
 		}
 		pc.className = selectedBagProps.indexOf(pid) > -1?'selectedbagprop':'';
@@ -972,263 +1124,6 @@ function setPropButtons() {
 
 
 
-
- // color picker code, kinda ugly..
-function dragRGB(event) {
-	colorSelectRGB(event);
-}
-function setPickerCaret(x,y) {
-	var caret = document.getElementById('pickercaret');
-	if (y < 0) y = 0;
-	if (y > 199) y = 199;
-	if (x < 0) x = 0;
-	if (x > 199) x = 199;
-	caret.style.left = x-2+'px';
-	caret.style.top = y-2+'px';
-}
-function setRainbowCaret(y) {
-	var caret = document.getElementById('rainbowcaret');
-	if (y < 0) y = 0;
-	if (y > 199) y = 199;
-	caret.style.top = y-1+'px';
-}
-function dragRGBEnd() {
-	window.removeEventListener('mousemove',dragRGB);
-	window.removeEventListener('mouseup',dragRGBEnd);
-}
-function colorSelectRGB(event,caret) {
-	var pickerControl = document.getElementById('colorpicker'),
-		color, x, y;
-
-	if (event) {
-		event.preventDefault();
-		if (event.type == 'mousedown') {
-			window.addEventListener('mousemove',dragRGB);
-			window.addEventListener('mouseup',dragRGBEnd);
-		}
-
-		y = event.y-pickerControl.parentNode.offsetTop-pickerControl.parentNode.parentNode.offsetTop;
-		x = event.x-pickerControl.parentNode.offsetLeft-pickerControl.parentNode.parentNode.offsetLeft;
-		if (y < 0) y = 0;
-		if (y > 199) y = 199;
-		if (x < 0) x = 0;
-		if (x > 199) x = 199;
-
-		color = pickerControl.getContext('2d').getImageData(x, y, 1, 1).data;
-		setPickerCaret(x,y);
-	} else if (caret) {
-		var o = getControlPrefs(currentColorControl.id);
-		if (o) {
-			x = Number(o.x);
-			y = Number(o.y);
-		} else {
-			var style = window.getComputedStyle(document.getElementById('pickercaret'));
-			x = Number(style.getPropertyValue('left').getNbrs()[0])+2;
-			y = Number(style.getPropertyValue('top').getNbrs()[0])+2;
-
-		}
-		if (!Number.isFinite(x)) x = 199; // fix some bug that made it non-finite!
-		if (!Number.isFinite(y)) y = 0;
-		color = pickerControl.getContext('2d').getImageData(x, y, 1, 1).data;
-	} else {
-		var style = window.getComputedStyle(currentColorControl);
-		color = style.getPropertyValue('background-color').getNbrs();
-	}
-	var opslider = document.getElementById('opacityslider');
-	color = 'rgba('+color[0]+','+color[1]+','+color[2]+','+opslider.value*0.01+')';
-	currentColorControl.style.backgroundColor = color;
-	currentColorControl.doColorChange(color);
-	if (x) setControlPrefs(currentColorControl.id,{x:x,y:y});
-}
-function dragRainbow(event) {
-	colorSelectRainbow(event);
-}
-function dragRainbowEnd(event) {
-	window.removeEventListener('mousemove',dragRainbow);
-	window.removeEventListener('mouseup',dragRainbowEnd);
-}
-function colorSelectRainbow(event) {
-	var hue,y,crainbow;
-
-	event.preventDefault();
-	if (event.type == 'mousedown') {
-		window.addEventListener('mousemove',dragRainbow);
-		window.addEventListener('mouseup',dragRainbowEnd);
-	}
-	crainbow = document.getElementById('colorrainbow').parentNode;
-	y = event.y-crainbow.offsetTop-crainbow.parentNode.offsetTop;
-	if (y < 0) y = 0;
-	if (y > 200) y = 200;
-	setRainbowCaret(y);
-	hue = (100-(y/2))*0.01;
-	setGeneralPref(currentColorControl.id,hue);
-	fillColorPicker(hue);
-	colorSelectRGB(null,true);
-}
-function fillColorPicker(hue) {
-	var shCxt = document.getElementById('colorpicker').getContext('2d'),
-		w = shCxt.canvas.width,
-		h = shCxt.canvas.height;
-
-	shCxt.clearRect(0,0,w,h);
-	var whi = shCxt.createLinearGradient(0,0,w,0);
-	whi.addColorStop(0,'white');
-	whi.addColorStop(1,'rgba(255,255,255,0)');
-	var bla = shCxt.createLinearGradient(0,h,0,0);
-	bla.addColorStop(0,'black');
-	bla.addColorStop(1,'rgba(0,0,0,0)');
-	shCxt.fillStyle = 'hsl('+hue*360+',100%,50%)';
-	shCxt.fillRect(0,0,w,h);
-	shCxt.fillStyle = whi;
-	shCxt.fillRect(0,0,w,h);
-	shCxt.fillStyle = bla;
-	shCxt.fillRect(0,0,w,h);
-}
-function setColorPicker(selectorsColor) {
-	var rgb = selectorsColor.getNbrs();
-	var o = getGeneralPref(currentColorControl.id);
-	if (o) {
-		hue = o;
-	} else {
-		hue = rgbToHsl(rgb[0],rgb[1],rgb[2])[0];
-	}
-
-	var value;
-	if (rgb[3] != undefined) {
-		value = Math.round(rgb[3]*100);
-	} else {
-		value = 100;
-	}
-
-	document.getElementById('opacityslider').value = value;
-	setRainbowCaret(200-hue*200);
-	fillColorPicker(hue);
-	o = getControlPrefs(currentColorControl.id);
-	if (o) setPickerCaret(o.x,o.y);
-}
-function openDrawColor(event,func) {
-
-	var cp = event.currentTarget;
-
-	if (currentColorControl == cp) {
-		closeColorSelector(event.pageX-event.layerX,event.pageY-event.layerY);
-	} else {
-		var cselector = document.getElementById('colorselector');
-		cp.doColorChange = func;
-		currentColorControl = cp;
-		var color = getComputedBgColor(cp);
-		setColorPicker(color);
-		cselector.style.backgroundColor = color;
-		cselector.style.opacity = 1;
-		var y = event.pageY-event.layerY;
-		var x = event.pageX-event.layerX;
-		cselector.style.top = y+'px';
-		cselector.style.left = x+'px';
-		toggleToolBarControl(cselector.id,true);
-
-		setTimeout( function() { /* hack to get transition to still function after changing display property */
-			cselector.firstElementChild.style.display = 'block';
-			cselector.style.top = y+20+'px';
-			cselector.style.left = x+'px';
-			cselector.style.width = '224px';
-			cselector.style.height = '220px';
-			cselector.style.backgroundColor = 'RGBA(221,221,221,.95)';
-		},0);
-	}
-}
-function closeColorSelector(x,y,fade) {
-	var cselector = document.getElementById('colorselector');
-	cselector.firstElementChild.style.display = 'none';
-	cselector.style.backgroundColor = getComputedBgColor(currentColorControl);
-	if (fade !== undefined) cselector.style.opacity = 0;
-	cselector.style.width = '0px';
-	cselector.style.height = '0px';
-	cselector.style.top = y+'px';
-	cselector.style.left = x+'px';
-	toggleToolBarControl(cselector.id);
-	currentColorControl = null;
-}
-function getComputedBgColor(element) {
-	return window.getComputedStyle(element).getPropertyValue('background-color');
-}
-function colorSelectOpacity(event) {
-	colorSelectRGB(null);
-}
-
-
-
-function setDrawType() {
-	let dt = document.getElementById('drawtype');
-	switch(prefs.draw.type) {
-		case 1:
-			dt.style.backgroundImage = 'url(img/bucket.png)';
-			break;
-		case 2:
-			dt.style.backgroundImage = 'url(img/eraser.png)';
-			break;
-		default:
-			dt.style.backgroundImage = 'url(img/pen.png)';
-	}
-}
-
-function updateDrawPreview() {
-	var drawCxt = document.getElementById('drawpreview').getContext("2d");
-
-	var genericSmiley = smileys[5+',0'];
-
-	var w = drawCxt.canvas.width;
-	var h = drawCxt.canvas.height;
-	var sw = genericSmiley.naturalWidth/2/2;
-	var sh = genericSmiley.naturalHeight/2/2;
-
-	drawCxt.canvas.onclick = function(){prefs.draw.front = !prefs.draw.front;updateDrawPreview();};
-
-	drawCxt.clearRect(0,0,w,h);
-	drawCxt.lineWidth = prefs.draw.size;
-	drawCxt.lineJoin = 'round';
-	drawCxt.lineCap = 'round';
-	drawCxt.fillStyle = prefs.draw.fill;
-	drawCxt.strokeStyle = prefs.draw.color;
-
-
-
-
-	if (prefs.draw.front === true) {
-		drawCxt.globalCompositeOperation = 'source-over';
-		drawCxt.filter = 'grayscale(100%)';
-		drawCxt.drawImage(genericSmiley,0,0,42,42,w/2-sw,h/2-sh,21,21);
-		drawCxt.filter = 'none';
-	}
-
-	if (prefs.draw.type === 2) {
-		drawCxt.globalCompositeOperation = 'destination-out';
-	} else {
-		drawCxt.globalCompositeOperation = 'source-over';
-	}
-
-	if (prefs.draw.type < 3) {
-		drawCxt.beginPath();
-		drawCxt.moveTo(12,h-12);
-		drawCxt.lineTo(w/2,12);
-		drawCxt.lineTo(w-12,h-12);
-
-		if (prefs.draw.type == 1) {
-			drawCxt.closePath();
-			drawCxt.fill();
-		}
-		drawCxt.stroke();
-	}
-
-	if (prefs.draw.front == false) {
-		drawCxt.globalCompositeOperation = 'source-over';
-		drawCxt.filter = 'grayscale(100%)';
-		drawCxt.drawImage(genericSmiley,0,0,42,42,w/2-sw,h/2-sh,21,21);
-		drawCxt.filter = 'none';
-	}
-
-}
-
-
 function zoomPanelClose(event) {
 	event.preventDefault();
 	event.currentTarget.removeEventListener('animationend',zoomPanelClose);
@@ -1263,12 +1158,8 @@ function transitionalDisplayNone(event) {
 function toggleToolBarControl(name,show) {
 	var control = document.getElementById(name);
 	control.removeEventListener('transitionend',transitionalDisplayNone);
-	if (show === undefined) {
-		if (control.dataset.state == 1) {
-			if ('drawcontrols' == name && currentColorControl && (currentColorControl.id == 'drawcolor' || currentColorControl.id == 'drawfill'))
-				closeColorSelector(event.x,event.y,true);
-			control.addEventListener('transitionend', transitionalDisplayNone);
-		}
+	if (show === undefined && control.dataset.state == 1) {
+		control.addEventListener('transitionend', transitionalDisplayNone);
 	}
 	control.dataset.state = (control.dataset.state != 1 || show?1:0);
 	control.style.display = 'inline-block';
@@ -1333,12 +1224,11 @@ function toggleNavListbox(cname) {
 }
 
 function requestDirectory() {
-	httpGetAsync('http://pchat.org/webservice/directory/get/',loadDirectoryList);
+	httpGetAsync('http://pchat.org/webservice/directory/get/',loadDirectoryList,'json');
 }
 
-function loadDirectoryList(directList) {
-
-	directoryList = typeof directList === 'string'?JSON.parse(directList):directList;
+function loadDirectoryList(list) {
+	directoryList = list;
 
 	let listbox = document.getElementById('navlistbox'),
 		navframe = document.getElementById('navframe'),
