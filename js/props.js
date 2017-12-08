@@ -375,9 +375,15 @@ function addPropsToDB(props) {
 
 
 
-function saveProp(id,flush) {
-	var prop = allProps[id];
-	if (prop) addPropsToDB([prop]);
+function saveProp(pids,flush) {
+    var props = [];
+    pids.forEach(function(p) {
+        var prop = allProps[id];
+    	if (prop) {
+            props.push(prop)
+        }
+    });
+    addPropsToDB([prop]);
 }
 
 let getTransactions = {};
@@ -510,8 +516,7 @@ class ImageDown {
 	constructor(maxSize,options) {
         this.options = options;
         if (!this.options) this.options = {};
-        if (this.options.filter) {
-            this.options = options;
+        if (!this.options.noWorker) {
             this.worker = new Worker('js/workers/resizeimage.js');
             this.worker.addEventListener('message', (e) => {
                 this.receivedMessage(e);
@@ -523,7 +528,7 @@ class ImageDown {
         this.ctx = this.canvas.getContext('2d');
 	}
 
-    set ExportAsCanvas(value) {
+    set exportAsCanvas(value) {
         this.options.canvas = value;
     }
 
@@ -534,18 +539,16 @@ class ImageDown {
     receivedMessage(e) {
         let response = e.data;
         if (response.pixels) {
+            this.setCanvasSize(response.width, response.height);
             response = this.createImageData(response.pixels, response.width,response.height);
             if (this.options.canvas) {
-                this.canvas.width = response.width;
-                this.canvas.height = response.height;
-                this.ctx.putImageData(response,response.width,response.height);
+                this.ctx.putImageData(response,0,0);
                 response = this.canvas;
             }
             let cb = this.callbacks.shift();
             cb(response);
         } else {
             this.finished();
-            this.worker.terminate();
         }
     }
 
@@ -566,23 +569,36 @@ class ImageDown {
 
     resize(src,callback) {
         this.setNewSize(src.width,src.height);
-        if (this.worker) {
+        if (this.options.filter) {
             this.lanczos(src,callback);
         } else {
-            this.ctx.clearRect(0,0,this.width,this.height);
             this.native(src,callback);
         }
     }
 
-    lanczos(src,callback) { // fix me
+    setCanvasSize(w,h) {
+        var changed = false;
+        if (w !== this.canvas.width) {
+            this.canvas.width = w;
+            changed = true;
+        }
+        if (h !== this.canvas.height) {
+            this.canvas.height = h;
+            changed = true;
+        }
+        return changed;
+    }
+
+    lanczos(src,callback) {
         var imgData;
 
-        if (src instanceof HTMLVideoElement || src instanceof HTMLImageElement) {
-            if (src.width !== this.canvas.width) {
-                this.canvas.width = src.width;
-            }
-            if (src.height !== this.canvas.height) {
-                this.canvas.height = src.height;
+        if (src instanceof HTMLVideoElement) {
+            this.setCanvasSize(src.width, src.height);
+            this.ctx.drawImage(src,0,0);
+            imgData = this.ctx.getImageData(0,0,src.width,src.height);
+        } else if (src instanceof HTMLImageElement) {
+            if (!this.setCanvasSize(src.width, src.height)) {
+                this.ctx.clearRect(0,0,this.width,this.height);
             }
             this.ctx.drawImage(src,0,0);
             imgData = this.ctx.getImageData(0,0,src.width,src.height);
@@ -605,11 +621,8 @@ class ImageDown {
     }
 
 	native(src,callback) {
-        if (this.width !== this.canvas.width) {
-            this.canvas.width = this.width;
-        }
-        if (this.height !== this.canvas.height) {
-            this.canvas.height = this.height;
+        if (!this.setCanvasSize(this.width, this.height)) {
+            this.ctx.clearRect(0,0,this.width,this.height);
         }
         this.ctx.imageSmoothingQuality = 'high';
 		this.ctx.drawImage(src,0,0,src.width,src.height,0,0,this.width,this.height);
@@ -692,9 +705,7 @@ function processVideo(file,dither,resizer,endedCallBack) {
 	vid.onended = function() {
 		this.src = ''
 		resizer.finish(function() {
-            //console.log('rendering gif!');
 			gifEncoder.render();
-            resizer.destroy();
         });
 	};
 	let doFrame = function() {
@@ -797,21 +808,21 @@ function createNewProps(list) {
 
 			if (file.type == 'image/gif') {
                 resizer.trimAlpha = 100;
-                resizer.ExportAsCanvas = false;
-				processGif(file,dither,resizer,port);
+                resizer.exportAsCanvas = false;
+				processGif(file,dither,resizer,port); // change so if not animated, processed as regular image
 			} else if (file.type.match(/^video\/.*/)){
-                resizer.ExportAsCanvas = false;
+                resizer.exportAsCanvas = false;
 				processVideo(file,dither,resizer,port);
 			} else {
-                resizer.ExportAsCanvas = true;
+                resizer.exportAsCanvas = true;
                 processImage(file,resizer,port);
 			}
 		} else {
-			button.className = 'tbcontrol tbbutton';
             resizer.finish(function() {
+                button.className = 'tbcontrol tbbutton';
                 resizer.destroy();
             });
-		}
+        }
 	};
 	importFile();
 
@@ -825,7 +836,7 @@ function processImage(file,resizer,endedCallBack) {
     img.onload = function() {
         resizer.resize(this,function(canvas) {
             canvas.toBlob(function(blob) {
-                endedCallBack(blob,resizer.width,resizer.height);
+                endedCallBack(blob,canvas.width,canvas.height);
             });
         });
     };
