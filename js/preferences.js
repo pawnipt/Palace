@@ -41,11 +41,11 @@ window.onunload = function(e) {
 
 		document.getElementById('drawsize').value = prefs.draw.size;
 		a = getGeneralPref('propBagWidth');
-		if (typeof a === 'number') propBag.style.width = a+'px';
+		if (a) propBag.style.width = a+'px';
 		a = getGeneralPref('chatLogWidth');
-		if (typeof a === 'number') logField.style.width = a+'px';
+		if (a) logField.style.width = a+'px';
 		a = getGeneralPref('propBagTileSize');
-		if (typeof a === 'number') document.getElementById('prefpropbagsize').value = a;
+		if (a) document.getElementById('prefpropbagsize').value = a;
 		a = getGeneralPref('viewScales');
 		if (typeof a === 'boolean') document.getElementById('prefviewfitscale').checked = a;
 		a = getGeneralPref('viewScaleAll');
