@@ -536,13 +536,16 @@ class ImageDown {
         this.options.canvas = value;
     }
 
-    set trimAlpha(alpha) {
-        this.options.trimAlpha = alpha;
+    set alphaTrim(alpha) {
+        this.options.alphaTrim = alpha;
     }
 
     receivedMessage(e) {
         let response = e.data;
         if (response.pixels) {
+            if (this.options.alphaTrim) {
+                this.trimAlpha(response.pixels,this.options.alphaTrim);
+            }
             this.setCanvasSize(response.width, response.height);
             response = this.createImageData(response.pixels, response.width,response.height);
             if (this.options.canvas) {
@@ -611,6 +614,8 @@ class ImageDown {
             imgData = ctx.getImageData(0,0,src.width,src.height);
         }
 
+
+
         this.callbacks.push(callback);
 
         this.worker.postMessage(
@@ -634,8 +639,8 @@ class ImageDown {
             callback(this.canvas);
         } else {
             let imgData = this.ctx.getImageData(0,0,this.width,this.height);
-            if (this.options.trimAlpha) {
-                this.trimAlpha(imgData.data,this.options.trimAlpha);
+            if (this.options.alphaTrim) {
+                this.trimAlpha(imgData.data,this.options.alphaTrim);
             }
             callback(imgData);
         }
@@ -754,6 +759,7 @@ function processGif(file,dither,resizer,endedCallBack) {
 		function(w,h,nbrFrames) { // start
             if (nbrFrames === 1) {
                 // if gif has only one frame then import as a normal 32bit image
+                resizer.alphaTrim = false;
                 resizer.exportAsCanvas = true;
                 processImage(file,resizer,endedCallBack);
                 return true; // aborts GifDecoder
@@ -802,7 +808,9 @@ function createNewProps(list) {
 	var button = document.getElementById('newprops');
 	button.className += ' loadingbutton';
 
-    let resizer = new ImageDown(220);
+
+
+    let resizer = new ImageDown(220); // use {filter:'lanczos'} for firefox later
     let dither = false;//'FloydSteinberg'; //FloydSteinberg-serpentine
 
     let port = function(blob,w,h) {
@@ -817,7 +825,7 @@ function createNewProps(list) {
 			let file = files.pop();
 
 			if (file.type == 'image/gif') {
-                resizer.trimAlpha = 100;
+                resizer.alphaTrim = 85;
                 resizer.exportAsCanvas = false;
 				processGif(file,dither,resizer,port); // change so if not animated, processed as regular image
 			} else if (file.type.match(/^video\/.*/)){
@@ -885,17 +893,17 @@ function createNewProp(blob,w,h) {
 }
 
 document.onpaste = function(e){
-	var loadImage = function (file) {
+	var loadImage = function (file,type) {
 		var reader = new FileReader();
 		reader.onload = function(e){
-			createNewProps([{path:e.target.result}]);
+			createNewProps([{path:e.target.result,type:type}]);
 		};
 		reader.readAsDataURL(file);
 	};
     var items = e.clipboardData.items;
     for (var i = 0; i < items.length; i++) {
-        if (/^image\/(p?jpeg|gif|png)$/i.test(items[i].type)) {
-            loadImage(items[i].getAsFile());
+        if (/^image/i.test(items[i].type)) {
+            loadImage(items[i].getAsFile(),items[i].type);
             return;
         }
     }

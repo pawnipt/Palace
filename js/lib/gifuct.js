@@ -417,11 +417,10 @@ GIF.prototype.decompressFrame = function(index, buildPatch){
 			var colorIndex = pixels[i];
 			var color = colorTable[colorIndex];
 
-			patch32[i] = //(255 << 24)
-					((colorIndex !== image.transparentIndex ? 255 : 0) << 24)
-				+ (color[2] << 16)
-				+ (color[1] << 8)
-				+ color[0];
+			patch32[i] = (colorIndex !== image.transparentIndex ? 255 : 0) << 24
+						| color[2] << 16
+						| color[1] << 8
+						| color[0];
 
 		}
 

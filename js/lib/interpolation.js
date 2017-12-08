@@ -32,8 +32,9 @@ var ResampleLanczos = (function() {
 	};
 
 	return function(src, width, height, filterSize, kernel) {
-		var sdata = src.data;
+		var sdata32 = new Uint32Array(src.data.buffer);
 		var ddata = new Uint8ClampedArray(width*height*4);
+		var ddata32 = new Uint32Array(ddata.buffer);
 		///
 		var total, distanceY, value;
 		var a, r, g, b;
@@ -54,8 +55,7 @@ var ResampleLanczos = (function() {
 		var ch = 1.0 / height;
 		var csx = Math.min(1, sx) * Math.min(1, sx);
 		var csy = Math.min(1, sy) * Math.min(1, sy);
-		var cx, cy;
-		var sourcePixelX, sourcePixelY;
+		var color, cx, cy, sourcePixelX, sourcePixelY;
 		var cache = CACHE = undefined;
 		var cachePrecision = CACHE_PRECISION;
 		var filterSize = filterSize || FILTER_SIZE;
@@ -92,22 +92,23 @@ var ResampleLanczos = (function() {
 				total = 1.0 / total;
 				///
 				i = a = r = g = b = 0;
+				var lastColor;
 				for (y1 = y1b >> 0; y1 <= y1e; y1++) {
 					y2 = y1 * src.width;
 					for (x1 = x1b >> 0; x1 <= x1e; x1++) {
 						value = values[i++] * total;
-						idx = ((y2 + x1) >> 0) * 4;
-						r += sdata[idx] * value;
-						g += sdata[idx + 1] * value;
-						b += sdata[idx + 2] * value;
-						a += sdata[idx + 3] * value;
+						color = sdata32[y2 + x1];
+						var alpha = (color >> 24 & 0xff);
+						a += alpha * value;
+
+						if (alpha === 0) color = lastColor;
+						r += (color >> 16 & 0xff) * value;
+						g += (color >> 8 & 0xff) * value;
+						b += (color & 0xff) * value;
+						lastColor = color;
 					}
 				}
-				idx = ((x + y3) >> 0) * 4;
-				ddata[idx] = r;
-				ddata[idx + 1] = g;
-				ddata[idx + 2] = b;
-				ddata[idx + 3] = a;
+				ddata32[x + y3] = a << 24 | r << 16 | g << 8 | b;
 			}
 		}
 		///
@@ -117,6 +118,6 @@ var ResampleLanczos = (function() {
 })();
 
 /// NodeJS
-if (typeof (module) !== "undefined" && module.exports) {
-	module.exports = ResampleLanczos;
-}
+// if (typeof (module) !== "undefined" && module.exports) {
+// 	module.exports = ResampleLanczos;
+// }

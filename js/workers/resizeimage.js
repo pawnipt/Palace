@@ -12,7 +12,7 @@ self.addEventListener('message', function(e) {
     let options = e.data.options;
     switch(options.filter) {
         case'linear':
-            pixels = ResampleLanczos(e.data.src,e.data.width,e.data.height,1,options.filter);
+            pixels = ResampleLanczos(e.data.src,e.data.width,e.data.height,3,options.filter);
             break;
         case'lanczos':
             pixels = ResampleLanczos(e.data.src,e.data.width,e.data.height,3);
