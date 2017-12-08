@@ -1298,7 +1298,7 @@ class PalaceClient extends PalaceProtocol {
 			'http://' + connectInfo[0] + '/palace.json',
 			'json',
 			(json) => {
-				var port = json.port;
+				var port = String(json.port);
 				var ip = '';
 				if (typeof json.ip !== "undefined") {
 					ip = json.ip;
