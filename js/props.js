@@ -508,8 +508,8 @@ class GifDecoder {
 
 class ImageDown {
 	constructor(maxSize,options) {
-        this.options = {};
-        if (options) this.options = options;
+        this.options = options;
+        if (!this.options) this.options = {};
         if (this.options.filter) {
             this.options = options;
             this.worker = new Worker('js/workers/resizeimage.js');
@@ -522,6 +522,14 @@ class ImageDown {
         this.canvas = document.createElement('canvas');
         this.ctx = this.canvas.getContext('2d');
 	}
+
+    set ExportAsCanvas(value) {
+        this.options.canvas = value;
+    }
+
+    set trimAlpha(alpha) {
+        this.options.trimAlpha = alpha;
+    }
 
     receivedMessage(e) {
         let response = e.data;
@@ -566,7 +574,7 @@ class ImageDown {
         }
     }
 
-    lanczos(src,callback) {
+    lanczos(src,callback) { // fix me
         var imgData;
 
         if (src instanceof HTMLVideoElement || src instanceof HTMLImageElement) {
@@ -656,7 +664,7 @@ class ImageDown {
 	}
 }
 
-function processVideo(file,dither,quality,resizer,endedCallBack) {
+function processVideo(file,dither,resizer,endedCallBack) {
 	let vid = document.createElement('video'),
 		sampleInterval = Math.round(1000 / 20),
 		frameCount = 0,
@@ -670,7 +678,7 @@ function processVideo(file,dither,quality,resizer,endedCallBack) {
 		vid.height = this.videoHeight;
 		gifEncoder = new GIF({
 			workers: 3,
-			quality: quality,
+			quality: 5,
 			width:resizer.width,
 			height:resizer.height,
 			workerScript: 'js/workers/gif.worker.js',
@@ -723,7 +731,7 @@ function processVideo(file,dither,quality,resizer,endedCallBack) {
 	vid.src = file.path;
 }
 
-function processGif(file,dither,quality,resizer,endedCallBack) {
+function processGif(file,dither,resizer,endedCallBack) {
 
 	let gifEncoder;
 
@@ -732,7 +740,7 @@ function processGif(file,dither,quality,resizer,endedCallBack) {
             resizer.setNewSize(w,h);
 			gifEncoder = new GIF({
 				workers: 3,
-				quality: quality,
+				quality: 5,
 				width:resizer.width,
 				height:resizer.height,
 				workerScript: 'js/workers/gif.worker.js',
@@ -775,7 +783,6 @@ function createNewProps(list) {
 
     let resizer = new ImageDown(220);
     let dither = false;//'FloydSteinberg'; //FloydSteinberg-serpentine
-    let quality = 5;
 
     let port = function(blob,w,h) {
         if (blob) {
@@ -789,24 +796,30 @@ function createNewProps(list) {
 			let file = files.pop();
 
 			if (file.type == 'image/gif') {
-                resizer.options = {trimAlpha:100};
-				processGif(file,dither,quality,resizer,port); //
+                resizer.trimAlpha = 100;
+                resizer.ExportAsCanvas = false;
+				processGif(file,dither,resizer,port);
 			} else if (file.type.match(/^video\/.*/)){
-                resizer.options = {};
-				processVideo(file,dither,quality,resizer,port);
+                resizer.ExportAsCanvas = false;
+				processVideo(file,dither,resizer,port);
 			} else {
-                resizer.options = {canvas:true};
-                processImage(file,quality,resizer,port);
+                resizer.ExportAsCanvas = true;
+                processImage(file,resizer,port);
 			}
 		} else {
 			button.className = 'tbcontrol tbbutton';
+            resizer.finish(function() {
+                resizer.destroy();
+            });
 		}
 	};
 	importFile();
+
+
 }
 
 
-function processImage(file,hq,resizer,endedCallBack) {
+function processImage(file,resizer,endedCallBack) {
     let img = document.createElement('img');
 
     img.onload = function() {
