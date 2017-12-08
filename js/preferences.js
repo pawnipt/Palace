@@ -41,21 +41,21 @@ window.onunload = function(e) {
 
 		document.getElementById('drawsize').value = prefs.draw.size;
 		a = getGeneralPref('propBagWidth');
-		if (a) propBag.style.width = a+'px';
+		if (typeof a === 'number') propBag.style.width = a+'px';
 		a = getGeneralPref('chatLogWidth');
-		if (a) logField.style.width = a+'px';
+		if (typeof a === 'number') logField.style.width = a+'px';
 		a = getGeneralPref('propBagTileSize');
-		if (a) document.getElementById('prefpropbagsize').value = a;
+		if (typeof a === 'number') document.getElementById('prefpropbagsize').value = a;
 		a = getGeneralPref('viewScales');
-		if (a) document.getElementById('prefviewfitscale').checked = a;
+		if (typeof a === 'boolean') document.getElementById('prefviewfitscale').checked = a;
 		a = getGeneralPref('viewScaleAll');
-		if (a) document.getElementById('prefviewscaleall').checked = a;
+		if (typeof a === 'boolean') document.getElementById('prefviewscaleall').checked = a;
 		a = getGeneralPref('disableSounds');
-		if (a) document.getElementById('prefdisablesounds').checked = a;
+		if (typeof a === 'boolean') document.getElementById('prefdisablesounds').checked = a;
 		a = getGeneralPref('autoplayvideos');
-		if (a) document.getElementById('prefautoplayvideos').checked = a;
+		if (typeof a === 'boolean') document.getElementById('prefautoplayvideos').checked = a;
         a = getGeneralPref('senddebug');
-        if (a) document.getElementById('senddebug').checked = a;
+        if (typeof a === 'boolean') document.getElementById('senddebug').checked = a;
 		setDrawType();
 	} else { //default
 		prefs.registration = {regi:getRandomInt(100,2147483647),puid:getRandomInt(1,2147483647)};

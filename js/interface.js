@@ -543,9 +543,6 @@ let contextMenuListener = new ContextMenuListener((info) => {
 		palace.sendUserName(this.value);
 		setGeneralPref('userName',this.value);
 	};
-	document.getElementById('senddebug').onchange = function() { // set username
-		setGeneralPref('senddebug',this.value);
-	};
 	document.getElementById('prefhomepalace').onchange = function() {
 		setGeneralPref('home',this.value);
 	};
@@ -569,7 +566,6 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	};
     document.getElementById('senddebug').onchange = function() {
         setGeneralPref('senddebug',this.checked);
-        alert('this change requires a restart of the client.');
     };
 
 
@@ -578,11 +574,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 
 function platformCtrlKey(keyboardEvent) {
 	var windows = (/^win/.test(process.platform));
-	if (windows && keyboardEvent.ctrlKey) {
-		return false;
-	} else if (!windows && keyboardEvent.metaKey){
-		return true;
-	}
+	return (windows && keyboardEvent.ctrlKey) || (!windows && keyboardEvent.metaKey);
 }
 
 function updateDrawPreview() {
