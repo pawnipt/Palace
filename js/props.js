@@ -456,7 +456,7 @@ class GifDecoder {
 
 	message(e) {
 		if (e.data.start) {
-			this.start(e.data.width,e.data.height);
+			this.start(e.data.width,e.data.height,e.data.nbrFrames);
 		} else if (e.data.frame) {
 			this.processFrame(e.data.frame);
 		}
@@ -465,10 +465,14 @@ class GifDecoder {
 		}
 	}
 
-	start(w,h) {
+	start(w,h,nbrFrames) {
 		this.gifCanvas.width = w;
 		this.gifCanvas.height = h;
-		this.startCallBack(w,h);
+        // if function returns true then abort
+		if (this.startCallBack(w,h,nbrFrames)) {
+            console.log('test abort')
+            this.worker.terminate();
+        }
 	}
 
 	processFrame(frame) {
@@ -747,7 +751,13 @@ function processGif(file,dither,resizer,endedCallBack) {
 	let gifEncoder;
 
 	let decoder = new GifDecoder(file,
-		function(w,h) { // start
+		function(w,h,nbrFrames) { // start
+            if (nbrFrames === 1) {
+                // if gif has only one frame then import as a normal 32bit image
+                resizer.exportAsCanvas = true;
+                processImage(file,resizer,endedCallBack);
+                return true; // aborts GifDecoder
+            }
             resizer.setNewSize(w,h);
 			gifEncoder = new GIF({
 				workers: 3,

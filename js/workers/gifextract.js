@@ -7,19 +7,22 @@ self.addEventListener('message', function(e) {
 			let gif = new GIF(event.target.result);
 			//var color = gif.raw.gct[gif.raw.lsd.backgroundColorIndex];
 
+			var indexes = [];
+            for (let i = 0; i < gif.raw.frames.length; i++) {
+                if (gif.raw.frames[i].image) indexes.push(i);
+            }
+
             self.postMessage(
 				{
 					start:true,
 					width:gif.raw.lsd.width,
-					height:gif.raw.lsd.height
+					height:gif.raw.lsd.height,
+					nbrFrames:indexes.length
 				//	background: {r:color[0],g:color[1],b:color[2]}
 				}
 			);
 
-            var indexes = [];
-            for (let i = 0; i < gif.raw.frames.length; i++) {
-                if (gif.raw.frames[i].image) indexes.push(i);
-            }
+
 
             var lastIndex = indexes[indexes.length-1];
             indexes.forEach(function(i) {
