@@ -284,7 +284,11 @@ let contextMenuListener = new ContextMenuListener((info) => {
 		enablePropButtons();
 	};
 	document.getElementById('saveprop').onclick = function() {
-		for (var i = palace.theUser.props.length; --i >= 0;) saveProp(palace.theUser.props[i]);
+		var pids = [];
+		for (var i = palace.theUser.props.length; --i >= 0;) {
+			pids.push(palace.theUser.props[i]);
+		}
+		saveProp(pids);
 		this.disabled = true;
 	};
 

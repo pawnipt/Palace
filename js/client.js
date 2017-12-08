@@ -1176,7 +1176,7 @@ class PalaceClient extends PalaceProtocol {
 		const loosePropMenu = new Menu();
 		loosePropMenu.append(new MenuItem({label: 'Save Prop', click:
 		() => {
-			saveProp(menuStore.looseprop.id);
+			saveProp([menuStore.looseprop.id]);
 		}}));
 		loosePropMenu.append(new MenuItem({type: 'separator'}));
 		loosePropMenu.append(new MenuItem({label: 'Remove Prop', click:
