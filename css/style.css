@@ -67,6 +67,7 @@ body {
   position            : absolute;
   background-repeat   : no-repeat;
   background-position : center;
+  backface-visibility : hidden;
 }
 
 .spinloading {
