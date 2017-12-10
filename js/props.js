@@ -425,11 +425,19 @@ function cacheBagProp(id,toUpload,callback) {
 		allProps[id] = aProp;
 		if (callback) callback();
 		if (toUpload) {
-			var p = {props:[
-					{format:'png',name:aProp.name,size:{w:aProp.w,h:aProp.h},
-					offsets:{x:aProp.x,y:aProp.y},flags:aProp.encodePropFlags,
-					id:aProp.id,crc:0}
-				]};
+			var p = {
+                props:[
+                        {
+                            format:aProp.blob.type.split('/')[1],
+                            name:aProp.name,
+                            size:{w:aProp.w,h:aProp.h},
+                            offsets:{x:aProp.x,y:aProp.y},
+                            flags:aProp.encodePropFlags,
+                            id:aProp.id,
+                            crc:0
+                        }
+                    ]
+            };
 			httpPostAsync(
 				palace.mediaUrl + 'webservice/props/new/',
 				propUploadCallBack,
