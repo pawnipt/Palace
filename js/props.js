@@ -2,7 +2,7 @@
 
 var allProps = {},
     nbrProps = 0, // keep record of the number of props loaded into memory because counting allProps object properties is inefficient
-    retryProps = [],
+    retryProps = {props:[],delay:2500},
     propBagDB;
 
 
@@ -175,7 +175,7 @@ function downloadPropInfoCallBack(response) { // need to handle possible http er
                 if (aProp.rcounter === 0) { // only request legacy prop once and only if normal prop request fails.
                     palace.sendAssetQuery(prop.id);
                 }
-				retryProps.push(prop.id);
+				retryProps.props.push(prop.id);
 				aProp.rcounter++;
 			} else {
 				delete aProp.rcounter;
@@ -185,12 +185,16 @@ function downloadPropInfoCallBack(response) { // need to handle possible http er
 		}
 	}
 
-	if (retryProps.length > 0) {
+
+	if (retryProps.props.length > 0) {
 		setTimeout(function() {
-			loadProps(dedup(retryProps));
-			retryProps = [];
-		}, 3200);
-	}
+			loadProps(dedup(retryProps.props));
+            retryProps.delay += 1000;
+			retryProps.props = [];
+		}, retryProps.delay);
+	} else {
+        retryProps.delay = 2500;
+    }
 }
 
 function loadProps(pids,fromSelf,callback) {
@@ -206,7 +210,7 @@ function loadProps(pids,fromSelf,callback) {
 					allProps[pid] = new PalaceProp(pid);
 					toLoad.props.push({id:pid});
 				}
-			} else if (aProp.rcounter !== undefined && aProp.rcounter > 0 && aProp.rcounter < 9) {
+			} else if (aProp.rcounter !== undefined && aProp.rcounter > 0 && aProp.rcounter < 12) {
 				toLoad.props.push({id:pid});
 			} else if (callback) {
                 callback();
