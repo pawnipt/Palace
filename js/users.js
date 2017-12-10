@@ -12,6 +12,12 @@ class PalaceUser {
 		this.style = this.domAvatar.style;
 		this.domNametag = document.createElement('div');
 
+		/* Fixes a bug that happens on windows;
+		 Keeping at least one filter applied to prevent
+		 element offsets visually glitching when a
+		 filter is applied and removed */
+		this.applyFilters(['grayscale(0%)']);
+
 		this.setAvatarLocation();
 		if (entered) {
 			this.shrink();
@@ -110,7 +116,7 @@ class PalaceUser {
 					}
 					if (dlPid === prop.id) {
 						dd.div.offsetWidth; //hack to force it to render so that opacity will transition
-						dd.div.style.opacity = '1';
+						dd.div.style.opacity = '';
 					}
 				} else if (wrongProp && d.prop) { // replace wrong prop with placeholder since new one isn't yet available
 					this.propPlaceHolder(i,d.div);
