@@ -232,14 +232,14 @@ class PalaceUser {
 		}
 	}
 
-	setNamelocation() {
+	setNameLocation() {
 		let bounds = this.nameRectBounds;
 		this.domNametag.style.transform = 'translate('+bounds.x+'px, '+bounds.y+'px)';
 	}
 
 	setAvatarLocation() {
 		this.putTransforms(['translate('+(this.x-110)+'px,'+(this.y-110)+'px)']);
-		this.setNamelocation();
+		this.setNameLocation();
 	}
 
 	setColor() {
@@ -285,7 +285,7 @@ class PalaceUser {
 		this.domNametag.innerText = this.name;
 		this.nameWidth = this.domNametag.offsetWidth;
 		this.nameHeight = this.domNametag.offsetHeight;
-		this.setNamelocation();
+		this.setNameLocation();
 	}
 
 	removeFromDom() {

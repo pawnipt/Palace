@@ -1414,6 +1414,12 @@ class PalaceClient extends PalaceProtocol {
 
 	    document.body.style.height = this.roomHeight + this.container.offsetTop + document.getElementById('chatbox').offsetHeight + 'px';
 	    setBodyWidth();
+
+		if (this.theRoom) {
+			this.theRoom.users.forEach((user) => {
+				user.setNameLocation();
+			});
+		}
 	}
 
 
