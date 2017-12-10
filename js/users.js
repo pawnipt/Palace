@@ -320,7 +320,6 @@ class PalaceUser {
 	}
 
 	popBubbles() {
-		var i = chatBubs.length;
 		for (var a = quedBubbles.length; --a >= 0;) {
 			var bub = quedBubbles[a];
 			if (this === bub.user) {
@@ -329,13 +328,16 @@ class PalaceUser {
 				quedBubbles.splice(a,1);
 			}
 		}
+		var i = chatBubs.length;
 		for (let c = i; --c >= 0;) {
 			var bub = chatBubs[c];
 			if (this === bub.user) {
 				bub.remove(true);
 			}
 		}
-		if (i > 0) palace.theRoom.reDrawTop();
+		if (i !== chatBubs.length) {
+			palace.theRoom.reDrawTop();
+		}
 	}
 
 
