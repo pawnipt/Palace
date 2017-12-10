@@ -387,12 +387,12 @@ function addPropsToDB(props) {
 function saveProp(pids,flush) {
     var props = [];
     pids.forEach(function(p) {
-        var prop = allProps[id];
+        var prop = allProps[p];
     	if (prop) {
             props.push(prop)
         }
     });
-    addPropsToDB([prop]);
+    addPropsToDB(props);
 }
 
 let getTransactions = {};
