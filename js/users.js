@@ -16,7 +16,9 @@ class PalaceUser {
 		 Keeping at least one filter applied to prevent
 		 element offsets visually glitching when a
 		 filter is applied and removed */
-		this.applyFilters(['grayscale(0%)']);
+		if (/^win/.test(process.platform)) {
+			this.putFilters(['grayscale(0%)']);
+		}
 
 		this.setAvatarLocation();
 		if (entered) {
