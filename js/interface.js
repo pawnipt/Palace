@@ -249,14 +249,14 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	};
 
 	window.addEventListener('keyup', function(e) {
-		if (palace.theRoom && palace.theRoom.hideUserNames && !platformCtrlKey(e) && !e.altKey) {
+		if (palace && palace.theRoom && palace.theRoom.hideUserNames && !platformCtrlKey(e) && !e.altKey) {
 			palace.theRoom.hideUserNames = false;
 			palace.theRoom.reDraw();
 		}
 	},true);
 	window.addEventListener('keydown', function(e) {
 		if (platformCtrlKey(e)) {
-			if (e.altKey && palace.theRoom) {
+			if (e.altKey && palace && palace.theRoom) {
 				palace.theRoom.hideUserNames = true;
 				palace.theRoom.reDraw();
 			}
