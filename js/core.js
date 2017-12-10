@@ -986,7 +986,7 @@ class PalaceRoom extends Renderer {
 		var user = this.getUser(info.id);
 		if (user && user.name !== info.name) {
 			user.name = info.name;
-			user.setName()
+			user.setName();
 			user.setColor();
 			this.reDraw();
 		}

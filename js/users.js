@@ -25,17 +25,15 @@ class PalaceUser {
 		}
 
 		this.setColor();
+
 		this.domAvatar.className = 'avatar';
 		this.domNametag.className = 'avnametag';
-		this.domNametag.innerText = this.name;
 
 		this.domAvatar.appendChild(this.domNametag);
 		this.setDomProps();
 		palace.container.appendChild(this.domAvatar);
 		this.domAvatar.offsetWidth; // hack to force update css changes
-
-		this.nameWidth = this.domNametag.offsetWidth;
-		this.nameHeight = this.domNametag.offsetHeight;
+		this.setName();
 
 	}
 
@@ -232,12 +230,14 @@ class PalaceUser {
 		}
 	}
 
-
+	setNamelocation() {
+		let bounds = this.nameRectBounds;
+		this.domNametag.style.transform = 'translate('+bounds.x+'px, '+bounds.y+'px)';
+	}
 
 	setAvatarLocation() {
 		this.putTransforms(['translate('+(this.x-110)+'px,'+(this.y-110)+'px)']);
-		let bounds = this.nameRectBounds;
-		this.domNametag.style.transform = 'translate('+bounds.x+'px, '+bounds.y+'px)';
+		this.setNamelocation();
 	}
 
 	setColor() {
@@ -283,6 +283,7 @@ class PalaceUser {
 		this.domNametag.innerText = this.name;
 		this.nameWidth = this.domNametag.offsetWidth;
 		this.nameHeight = this.domNametag.offsetHeight;
+		this.setNamelocation();
 	}
 
 	removeFromDom() {
