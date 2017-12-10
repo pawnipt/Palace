@@ -1,84 +1,236 @@
 // @flow
 
-var userNameTagHeight = getTextHeight('bold 18px sans-serif')+2;
+var avPropHolder = document.createElement('div');
+avPropHolder.className = 'avpropholder'; // placeholder for user props to optimize
 
 class PalaceUser {
-	constructor(info) {
+	constructor(info,entered) {
 		Object.assign(this, info); // copy info to the new instance
-		this.scale = 1;
-		this.preRenderNametag();
+
+		this.domProp = new Array(9);
+		this.domAvatar = document.createElement('div');
+		this.style = this.domAvatar.style;
+		this.domNametag = document.createElement('span');
+
+		if (entered) {
+			this.shrink();
+		} else {
+			this.setAvatarLocation();
+		}
+
+		this.setColor();
+		this.domAvatar.className = 'avatar';
+		this.domNametag.className = 'avnametag';
+		this.domNametag.innerText = this.name;
+
+		this.domAvatar.appendChild(this.domNametag);
+		this.setDomProps();
+		palace.container.appendChild(this.domAvatar);
+
+
+
+	}
+
+	setDomProps(dlPid) {
+
+		if (this.animateTimer) {
+			clearInterval(this.animateTimer);
+			this.animateTimer = null;
+		}
+
+		for (let i = this.props.length; i < 9; i++) {
+			let d = this.domProp[i];
+			if (d) {
+				this.domProp[i] = null;
+				this.domAvatar.removeChild(d.div);
+			}
+		}
+
+		let animatedProps = [];
+		for (let i = 0; i < this.props.length; i++) {
+			let d = this.domProp[i];
+			let pid = this.props[i];
+			let wrongProp = (d && (!d.prop || d.prop.id !== pid));
+			if (wrongProp || !d) {
+				let prop = allProps[pid];
+				if (prop && prop.img && prop.img.src) {
+					if (d) d = d.div; // if dom prop is a placeholder or another prop
+					let dd = this.createDomProp(i,prop,dlPid,d); //now recycles div elements
+					if (prop.animated) {
+						animatedProps.push(dd);
+					}
+					if (!d) { // if domProp was empty, and a prop was found
+						this.domAvatar.appendChild(dd.div);
+					}
+					if (dlPid === prop.id) {
+						let tmp = dd.div.offsetWidth; //hack to force it to render so that opacity will transition
+						dd.div.style.opacity = '1';
+					}
+				} else if (wrongProp && d.prop) { // replace wrong prop with placeholder since new one isn't yet available
+					this.propPlaceHolder(i,d.div);
+				} else if (!d) { // append placeholder if empty
+					this.propPlaceHolder(i);
+				}
+			} else if (d.prop.animated) {
+				animatedProps.push(d);
+			} else {
+				this.setDomPropVisibility(d,true);
+			}
+		}
+
+		let head = this.hasHead; // if wearing a head prop don't render smiley
+		if (head && !this.head) {
+			this.head = head;
+			this.style.backgroundImage = '';
+		} else if (!head && this.head) {
+			this.head = head;
+			this.setFace(this.face);
+		}
+
+
+		if (animatedProps.length > 1) {
+			this.animate(animatedProps);
+		}
+
+	}
+
+	propPlaceHolder(i,div) {
+		let ph = avPropHolder.cloneNode(false);
+		this.domProp[i] = {div:ph, visible:false};
+		if (div) {
+			this.domAvatar.replaceChild(ph,div);
+		} else {
+			this.domAvatar.appendChild(ph);
+		}
+	}
+
+	createDomProp(i,prop,dlPid,div) {
+		let im = div && div.constructor === HTMLDivElement?div:document.createElement('div');
+		if (dlPid === prop.id) im.style.opacity = '0';
+		im.style.width = prop.w+'px';
+		im.style.height = prop.h+'px';
+		im.style.backgroundImage = 'url('+prop.img.src+')';
+		im.style.transform = 'translate('+prop.x+'px,'+prop.y+'px)';
+		im.className = 'avprop';
+		var d = {div:im, prop:prop, visible:true};
+		this.domProp[i] = d;
+		return d;
+	}
+
+	get hasHead() {
+		for (let i = 0; i < this.domProp.length; i++) {
+			let d = this.domProp[i];
+			if (d && d.prop && d.prop.head) {
+				return true;
+			}
+		}
+	}
+
+	animate(animatedProps) {
+		let bounce = false;
+		animatedProps.forEach((d,i) => {
+			if (d.prop.bounce) bounce = true;
+			if (i !== 0) this.setDomPropVisibility(d,false);
+		});
+		let index = 0, last, forward = true, animator = () => {
+			if (last) this.setDomPropVisibility(last,false);
+			last = animatedProps[index];
+			this.setDomPropVisibility(last,true);
+			if (index === animatedProps.length-1) {
+				bounce?forward = false:index = -1;
+			} else if (index === 0) {
+				forward = true;
+			}
+			forward?index++:index--;
+		};
+		this.animateTimer = setInterval(animator,350);
+		animator();
+	}
+
+	setDomPropVisibility(d,visible) {
+		if (visible && !d.visible) {
+			d.div.style.visibility = 'visible';
+		} else if (!visible && d.visible) {
+			d.div.style.visibility = 'hidden';
+		}
+		d.visible = visible;
+	}
+
+	findDomProp(pid) {
+		return this.domProp.find((d) => {
+			return d.constructor === Object && d.prop.id === pid;
+		});
+	}
+
+	changeUserProps(props,fromSelf) {
+
+		let same = (this.props.length === props.length &&
+			this.props.every( (v,i) => { return v === props[i] }));
+
+		this.props = props;
+
+		if (!same) {
+			loadProps(this.props,fromSelf);
+			if (this === palace.theUser) {
+				enablePropButtons();
+			}
+			this.setDomProps();
+			return true;
+		}
+	}
+
+	get avatarLoc() {
+		return 'translate('+(this.x-110)+'px,'+(this.y-110)+'px)';
+	}
+
+	setAvatarLocation() {
+		this.style.transform = this.avatarLoc;
+	}
+
+	setColor() {
+		this.domNametag.style.color = getHsl(this.color,60);
+		if (!this.head) this.style.backgroundImage = 'url('+smileys[this.face+','+this.color].src+')';
+	}
+
+	setFace() {
+		if (!this.head) this.style.backgroundImage = 'url('+smileys[this.face+','+this.color].src+')';
 	}
 
 	poke() { // when you click a user (might use for something else later) pressure variable might be an idea!
-		this.scale = 1.05;
-		palace.theRoom.reDraw();
-		var pokeTimer = setInterval(() => {
-			this.scale -= 0.01;
-			if (this.scale < 1) {
-				this.scale = 1;
-				clearInterval(pokeTimer);
-			}
-			palace.theRoom.reDraw();
-		},20);
+		//this.style.animation = 'poke 1s infinite';
 	}
 
-	grow(from) {
-		this.scale = from;
-		var timer = setInterval(() => {
-			if (this.scale > 1)
-				this.scale -= (this.scale/8);
-			if (this.scale <= 1 || this.id == -1) {
-				if (this.id != -1) // full scale only if not exiting
-					this.scale = 1;
-				clearInterval(timer);
-			}
-			palace.theRoom.reDraw();
-		},20);
+	grow() {
+		this.setAvatarLocation();
 	}
 
-	shrink(to) {
-		this.id = -1; // marks user as exited and going to be removed from the room.
-		var timer = setInterval(() => {
-			if (this.scale < to) this.scale += (this.scale/8);
-			if (this.scale >= to) {
-				clearInterval(timer);
+	shrink(exit) {
+		this.style.transform = this.avatarLoc + ' scale(0.001)';
+		if (exit) {
+			this.id = -1;// marks user as exited and going to be removed from the room.
+			this.domAvatar.addEventListener('transitionend',() => {
 				this.remove();
-			}
-			palace.theRoom.reDraw();
-		},20);
+			});
+		}
+	}
+
+	setName() {
+		this.domNametag.innerText = this.name;
+	}
+
+	removeFromDom() {
+		if (this.animateTimer) {
+			clearInterval(this.animateTimer);
+		}
+		palace.container.removeChild(this.domAvatar);
 	}
 
 	remove() {
-		if (this.stopAnimation) this.stopAnimation();
 		this.popBubbles();
+		this.removeFromDom();
 		palace.theRoom.users.splice(palace.theRoom.users.indexOf(this),1);
 		palace.theRoom.setUserCount();
 		palace.theRoom.reDraw();
-	}
-
-	preRenderNametag() {
-		var font = 'bold 18px sans-serif';
-		this.nametag = document.createElement('canvas');
-		var ctx = this.nametag.getContext('2d');
-		var setStyle = function() {
-			ctx.font = font;
-			ctx.shadowColor = 'black';
-			ctx.shadowBlur = 2;
-			ctx.textBaseline = 'top';
-			ctx.textAlign = 'left';
-		};
-		setStyle();
-		this.nametag.width = ctx.measureText(this.name).width+4;
-		this.nametag.height = userNameTagHeight;
-		setStyle();
-
-		var grd = ctx.createLinearGradient(0, 5, 0, userNameTagHeight-5);
-		grd.addColorStop(0, getHsl(this.color,78));
-		grd.addColorStop(1, getHsl(this.color,60));
-		ctx.fillStyle = grd;
-		ctx.fillText(this.name, 2, 0);
-		ctx.shadowOffsetY = 1;
-		ctx.fillText(this.name, 2, 0);
 	}
 
 
@@ -108,102 +260,26 @@ class PalaceUser {
 		return {x:x,y:y,w:w,h:h};
 	}
 
-	nextFrame() { // if wearing animated props
-		var l = -1;
-
-		if (this.animatePropID)
-			l = this.animationPropIDs.indexOf(this.animatePropID);
-
-
-		if (this.reverseAnimation === true) {
-			if (0 < l) {
-				l--;
-				this.animatePropID = this.animationPropIDs[l];
-			}
-			this.reverseAnimation = !(0 >= l);
-		} else {
-			if (this.animationPropIDs.length-1 > l) {
-				l++;
-				this.animatePropID = this.animationPropIDs[l];
-				this.reverseAnimation = (this.bounceAnimation === true && (this.animationPropIDs.length-1 <= l));
-			} else {
-				this.animatePropID = this.animationPropIDs[0];
-			}
-		}
-		palace.theRoom.reDraw();
-	}
-
-
-	animator() {
-		delete this.animatePropID;
-		this.showHead = true;
-
-		var temp = [];
-		for (var i = 0; i < this.props.length; i++) {
-			var aProp = allProps[this.props[i]];
-			if (aProp) {
-				if (aProp.animated === true) {
-					temp.push(aProp.id);
-					if (aProp.bounce === true) this.bounceAnimation = true;
-				}
-				if (aProp.head === true) this.showHead = false;	/* might as well pre-calculate head */
-			}
-		}
-
-		if (temp.length > 1) {
-			this.animationPropIDs = temp;
-			this.nextFrame();
-			if (!this.animateTimer) {
-				this.animateTimer = setInterval(() => {this.nextFrame()},350);
-			}
-		} else if (this.animateTimer) {
-			this.stopAnimation();
-		}
-	}
-
-	stopAnimation() {
-		if (this.animateTimer) {
-			clearInterval(this.animateTimer);
-			delete this.animateTimer;
-		}
-		delete this.animatePropID;
-		delete this.animationPropIDs;
-		delete this.reverseAnimation;
-	}
-
 	popBubbles() {
+		var i = chatBubs.length;
 		for (var a = quedBubbles.length; --a >= 0;) {
 			var bub = quedBubbles[a];
-			if (this == bub.user) {
+			if (this === bub.user) {
 				bub.user = null;
 				palace.container.removeChild(bub.p);
 				quedBubbles.splice(a,1);
 			}
 		}
-		for (var c = chatBubs.length; --c >= 0;) {
+		for (let c = i; --c >= 0;) {
 			var bub = chatBubs[c];
-			if (this == bub.user) {
+			if (this === bub.user) {
 				bub.remove(true);
 			}
 		}
+		if (i > 0) palace.theRoom.reDrawTop();
 	}
 
-	changeUserProps(props,fromSelf) {
-		let same = (this.props.length === props.length &&
-			this.props.every( (v,i) => { return v === props[i] }));
 
-		this.props = props;
-
-		if (!same) {
-			loadProps(this.props,fromSelf);
-			if (this == palace.theUser) {
-				enablePropButtons();
-			}
-			this.animator();
-			palace.theRoom.reDraw();
-			return true;
-		}
-	}
 
 
 

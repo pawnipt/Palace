@@ -27,6 +27,7 @@ class PalaceProp {
     	if (nbrProps > palace.theRoom.nbrRoomProps+66) { // limit props stored in memory
     		for (var k in allProps) {
     			if (!palace.theRoom.propInUse(parseInt(k))) {
+                    URL.revokeObjectURL(allProps[k].src);
     				delete allProps[k];
     				nbrProps--;
     			}
@@ -39,35 +40,39 @@ class PalaceProp {
     }
 
     showProp() {
+
         for (let i = 0; i < palace.theRoom.users.length; i++) {
             let user = palace.theRoom.users[i];
-            if ((this.animated || this.head) && user.props.indexOf(this.id) > -1) {
-                user.animator();
+            if (user.props.indexOf(this.id) > -1) {
+                user.setDomProps(this.id);
             }
         }
-        palace.theRoom.reDraw();
+        if (palace.theRoom.looseProps.find(function(lp) {return lp.id === this.id},this)) {
+            palace.theRoom.reDraw();
+        }
     }
+
+
 
     requestPropImage(url) {
     	this.img = document.createElement('img');
+        this.img.onload = () => {
+            this.showProp();
+    	};
         httpGetAsync(url, 'blob', (blob) => {
         		this.img.src = URL.createObjectURL(blob);
                 this.blob = blob;
         	}
         );
-    	this.img.onload = () => {
-            URL.revokeObjectURL(this.src);
-    		this.showProp();
-    	};
+
     }
 
     loadBlob(blob) {
         this.blob = blob;
         this.img = document.createElement('img');
         this.img.onload = () => {
-            URL.revokeObjectURL(this.src);
             this.showProp();
-        };
+    	};
         this.img.src = URL.createObjectURL(blob);
     }
 

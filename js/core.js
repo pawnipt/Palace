@@ -1,14 +1,102 @@
 // @flow
-
+const smileys = {};
 const palace = new PalaceClient(prefs.registration.regi,prefs.registration.puid);
 
-palace.goto(prefs.general.home);
+
+loadSmileys(() => { // gotta be able to smile on a palace!
+	palace.goto(prefs.general.home);
+});
+
+function loadSmileys(callback) {
+	//slice up and preload Smiley Set into object urls
+    var buff = document.createElement('canvas');
+	buff.height = 44;
+	buff.width = 44;
+	buff = buff.getContext('2d');
+	var smile = document.createElement('img');
+	smile.onload = function() {
+		let count = 0;
+		for (let x = 0; x < 13; x++) {
+			for (let y = 0; y < 16; y++) {
+				buff.clearRect(0,0,44,44);
+				buff.drawImage(this,x*45,y*45,44,44,0,0,44,44);
+				smileys[x+','+y] = document.createElement('img');
+				buff.canvas.toBlob(function(blob) {
+					smileys[x+','+y].src = URL.createObjectURL(blob);
+					count++;
+					if (count === 208) {
+						callback();
+					}
+				});
+			}
+		}
 
 
+		smileys[5+',0'].onload = function () {
+			var nakedbutton = document.getElementById('removeprops');
+			var src = 'url('+this.src+')';
+			nakedbutton.style.backgroundImage = src;
+
+			var smileyfaces = document.getElementById('smileyfaces');
+			smileyfaces.style.backgroundImage = src;
+			smileyfaces.onclick = function(event) {
+				toggleZoomPanel('smileypicker');
+			};
+			updateDrawPreview();
+			this.onload = null;
+		};
+
+
+
+		var smileycolorpicker = document.getElementById('smileycolorpicker');
+
+		var s = '';
+		for (var i = 0; i < 15; i++) s += getHsl(i,50)+',';
+		smileycolorpicker.style.background = 'linear-gradient(to right,'+s.substring(0,s.length-1)+')';
+
+		var mouseDown = false;
+		smileycolorpicker.onmousemove = function(event) {
+			//idfk...
+			var color = ((event.x-(this.offsetLeft+this.parentNode.offsetLeft))/(this.clientWidth/15)).fastRound();
+			if (mouseDown && color > -1 && color < 16 && palace.theRoom.userColorChange({id:palace.theUserID,color:color})) {
+				palace.sendFaceColor(color);
+			}
+		};
+		smileycolorpicker.onmousedown = function(event) {
+			event.preventDefault();
+			mouseDown = true;
+			smileycolorpicker.onmousemove(event);
+		};
+		smileycolorpicker.onmouseup = function(event) {
+			mouseDown = false;
+		};
+		smileycolorpicker.onmouseleave = smileycolorpicker.onmouseup;
+		var smileypicker = document.getElementById('smileypicker');
+		for (var i = 0; i < 13; i++) {
+			var img = smileys[i+',0'];
+			img.className = 'smileyface';
+			img.draggable = false;
+			img.onclick = function() {
+				var faces = this.parentNode.getElementsByTagName('img');
+				for (var e = 0; e < faces.length; e++) {
+					if (faces[e] == this && palace.theRoom.userFaceChange({id:palace.theUserID,face:e})) {
+						palace.sendFace(e);
+					}
+				}
+			}
+			smileypicker.appendChild(img);
+		}
+
+
+		this.onload = null;
+	};
+	smile.src = 'img/smileys.png';
+}
 
 class Renderer {
-	constructor(canvas) {
+	constructor(canvas,canvas2) {
 		this.context = canvas.getContext("2d");
+		this.topcontext = canvas2.getContext("2d");
 		this.drawPoints = [];
 	}
 
@@ -16,30 +104,52 @@ class Renderer {
 		return this.context.canvas;
 	}
 
+	refreshTop() {
+		if (this.drawTimer2) {
+			clearTimeout(this.drawTimer2);
+			this.drawTimer2 = null;
+		}
+		this.topcontext.clearRect(0,0,this.topcontext.canvas.width,this.topcontext.canvas.height);
+
+		let i;
+
+
+		for (i = 0; i < this.draws.length; i++) {this.drawDraws(this.draws[i],true,this.topcontext);}
+		if (prefs.draw.front) this.preDrawDrawing(this.topcontext);
+		for (i = 0; i < this.spots.length; i++) {this.drawSpot(this.spots[i],true,this.topcontext);} // need to make clicking a spot work if they are above a user and loose props
+		for (i = 0; i < this.spots.length; i++) {this.drawSpotName(this.spots[i],true,this.topcontext);}
+
+		for (i = 0; i < chatBubs.length; i++) {this.drawBubble(chatBubs[i]);} // add chat bubbles to PalaceRoom..
+
+		if (this.topcontext.shadowBlur > 0) {	//intelligently and efficiently restore state machine.
+			this.topcontext.shadowColor = 'transparent';
+			this.topcontext.globalAlpha = 1;
+			this.topcontext.shadowBlur = 0;
+			this.topcontext.shadowOffsetY = 0;
+		}
+	}
+
+	reDrawTop() {
+		if (!this.drawTimer2) {
+			this.drawTimer2 = setTimeout(() => {this.refreshTop();},15);
+		}
+	}
+
 	refresh() {
 		if (this.drawTimer) {
 			clearTimeout(this.drawTimer);
 			this.drawTimer = null;
 		}
-
 		this.context.clearRect(0,0,this.context.canvas.width,this.context.canvas.height);
 
 		let i;
 
-		for (i = 0; i < this.spots.length; i++) {this.drawSpot(this.spots[i],false);}
-		for (i = 0; i < this.draws.length; i++) {this.drawDraws(this.draws[i],false);}
-		if (!prefs.draw.front) this.preDrawDrawing();
-		for (i = 0; i < this.spots.length; i++) {this.drawSpotName(this.spots[i],false);}
+		for (i = 0; i < this.spots.length; i++) {this.drawSpot(this.spots[i],false,this.context);}
+		for (i = 0; i < this.draws.length; i++) {this.drawDraws(this.draws[i],false,this.context);}
+		if (!prefs.draw.front) this.preDrawDrawing(this.context);
+		for (i = 0; i < this.spots.length; i++) {this.drawSpotName(this.spots[i],false,this.context);}
 		this.drawLimboProp();
 		for (i = 0; i < this.looseProps.length; i++) {this.drawLooseProp(this.looseProps[i]);}
-		for (i = 0; i < this.users.length; i++) {this.drawAvatar(this.users[i]);}
-		for (i = 0; i < this.draws.length; i++) {this.drawDraws(this.draws[i],true);}
-		if (prefs.draw.front) this.preDrawDrawing();
-		if (!this.hideUserNames) for (i = 0; i < this.users.length; i++) {this.drawName(this.users[i]);}
-		for (i = 0; i < this.spots.length; i++) {this.drawSpot(this.spots[i],true);} // need to make clicking a spot work if they are above a user and loose props
-		for (i = 0; i < this.spots.length; i++) {this.drawSpotName(this.spots[i],true);}
-
-		for (i = 0; i < chatBubs.length; i++) {this.drawBubble(chatBubs[i]);} // add chat bubbles to PalaceRoom..
 
 		if (this.context.shadowBlur > 0) {	//intelligently and efficiently restore state machine.
 			this.context.shadowColor = 'transparent';
@@ -58,18 +168,18 @@ class Renderer {
 
 	drawBubble(bub) {
 
-		if (this.context.shadowBlur !== 2) {
-			this.context.shadowColor = 'RGBA(0,0,0,.6)';
-			this.context.shadowOffsetY = 1;
-			this.context.shadowBlur = 3;
+		if (this.topcontext.shadowBlur !== 2) {
+			this.topcontext.shadowColor = 'RGBA(0,0,0,.6)';
+			this.topcontext.shadowOffsetY = 1;
+			this.topcontext.shadowBlur = 3;
 		}
 
 		if (bub.user) {
 			var grd;
 			if (bub.right) {
-				grd = this.context.createLinearGradient(bub.x, 0, bub.x+bub.textWidth, 0);
+				grd = this.topcontext.createLinearGradient(bub.x, 0, bub.x+bub.textWidth, 0);
 			} else {
-				grd = this.context.createLinearGradient(bub.x+bub.textWidth, 0,bub.x, 0);
+				grd = this.topcontext.createLinearGradient(bub.x+bub.textWidth, 0,bub.x, 0);
 			}
 
 			grd.addColorStop(0, getHsl(bub.color,73));
@@ -77,36 +187,36 @@ class Renderer {
 			grd.addColorStop(1, getHsl(bub.color,73));
 
 
-			this.context.fillStyle = grd;
+			this.topcontext.fillStyle = grd;
 		} else {
-			this.context.fillStyle = 'white';
+			this.topcontext.fillStyle = 'white';
 		}
 
 		if (bub.shout) {
-			bub.makeShoutBubble(this.context);
+			bub.makeShoutBubble(this.topcontext);
 		/* } else if (bub.thought) { */
 
 		} else {
-			bub.makeRegularBubble(this.context);
+			bub.makeRegularBubble(this.topcontext);
 		}
-		this.context.globalAlpha = bub.size-0.1;
-		this.context.fill();
+		this.topcontext.globalAlpha = bub.size-0.1;
+		this.topcontext.fill();
 
 	}
 
-	drawSpot(spot,above) {
+	drawSpot(spot,above,ctx) {
 		if (above === Boolean(spotConsts.PicturesAboveAll & spot.flags || spotConsts.PicturesAboveProps & spot.flags || spotConsts.PicturesAboveNameTags & spot.flags)) {
 			if ((spotConsts.ShowFrame & spot.flags) || (spotConsts.Shadow & spot.flags)) {
 				this.makeHotSpot(spot); /* the spots polygon frame */
 
 				if (spotConsts.Shadow & spot.flags) {
-					this.context.fillStyle = 'black';
-					this.context.fill();
+					ctx.fillStyle = 'black';
+					ctx.fill();
 				}
 				if (spotConsts.ShowFrame & spot.flags) {
-					this.context.strokeStyle = 'black';
-					this.context.lineWidth = 1;
-					this.context.stroke();
+					ctx.strokeStyle = 'black';
+					ctx.lineWidth = 1;
+					ctx.stroke();
 				}
 			}
 		}
@@ -130,18 +240,18 @@ class Renderer {
 
 	}
 
-	drawSpotName(spot,above) {
+	drawSpotName(spot,above,ctx) {
 		if ((spotConsts.ShowName & spot.flags) && spot.name.length > 0) {
 			if (above === Boolean(spotConsts.PicturesAboveAll & spot.flags || spotConsts.PicturesAboveProps & spot.flags || spotConsts.PicturesAboveNameTags & spot.flags)) {
 				var size = 12;
-				this.context.fillStyle = 'white';
-				this.context.font = size+'px sans-serif';
-				this.context.textBaseline = 'top';
-				this.context.textAlign = 'center';
-				var w = this.context.measureText(spot.name).width+4;
+				ctx.fillStyle = 'white';
+				ctx.font = size+'px sans-serif';
+				ctx.textBaseline = 'top';
+				ctx.textAlign = 'center';
+				var w = ctx.measureText(spot.name).width+4;
 				this.roundRect(spot.x-(w/2)-2, spot.y-1, w+4, size+4, 4);
-				this.context.fillStyle = 'black';
-				this.context.fillText(spot.name, spot.x, spot.y);
+				ctx.fillStyle = 'black';
+				ctx.fillText(spot.name, spot.x, spot.y);
 			}
 		}
 	}
@@ -182,115 +292,6 @@ class Renderer {
 		}
 	}
 
-	drawName(user) {
-		var overUser = (this.mouseHoverUser !== palace.theUser && this.mouseHoverUser === user);
-
-		if (overUser && this.whisperUserID === user.id) {
-			this.context.shadowColor = 'IndianRed';
-			this.context.shadowBlur = 6;
-		} else if (((overUser && this.whisperUserID !== user.id) || this.whisperUserID === user.id) || user.light > 0) {
-			this.context.shadowColor = 'rgba(152,251,152,'+user.light+')';
-			this.context.shadowBlur = 6;
-		}
-
-
-		if (this.whisperUserID && this.whisperUserID !== user.id && user !== palace.theUser) {
-			this.context.globalAlpha = 0.5;
-		}
-		if (user.scale !== 1) {
-			let size = 1/user.scale;
-			this.context.scale(size,size);
-		}
-		var loc = user.nameRectBounds;
-
-		this.context.drawImage(user.nametag, loc.x, loc.y);
-
-		// resetting the canvas state manually, I think it's faster than save/restore..
-		if (this.context.shadowBlur > 0) {
-			this.context.shadowColor = 'transparent';
-			this.context.shadowBlur = 0;
-		}
-		if (this.context.globalAlpha < 1) {
-			this.context.globalAlpha = 1;
-		}
-		if (user.scale !== 1) {
-			this.context.setTransform(1, 0, 0, 1, 0, 0); // resets transform
-		}
-
-	}
-
-	drawAvatar(user) {
-		var overUser = (this.mouseHoverUser !== palace.theUser && this.mouseHoverUser === user);
-
-		if (overUser && this.whisperUserID === user.id) {
-			this.context.shadowColor = 'IndianRed';
-			this.context.shadowBlur = 6;
-		} else if (((overUser && this.whisperUserID !== user.id) || this.whisperUserID === user.id) || user.light > 0) {
-			this.context.shadowColor = 'rgba(152,251,152,'+user.light+')';
-			this.context.shadowBlur = 6;
-			this.context.filter = 'brightness('+(user.light*15+100).fastRound()+'%)';
-		}
-
-		if (user.scale !== 1) {
-			var size = 1/user.scale;
-			this.context.scale(size,size);
-		}
-
-		if ((this.whisperUserID && this.whisperUserID !== user.id && user !== palace.theUser)) {
-			this.context.globalAlpha = 0.5;
-		}
-		if (user.showHead !== false || user.propMuted) {
-			this.drawSmiley(user);
-		}
-		if (!user.propMuted) {
-			for (var i = 0; i < user.props.length; i++) {
-				let aProp = allProps[user.props[i]];
-				if (aProp && (!aProp.animated || user.animatePropID === undefined || user.animatePropID === aProp.id)) {
-					this.drawUserProp(user,aProp);
-				}
-			}
-		}
-		if (this.context.shadowBlur > 0) {
-			this.context.shadowColor = 'transparent';
-			this.context.shadowBlur = 0;
-			this.context.filter = 'none';
-		}
-		if (this.context.globalAlpha < 1) {
-			this.context.globalAlpha = 1;
-		}
-		if (user.scale !== 1) {
-			this.context.setTransform(1, 0, 0, 1, 0, 0); // resets transform
-		}
-	}
-
-	drawSmiley(user) {
-		this.context.drawImage(smileys[user.face+','+user.color],user.x*user.scale-21,user.y*user.scale-21);
-	}
-
-	drawUserProp(user,aProp) {
-		if (aProp.isComplete) {
-			var iAlpha = this.context.globalAlpha;
-			if (aProp.ghost) {
-				this.context.globalAlpha = iAlpha/2;
-			}
-			var draggingSelfProp = (aProp.id === this.mouseSelfProp && user === palace.theUser);
-			if (draggingSelfProp) {
-				this.context.shadowColor = 'LawnGreen';
-				this.context.shadowBlur = 4;
-			}
-			this.context.drawImage(aProp.img,user.x*user.scale-22+aProp.x,user.y*user.scale-22+aProp.y,aProp.w,aProp.h);
-			if (aProp.ghost) {
-				this.context.globalAlpha = iAlpha; //minimizing changes to machine state
-			}
-			if (draggingSelfProp) {
-				this.context.shadowColor = 'transparent';
-				this.context.shadowBlur = 0;
-			}
-		}
-	}
-
-
-
 	drawLimboProp() { /* when dragging a prop from self or another location */
 		if (this.grabbedProp && !this.grabbedProp.looseprop) {
 			var aProp = allProps[this.grabbedProp.id];
@@ -304,57 +305,57 @@ class Renderer {
 	}
 
 
-	drawDraws(draw,foreground) {
+	drawDraws(draw,foreground,ctx) {
 		if (Boolean(drawType.PENFRONT & draw.type) === foreground) {
 
-			this.context.lineWidth = draw.pensize;
-			this.context.fillStyle = draw.fillcolor;
-			this.context.strokeStyle = draw.pencolor;
+			ctx.lineWidth = draw.pensize;
+			ctx.fillStyle = draw.fillcolor;
+			ctx.strokeStyle = draw.pencolor;
 
 			if (!Boolean(draw.type & drawType.TEXT) && !Boolean(draw.type & drawType.OVAL)) {
-				if (draw.type & drawType.ERASER) this.context.globalCompositeOperation='destination-out'; //for potential eraser drawing tool!
-				this.context.beginPath();
-				this.context.moveTo(draw.points[0], draw.points[1]);
+				if (draw.type & drawType.ERASER) ctx.globalCompositeOperation='destination-out'; //for potential eraser drawing tool!
+				ctx.beginPath();
+				ctx.moveTo(draw.points[0], draw.points[1]);
 
 				for (var item = 2; item < draw.points.length-1; item += 2)
-					this.context.lineTo(draw.points[item], draw.points[item+1]);
+					ctx.lineTo(draw.points[item], draw.points[item+1]);
 
 				if (drawType.SHAPE & draw.type) {
-					this.context.closePath();
-					this.context.fill();
+					ctx.closePath();
+					ctx.fill();
 				}
-				this.context.stroke();
+				ctx.stroke();
 				if (draw.type & drawType.ERASER) this.context.globalCompositeOperation='source-over';
 			}
 		}
 	}
 
-	preDrawDrawing() {
+	preDrawDrawing(ctx) {
 		let l = this.drawPoints.length;
 		if (l > 0) {
-			this.context.lineWidth = prefs.draw.size;
-			this.context.fillStyle = prefs.draw.fill;
-			this.context.strokeStyle = prefs.draw.color;
+			ctx.lineWidth = prefs.draw.size;
+			ctx.fillStyle = prefs.draw.fill;
+			ctx.strokeStyle = prefs.draw.color;
 
-			this.context.beginPath();
+			ctx.beginPath();
 
 			let offset = (prefs.draw.type !== 1?Math.floor(prefs.draw.size/2):0);
 
-			this.context.moveTo(this.drawPoints[0]+offset, this.drawPoints[1]+offset);
+			ctx.moveTo(this.drawPoints[0]+offset, this.drawPoints[1]+offset);
 
 			for (let item = 2; item < l-1; item += 2) {
-				this.context.lineTo(this.drawPoints[item]+offset, this.drawPoints[item+1]+offset);
+				ctx.lineTo(this.drawPoints[item]+offset, this.drawPoints[item+1]+offset);
 			}
 
 			if (prefs.draw.type === 2) {
-				this.context.globalCompositeOperation='destination-out';
+				ctx.globalCompositeOperation='destination-out';
 			} else if (prefs.draw.type === 1) {
-				this.context.closePath();
-				this.context.fill();
+				ctx.closePath();
+				ctx.fill();
 			}
-			this.context.stroke();
+			ctx.stroke();
 			if (prefs.draw.type === 2) {
-				this.context.globalCompositeOperation='source-over';
+				ctx.globalCompositeOperation='source-over';
 			}
 		}
 	}
@@ -365,7 +366,7 @@ class Renderer {
 
 class PalaceRoom extends Renderer {
 	constructor(info) {
-		super(palace.canvas);
+		super(palace.canvas,palace.canvas2);
 
 		Object.assign(this, info); // copy info to the new instance
 
@@ -503,7 +504,7 @@ class PalaceRoom extends Renderer {
 					this.mouseExitUser();
 				}
 
-				if (event.shiftKey) { /* for efficiency sake, check shiftkey before bothering to scan */
+				if (event.shiftKey) {
 					var pid = this.mouseOverSelfProp(x,y);
 					if (this.mouseSelfProp !== pid) {
 						if (pid) {
@@ -720,7 +721,7 @@ class PalaceRoom extends Renderer {
 				this.drawPoints.push(newx);
 				this.drawPoints.push(newy);
 			}
-			this.reDraw();
+			prefs.draw.front?this.reDrawTop():this.reDraw();
 		};
 
 		let drawingEnd = () => {
@@ -742,15 +743,29 @@ class PalaceRoom extends Renderer {
 
 	}
 
-	draw(draw) {
+	draw(draw) { //redo this
 		if (drawType.CLEAN & draw.type) {
 			this.draws = [];
+			this.reDraw();
+			this.reDrawTop();
 		} else if (drawType.UNDO & draw.type) {
-			this.draws.pop();
+			let d = this.draws.pop();
+			if (d) {
+				if (d.type & drawType.PENFRONT) {
+					this.reDrawTop();
+				} else {
+					this.reDraw();
+				}
+			}
 		} else {
 			this.draws.push(draw);
+			if (draw.type & drawType.PENFRONT) {
+				this.reDrawTop();
+			} else {
+				this.reDraw();
+			}
 		}
-		this.reDraw();
+
 	}
 
 	setSpotImg(spot) {
@@ -889,7 +904,7 @@ class PalaceRoom extends Renderer {
 
 
 	addUser(info) {
-		var dude = new PalaceUser(info);
+		var dude = new PalaceUser(info,true);
 		var loggedOn = (palace.lastUserLogOnID === dude.id && PalaceClient.ticks()-palace.lastUserLogOnTime < 900);
 		if (loggedOn) { // if under 15 seconds
 			palace.lastUserLogOnID = 0;
@@ -908,8 +923,7 @@ class PalaceRoom extends Renderer {
 		this.users.push(dude);
 
 		loadProps(dude.props);
-		dude.animator();
-		dude.grow(10);
+		dude.grow();
 		this.setUserCount();
 	}
 
@@ -918,8 +932,6 @@ class PalaceRoom extends Renderer {
 	}
 
 	loadUsers(infos) {
-		this.stopAllUserAnimations();
-
 		var dudes = [];
 		infos.forEach(function(info){dudes.push(new PalaceUser(info))});
 
@@ -930,15 +942,10 @@ class PalaceRoom extends Renderer {
 		this.looseProps.find(function(prop){pids.push(prop.id)});
 
 		loadProps(dedup(pids));
-		dudes.forEach(function(dude){dude.animator()});
 
 		this.setUserCount();
 
-		this.refresh();
-	}
-
-	stopAllUserAnimations() {
-		if (this.users) this.users.forEach(function(dude){if (dude.animateTimer) dude.stopAnimation();});
+		super.refresh();
 	}
 
 
@@ -946,7 +953,7 @@ class PalaceRoom extends Renderer {
 		var user = this.getUser(info.id);
 		if (user && user.color !== info.color) {
 			user.color = info.color;
-			user.preRenderNametag();
+			user.setColor();
 			this.reDraw();
 			return true;
 		}
@@ -955,6 +962,7 @@ class PalaceRoom extends Renderer {
 		var user = this.getUser(info.id);
 		if (user && user.face !== info.face) {
 			user.face = info.face;
+			user.setFace();
 			this.reDraw();
 			return true;
 		}
@@ -969,7 +977,7 @@ class PalaceRoom extends Renderer {
 		if (user) {
 			user.color = info.color;
 			user.face = info.face;
-			user.preRenderNametag();
+			user.setColor();
 			user.changeUserProps(info.props);
 			this.reDraw();
 		}
@@ -978,7 +986,8 @@ class PalaceRoom extends Renderer {
 		var user = this.getUser(info.id);
 		if (user && user.name !== info.name) {
 			user.name = info.name;
-			user.preRenderNametag();
+			user.setName()
+			user.setColor();
 			this.reDraw();
 		}
 	}
@@ -988,7 +997,8 @@ class PalaceRoom extends Renderer {
 			user.popBubbles();
 			user.x = info.x;
 			user.y = info.y;
-			this.reDraw();
+			user.setAvatarLocation();
+			//this.reDraw();
 		}
 	}
 	userChat(chat) {
@@ -1040,11 +1050,16 @@ class PalaceRoom extends Renderer {
 			document.getElementById('chatbox').placeholder = 'Whisper to ' + name;
 			this.whisperUserID = userid;
 			var user = this.getUser(userid);
+			this.users.forEach((u) => {
+				if (u !== user && palace.theUser !== u) {
+					u.style.opacity = '0.5';
+				}
+			});
+
 			if (user) {
-				user.light = 1;
+
 				user.poke();
 			}
-			this.refresh();
 		}
 	}
 
@@ -1052,13 +1067,14 @@ class PalaceRoom extends Renderer {
 		document.getElementById('chatbox').placeholder = 'Chat...';
 		var user = this.getUser(this.whisperUserID);
 		if (user) {
-			if (this.mouseHoverUser !== user) {
-				user.light = 0;
-			}
+			this.users.forEach((u) => {
+				if (u !== user && palace.theUser !== u) {
+					u.style.opacity = '';
+				}
+			});
 			user.poke();
 		}
 		this.whisperUserID = null;
-		this.refresh();
 	}
 
 	makeDragProp(lp,pid,x,y,x2,y2) {
@@ -1122,32 +1138,19 @@ class PalaceRoom extends Renderer {
 		this.mouseExitSelfProp();
 		this.mouseExitLooseProp();
 		this.mouseExitUser();
-		if (user !== palace.theUser) user.light = 1;
+		if (user !== palace.theUser) {
+			user.style.filter = 'brightness(112%) drop-shadow(0px 0px 4px PaleGreen)';
+		}
 		this.mouseHoverUser = user;
-		this.reDraw();
 	}
 
 	mouseExitUser() {
 		if (this.mouseHoverUser) {
 			var target = this.mouseHoverUser;
 			if (this.whisperUserID !== this.mouseHoverUser.id && target !== palace.theUser) {
-				target.light = 1;
-				var fadeTimer = setInterval(() => {
-					var user = this.getUser(target.id);
-					if (target.light - 0.1 <= 0 || user === this.mouseHoverUser || !user) {
-						if (!this.mouseHoverUser || user !== this.mouseHoverUser) {
-							target.light = 0;
-						}
-						clearInterval(fadeTimer);
-					} else {
-						target.light -= 0.09;
-						this.reDraw();
-					}
-
-				},20);
+				target.style.filter = '';
 			}
 			this.mouseHoverUser = null;
-			this.reDraw();
 		}
 	}
 
@@ -1189,13 +1192,13 @@ class PalaceRoom extends Renderer {
 		if (!this.mouseHoverUser) {
 			this.mouseExitSelfProp();
 			this.mouseSelfProp = pid;
-			this.reDraw();
+			palace.theUser.findDomProp(pid).div.style.filter = 'drop-shadow(0px 0px 2px LawnGreen)';
 		}
 	}
 	mouseExitSelfProp() {
 		if (this.mouseSelfProp) {
+			palace.theUser.findDomProp(this.mouseSelfProp).div.style.filter = '';
 			this.mouseSelfProp = null;
-			this.reDraw();
 		}
 	}
 

@@ -10,7 +10,51 @@ body {
   -ms-user-select        : none;
   -webkit-user-select    : none;
   user-select            : none;
-  /* transition:width 0.3s; */
+}
+
+.avpropholder {
+  display : none;
+}
+
+.avatar {
+  z-index             : 55;
+  box-sizing          : border-box;
+  position            : absolute;
+  top                 : 0;
+  left                : 0;
+  width               : 220px;
+  height              : 220px;
+  overflow            : visible;
+  background-repeat   : no-repeat;
+  background-position : center;
+  text-align          : center;
+  text-shadow         : 0px 0px 1px black,
+                        0px 0px 2px black,
+                        0px 1px 3px black;
+  font                : bold 18px sans-serif;
+  white-space         : break-word;
+  backface-visibility : hidden;
+  transition          : transform 0.2s,
+                        filter 0.15s ease-out,
+                        opacity 0.3s;
+  pointer-events      : none;
+}
+
+.avprop {
+  z-index             : -1;
+  position            : absolute;
+  top                 : 88px;
+  left                : 88px;
+  background-repeat   : no-repeat;
+  backface-visibility : hidden;
+  transition          : filter 0.2s,
+                        opacity 0.3s;
+}
+
+.avnametag {
+  position            : relative;
+  top                 : 122px;
+  backface-visibility : hidden;
 }
 
 #soundplayer,
@@ -55,7 +99,7 @@ body {
 }
 
 .spotpic.ontop {
-  z-index : 58;
+  z-index : 56;
 }
 
 #container {
@@ -70,9 +114,14 @@ body {
 }
 
 #mainlayer {
-  z-index           : 2;
-  position          : absolute;
-  background-repeat : no-repeat;
+  z-index  : 2;
+  position : absolute;
+}
+
+#toplayer {
+  z-index        : 57;
+  position       : absolute;
+  pointer-events : none;
 }
 
 #videobg {
@@ -82,7 +131,7 @@ body {
 }
 
 .chatBubble {
-  z-index                : 56;
+  z-index                : 58;
   display                : inline-block;
   position               : absolute;
   max-width              : 169px;

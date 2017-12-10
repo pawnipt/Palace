@@ -1,7 +1,6 @@
 // @flow
 
-var smileys = {},
-	logField = document.getElementById('log'),
+var logField = document.getElementById('log'),
 	selectedBagProps = [],
 	propBag = document.getElementById('props'),
 	propBagRetainer = document.getElementById('propbagretainer'), // adjust retainer size to set the scrollbar
@@ -27,86 +26,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 
 
 
-(function () {
-	//slice up and preload Smiley Set, used for canvas drawing and also the smiley picker
-    var buff = document.createElement('canvas');
-	buff.height = 44;
-	buff.width = 44;
-	buff = buff.getContext('2d');
-	var smile = document.createElement('img'); //maybe just store the images as canvases? im not sure which is more efficient given the substantial amount of times they are redrawn to the canvas
-	smile.onload = function() {
-		for (let x = 0; x < 13; x++) {
-			for (let y = 0; y < 16; y++) {
-				buff.clearRect(0,0,44,44);
-				buff.drawImage(this,x*45,y*45,44,44,0,0,44,44);
-				smileys[x+','+y] = document.createElement('img');
-				buff.canvas.toBlob(function(blob) {
-					smileys[x+','+y].src = URL.createObjectURL(blob);
-				});
-			}
-		}
 
-
-		smileys[5+',0'].onload = function () {
-			var nakedbutton = document.getElementById('removeprops');
-			var src = 'url('+this.src+')'; // consider using a reference to the image instead.
-			nakedbutton.style.backgroundImage = src;
-
-			var smileyfaces = document.getElementById('smileyfaces');
-			smileyfaces.style.backgroundImage = src;
-			smileyfaces.onclick = function(event) {
-				toggleZoomPanel('smileypicker');
-			};
-			updateDrawPreview();
-			this.onload = null;
-		};
-
-
-
-		var smileycolorpicker = document.getElementById('smileycolorpicker');
-
-		var s = '';
-		for (var i = 0; i < 15; i++) s += getHsl(i,50)+',';
-		smileycolorpicker.style.background = 'linear-gradient(to right,'+s.substring(0,s.length-1)+')';
-
-		var mouseDown = false;
-		smileycolorpicker.onmousemove = function(event) {
-			//idfk...
-			var color = ((event.x-(this.offsetLeft+this.parentNode.offsetLeft))/(this.clientWidth/15)).fastRound();
-			if (mouseDown && color > -1 && color < 16 && palace.theRoom.userColorChange({id:palace.theUserID,color:color})) {
-				palace.sendFaceColor(color);
-			}
-		};
-		smileycolorpicker.onmousedown = function(event) {
-			event.preventDefault();
-			mouseDown = true;
-			smileycolorpicker.onmousemove(event);
-		};
-		smileycolorpicker.onmouseup = function(event) {
-			mouseDown = false;
-		};
-		smileycolorpicker.onmouseleave = smileycolorpicker.onmouseup;
-		var smileypicker = document.getElementById('smileypicker');
-		for (var i = 0; i < 13; i++) {
-			var img = smileys[i+',0'];
-			img.className = 'smileyface';
-			img.draggable = false;
-			img.onclick = function() {
-				var faces = this.parentNode.getElementsByTagName('img');
-				for (var e = 0; e < faces.length; e++) {
-					if (faces[e] == this && palace.theRoom.userFaceChange({id:palace.theUserID,face:e})) {
-						palace.sendFace(e);
-					}
-				}
-			}
-			smileypicker.appendChild(img);
-		}
-
-
-		this.onload = null;
-	};
-	smile.src = 'img/smileys.png';
-})();
 
 (function () { // setup
 
@@ -1254,7 +1174,7 @@ function loadDirectoryList(list) {
 				li.title = serverList.description;
 				s = document.createElement('div');
 				s.className = 'listName';
-				s.style.backgroundImage = 'url('+serverList.picture+')';
+				s.style.backgroundImage = 'url(http://pchat.org/portal/?url='+serverList.picture+')';
 				s.appendChild(document.createTextNode(serverList.name));
 
 				s2 = document.createElement('span');

@@ -1147,7 +1147,7 @@ class PalaceClient extends PalaceProtocol {
 		this.videobg = document.getElementById('videobg');
 		this.container = document.getElementById('container');
 		this.canvas = document.getElementById('mainlayer');
-
+		this.canvas2 = document.getElementById('toplayer');
 
 		this.sounds = {
 			signon:PalaceClient.preloadAudio('SignOn'),
@@ -1390,6 +1390,7 @@ class PalaceClient extends PalaceProtocol {
 		this.background.style.backgroundImage = bg;
 	    Bubble.resetDisplayedBubbles();
 	    if (this.theRoom) {
+			this.theRoom.refreshTop();
 			this.theRoom.refresh();
 		}
 	}
@@ -1397,6 +1398,8 @@ class PalaceClient extends PalaceProtocol {
 	setRoomSize(w,h) {
 		this.canvas.width = w;
 		this.canvas.height = h;
+		this.canvas2.width = w;
+		this.canvas2.height = h;
 
 		if (this.theRoom) {
 			this.theRoom.context.lineJoin = 'round';
@@ -1486,7 +1489,6 @@ class PalaceClient extends PalaceProtocol {
 
 	serverDown(msg) { // still gotta implement this in the protocol lol
 		this.mediaUrl = "";
-		allProps = {};
 		this.lastUserLogOnTime = 0;
 		this.lastUserLogOnID = 0;
 		this.serverUserCount = 0;
@@ -1500,14 +1502,20 @@ class PalaceClient extends PalaceProtocol {
 		this.unloadBgVideo();
 		toggleZoomPanel('authenticate',0);
 
+		for (var k in allProps) {
+			URL.revokeObjectURL(allProps[k].src);
+		}
+		allProps = {};
+
 		if (this.theRoom) {
-			this.theRoom.stopAllUserAnimations();
+			this.removeUserDomElements();
 			this.theRoom.spots = [];
 			this.theRoom.draws = [];
 			this.theRoom.looseProps = [];
 			this.theRoom.pics = [];
 			this.theRoom.users = [];
 			this.theRoom.refresh();
+			this.theRoom.refreshTop();
 		}
 
 		if (msg) {
@@ -1557,8 +1565,7 @@ class PalaceClient extends PalaceProtocol {
 		if (this.theUser && this.theUser.props.length < 9 && this.theUser.props.indexOf(pid) == -1) {
 			this.theUser.propsChanged = true;
 			this.theUser.props.push(pid);
-			this.theUser.animator();
-			this.theRoom.reDraw();
+			this.theUser.setDomProps();
 			return true;
 		}
 	}
@@ -1569,8 +1576,7 @@ class PalaceClient extends PalaceProtocol {
 			if (this.theUser.props.length > 0 && i > -1) {
 				this.theUser.propsChanged = true;
 				this.theUser.props.splice(i,1);
-				this.theUser.animator();
-				this.theRoom.reDraw();
+				this.theUser.setDomProps();
 				return true;
 			}
 		}
@@ -1664,6 +1670,12 @@ class PalaceClient extends PalaceProtocol {
 		);
 	}
 
+	removeUserDomElements() {
+		this.theRoom.users.forEach(function(user) {
+			user.removeFromDom();
+		});
+	}
+
 	handOffData(p) {
 		//console.log(p);
 		switch(p.type) {
@@ -1727,11 +1739,16 @@ class PalaceClient extends PalaceProtocol {
 			case MSG_ROOMSETDESC:
 			case MSG_ROOMDESC:
 				var users;
-				if (this.theRoom && this.theRoom.users) users = this.theRoom.users; // if editing room, god save the people!
 				p.data.authored = p.type === MSG_ROOMSETDESC;
+				if (this.theRoom && this.theRoom.users) {
+					if (p.data.authored) {
+						users = this.theRoom.users;
+					} else {
+						this.removeUserDomElements()
+					}
+				}
 				this.theRoom = new PalaceRoom(p.data);
 				this.theRoom.users = users;
-				if (users) this.theRoom.refresh();
 				break;
 			case MSG_NAVERROR:
 				this.theRoom.navigationError(p.data);

@@ -12,14 +12,14 @@ class Bubble {
 			if (user.sticky) {
 				user.sticky.remove(true);
 				user.sticky = null;
-				palace.theRoom.reDraw();
+				palace.theRoom.reDrawTop();
 			}
 			x = user.x;
 			y = user.y;
 		} else if (palace.theRoom.sticky) {
 			palace.theRoom.sticky.remove(true);
 			palace.theRoom.sticky = null;
-			palace.theRoom.reDraw();
+			palace.theRoom.reDrawTop();
 		}
 
 		if (bubInfo.x !== undefined) {
@@ -113,7 +113,7 @@ class Bubble {
 			}
 			this.popTimer = setTimeout(() =>{this.remove(false)}, speed); //is bub=null; required?
 		}
-		palace.theRoom.reDraw();
+		palace.theRoom.reDrawTop();
 	}
 	inflate() {
 		this.deflated = false;
@@ -130,7 +130,7 @@ class Bubble {
 				this.p.style.left = this.x+'px';
 				this.p.style.top = this.y+'px';
 			}
-			palace.theRoom.reDraw();
+			palace.theRoom.reDrawTop();
 		},20);
 	}
 	deflate(remove) {
@@ -150,7 +150,7 @@ class Bubble {
 				if (remove) this.remove(true);
 			}
 
-			palace.theRoom.reDraw();
+			palace.theRoom.reDrawTop();
 		},20);
 	}
 	makeShoutBubble(ctx) {
@@ -368,19 +368,23 @@ class Bubble {
 	}
 
 	static deleteAllBubbles() {
-		var i = 0;
+		var i = 0, removed = false;
 		for (i = quedBubbles.length; --i >= 0;) {
+			removed = true;
 			palace.container.removeChild(quedBubbles[i].p);
 		}
 		quedBubbles = [];
 		for (i = chatBubs.length; --i >= 0;) {
+			removed = true;
 			chatBubs[i].remove(true);
 		}
 
 		if (palace.theRoom && palace.theRoom.sticky) {
+			removed = true;
 			palace.theRoom.sticky.remove(true);
 			palace.theRoom.sticky = null;
 		}
+		return removed;
 	}
 
 	static pushBubbles() {
