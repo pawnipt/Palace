@@ -1,8 +1,5 @@
 // @flow
 
-var avPropHolder = document.createElement('div');
-avPropHolder.className = 'avpropholder'; // placeholder for user props to optimize
-
 class PalaceUser {
 	constructor(info,entered) {
 		Object.assign(this, info); // copy info to the new instance
@@ -144,7 +141,8 @@ class PalaceUser {
 	}
 
 	propPlaceHolder(i,div) {
-		let ph = avPropHolder.cloneNode(false);
+		var ph = document.createElement('div');
+		ph.className = 'avpropholder';
 		this.domProp[i] = {div:ph, visible:false};
 		if (div) {
 			this.domAvatar.replaceChild(ph,div);
