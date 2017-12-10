@@ -1071,6 +1071,9 @@ class PalaceRoom extends Renderer {
 				if (u !== user && palace.theUser !== u) {
 					u.removeFilters(['blur','opacity']);
 				}
+				if (u !== this.mouseHoverUser) {
+					u.removeFilters(['brightness','drop-shadow']);
+				}
 			});
 			user.poke();
 		}
