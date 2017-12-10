@@ -55,6 +55,7 @@ body {
 }
 
 .avnametag {
+  display             : inline-block;
   position            : relative;
   top                 : 122px;
   backface-visibility : hidden;

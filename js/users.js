@@ -13,7 +13,7 @@ class PalaceUser {
 		this.domProp = [];
 		this.domAvatar = document.createElement('div');
 		this.style = this.domAvatar.style;
-		this.domNametag = document.createElement('span');
+		this.domNametag = document.createElement('div');
 
 		this.setAvatarLocation();
 		if (entered) {
@@ -31,6 +31,8 @@ class PalaceUser {
 		palace.container.appendChild(this.domAvatar);
 		this.domAvatar.offsetWidth; // hack to force update css changes
 
+		this.nameWidth = this.domNametag.offsetWidth;
+		this.nameHeight = this.domNametag.offsetHeight;
 
 	}
 
@@ -230,6 +232,8 @@ class PalaceUser {
 
 	setAvatarLocation() {
 		this.putTransforms(['translate('+(this.x-110)+'px,'+(this.y-110)+'px)']);
+		let bounds = this.nameRectBounds;
+		this.domNametag.style.transform = 'translate('+bounds.x+'px, '+bounds.y+'px)';
 	}
 
 	setColor() {
@@ -273,6 +277,8 @@ class PalaceUser {
 
 	setName() {
 		this.domNametag.innerText = this.name;
+		this.nameWidth = this.domNametag.offsetWidth;
+		this.nameHeight = this.domNametag.offsetHeight;
 	}
 
 	removeFromDom() {
@@ -291,30 +297,26 @@ class PalaceUser {
 	}
 
 
-	get nameRectBounds() { // need to reduce size of this function!
-		var w = this.nametag.width;
-		var h = this.nametag.height;
-		var half = (w/2);
-		var x = this.x*this.scale;
-		var y = this.y*this.scale;
-		var bgw = palace.roomWidth*this.scale;
-		var bgh = palace.roomHeight*this.scale;
+	get nameRectBounds() {
+		var w = this.nameWidth;
+		var h = this.nameHeight;
+		var halfW = (w/2);
+		var halfH = (h/2);
+		var x = this.x;
+		var y = this.y;
+		var bgw = palace.roomWidth;
+		var bgh = palace.roomHeight;
 
-		if (x-half < 0) x = half;
-		if (x > bgw-half) x = bgw-half;
+		if (x-halfW < 0) x = halfW;
+		if (x > bgw-halfW) x = bgw-halfW;
 
-		if (this.scale != 1) {
-			x = x-half;
-			y = y+(h/2);
-		} else {
-			x = (x-half).fastRound(); // don't want floating point coordinates if not scaling
-			y = (y+(h/2)).fastRound();
-		}
+		x = Math.round(x-halfW);
+		y = Math.round(y+(h/2));
 
 		if (y < 0) y = 0;
 		if (y > bgh-h) y = bgh-h;
 
-		return {x:x,y:y,w:w,h:h};
+		return {x:(x-this.x+halfW),y:(y-this.y-halfH)};
 	}
 
 	popBubbles() {
