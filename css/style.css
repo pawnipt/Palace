@@ -45,14 +45,13 @@ body {
 }
 
 .avprop {
+
   z-index             : -1;
   position            : absolute;
   top                 : 88px;
   left                : 88px;
   background-repeat   : no-repeat;
-  backface-visibility : hidden;
-  transition          : filter 0.2s,
-                        opacity 0.3s;
+  transition          : opacity 0.3s;
 }
 
 .avnametag {
