@@ -32,10 +32,24 @@ function createWindow () {
 
 
   // Create the browser window.
-  win = new BrowserWindow({width: area.width, height: area.height});
+  win = new BrowserWindow({width: area.width, height: area.height,webPreferences: {
+    nativeWindowOpen: true
+  }});
+  win.webContents.on('new-window', (event, url, frameName, disposition, options, additionalFeatures) => {
+      event.preventDefault()
+      Object.assign(options, {
+        parent: win,
+        width: 500,
+        height: 500,
+        webPreferences: {
+            javascript: true,
+            nodeIntegration: false
+        }
+      })
+      event.newGuest = new BrowserWindow(options)
+      event.newGuest.maximize()
+  })
 
-
-  //win.hide(); // seems to make launching look alittle better...
   win.maximize();
 
   // and load the index.html of the app.
