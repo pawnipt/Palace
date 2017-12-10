@@ -7,15 +7,18 @@ class PalaceUser {
 	constructor(info,entered) {
 		Object.assign(this, info); // copy info to the new instance
 
-		this.domProp = new Array(9);
+		this.cssFilters = {};
+		this.cssTransforms = {};
+
+		this.domProp = [];
 		this.domAvatar = document.createElement('div');
 		this.style = this.domAvatar.style;
 		this.domNametag = document.createElement('span');
 
+		this.setAvatarLocation();
 		if (entered) {
 			this.shrink();
-		} else {
-			this.setAvatarLocation();
+
 		}
 
 		this.setColor();
@@ -26,9 +29,53 @@ class PalaceUser {
 		this.domAvatar.appendChild(this.domNametag);
 		this.setDomProps();
 		palace.container.appendChild(this.domAvatar);
+		this.domAvatar.offsetWidth; // hack to force update css changes
 
 
+	}
 
+	putFilters(filters) {
+		for (let i = 0; i < filters.length; i++) {
+			this.cssFilters[filters[i].match(/^[^\(]+/)] = filters[i];
+		}
+		this.applyFilters();
+	}
+
+	removeFilters(names) {
+		for (let i = 0; i < names.length; i++) {
+			delete this.cssFilters[names[i]];
+		}
+		this.applyFilters();
+	}
+
+	applyFilters() {
+		let filters = '';
+		for (let name in this.cssFilters) {
+			filters += this.cssFilters[name]+' ';
+ 		}
+		this.style.filter = filters;
+	}
+
+	putTransforms(transforms) {
+		for (let i = 0; i < transforms.length; i++) {
+			this.cssTransforms[transforms[i].match(/^[^\(]+/)] = transforms[i];
+		}
+		this.applyTransforms();
+	}
+
+	removeTransforms(names) {
+		for (let i = 0; i < names.length; i++) {
+			delete this.cssTransforms[names[i]];
+		}
+		this.applyTransforms();
+	}
+
+	applyTransforms() {
+		let transforms = '';
+		for (let name in this.cssTransforms) {
+			transforms += this.cssTransforms[name]+' ';
+ 		}
+		this.style.transform = transforms;
 	}
 
 	setDomProps(dlPid) {
@@ -63,7 +110,7 @@ class PalaceUser {
 						this.domAvatar.appendChild(dd.div);
 					}
 					if (dlPid === prop.id) {
-						let tmp = dd.div.offsetWidth; //hack to force it to render so that opacity will transition
+						dd.div.offsetWidth; //hack to force it to render so that opacity will transition
 						dd.div.style.opacity = '1';
 					}
 				} else if (wrongProp && d.prop) { // replace wrong prop with placeholder since new one isn't yet available
@@ -179,12 +226,10 @@ class PalaceUser {
 		}
 	}
 
-	get avatarLoc() {
-		return 'translate('+(this.x-110)+'px,'+(this.y-110)+'px)';
-	}
+
 
 	setAvatarLocation() {
-		this.style.transform = this.avatarLoc;
+		this.putTransforms(['translate('+(this.x-110)+'px,'+(this.y-110)+'px)']);
 	}
 
 	setColor() {
@@ -196,16 +241,28 @@ class PalaceUser {
 		if (!this.head) this.style.backgroundImage = 'url('+smileys[this.face+','+this.color].src+')';
 	}
 
-	poke() { // when you click a user (might use for something else later) pressure variable might be an idea!
-		//this.style.animation = 'poke 1s infinite';
+	poke() {
+		let end = () => {
+			this.style.transitionDuration = '0.2s, 0.15s, 0.3s';
+			this.domAvatar.offsetWidth; // hack to force update css changes
+			this.removeTransforms(['scale','scale3d']);
+			this.domAvatar.removeEventListener('transitionend',end);
+		}
+
+		this.style.transitionDuration = '0.01s, 0.15s, 0.3s';
+		this.domAvatar.offsetWidth; // hack to force update css changes
+		this.putTransforms(['scale(0.95)','scale3d(1.1, 1, 1)']);
+
+
+		this.domAvatar.addEventListener('transitionend',end);
 	}
 
 	grow() {
-		this.setAvatarLocation();
+		this.removeTransforms(['scale']);
 	}
 
 	shrink(exit) {
-		this.style.transform = this.avatarLoc + ' scale(0.001)';
+		this.putTransforms(['scale(0.001)']);
 		if (exit) {
 			this.id = -1;// marks user as exited and going to be removed from the room.
 			this.domAvatar.addEventListener('transitionend',() => {

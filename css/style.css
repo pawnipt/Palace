@@ -34,9 +34,12 @@ body {
   font                : bold 18px sans-serif;
   white-space         : break-word;
   backface-visibility : hidden;
-  transition          : transform 0.2s,
-                        filter 0.15s ease-out,
-                        opacity 0.3s;
+  transition-property : transform,
+                        filter,
+                        opacity;
+  transition-duration : 0.2s,
+                        0.15s,
+                        0.3s;
   pointer-events      : none;
 }
 
@@ -55,6 +58,7 @@ body {
   position            : relative;
   top                 : 122px;
   backface-visibility : hidden;
+  transition          : transform 0.2s;
 }
 
 #soundplayer,

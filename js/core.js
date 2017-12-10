@@ -1052,7 +1052,7 @@ class PalaceRoom extends Renderer {
 			var user = this.getUser(userid);
 			this.users.forEach((u) => {
 				if (u !== user && palace.theUser !== u) {
-					u.style.opacity = '0.5';
+					u.putFilters(['blur(1px)','opacity(75%)']);
 				}
 			});
 
@@ -1069,7 +1069,7 @@ class PalaceRoom extends Renderer {
 		if (user) {
 			this.users.forEach((u) => {
 				if (u !== user && palace.theUser !== u) {
-					u.style.opacity = '';
+					u.removeFilters(['blur','opacity']);
 				}
 			});
 			user.poke();
@@ -1139,7 +1139,7 @@ class PalaceRoom extends Renderer {
 		this.mouseExitLooseProp();
 		this.mouseExitUser();
 		if (user !== palace.theUser) {
-			user.style.filter = 'brightness(112%) drop-shadow(0px 0px 4px PaleGreen)';
+			user.putFilters(['brightness(112%)','drop-shadow(0px 0px 4px PaleGreen)']);
 		}
 		this.mouseHoverUser = user;
 	}
@@ -1148,7 +1148,7 @@ class PalaceRoom extends Renderer {
 		if (this.mouseHoverUser) {
 			var target = this.mouseHoverUser;
 			if (this.whisperUserID !== this.mouseHoverUser.id && target !== palace.theUser) {
-				target.style.filter = '';
+				target.removeFilters(['brightness','drop-shadow']);
 			}
 			this.mouseHoverUser = null;
 		}
