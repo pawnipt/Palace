@@ -1067,16 +1067,16 @@ class PalaceRoom extends Renderer {
 		document.getElementById('chatbox').placeholder = 'Chat...';
 		var user = this.getUser(this.whisperUserID);
 		if (user) {
-			this.users.forEach((u) => {
-				if (u !== user && palace.theUser !== u) {
-					u.removeFilters(['blur','opacity']);
-				}
-				if (u !== this.mouseHoverUser) {
-					u.removeFilters(['brightness','drop-shadow']);
-				}
-			});
 			user.poke();
 		}
+		this.users.forEach((u) => {
+			if (u.id !== this.whisperUserID && palace.theUser !== u) {
+				u.removeFilters(['blur','opacity']);
+			}
+			if (u !== this.mouseHoverUser) {
+				u.removeFilters(['brightness','drop-shadow']);
+			}
+		});
 		this.whisperUserID = null;
 	}
 
