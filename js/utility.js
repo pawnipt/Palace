@@ -133,16 +133,21 @@ function toHex(str) {
 }
 
 
-function httpPostAsync(theUrl, callback, error, postContent) {
+function httpPostAsync(theUrl, rtype, postContent, callback, callerror) {
 	var xmlHttp = new XMLHttpRequest();
+	if (rtype) xmlHttp.responseType = rtype;
 	xmlHttp.onerror = function() {
-		console.log('Error with http post request: '+this.url);
+		callerror(xmlHttp.status);
 	};
 	xmlHttp.onload = function() {
 		if (xmlHttp.status == 200) {
-			callback(xmlHttp.responseText);
+			if (xmlHttp.response) {
+				callback(xmlHttp.response);
+			} else {
+				if (callerror) callerror(xmlHttp.status);
+			}
 		} else {
-			error(xmlHttp.status,xmlHttp.responseText);
+			if (callerror) callerror(xmlHttp.status);
 		}
 	};
 	xmlHttp.url = theUrl;

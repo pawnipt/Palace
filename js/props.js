@@ -118,89 +118,71 @@ class PalaceProp {
 }
 
 
-function propUploadCallBack(response) {
-	if (response.length > 0) {
-		var propsInfo = JSON.parse(response);
-		for (var i = 0; i < propsInfo.props.length; i++) {
-			var prop = propsInfo.props[i];
-			if (prop.restricted !== true) { // send logmsg about restriction and remove prop from user
-				uploadProp(propsInfo.upload_url,prop.id);
-			}
-		}
-	}
+function uploadPropInfo(aProp) {
+    httpPostAsync(palace.mediaUrl + 'webservice/props/new/', 'json',
+        JSON.stringify({
+            props:[
+                    {
+                        format:aProp.blob.type.split('/')[1],
+                        name:aProp.name,
+                        size:{w:aProp.w,h:aProp.h},
+                        offsets:{x:aProp.x,y:aProp.y},
+                        flags:aProp.encodePropFlags,
+                        id:aProp.id,
+                        crc:0
+                    }
+                ]
+        }),
+        function(json) {
+            if (json) {
+                for (let i = 0; i < json.props.length; i++) {
+                    let prop = json.props[i];
+                    if (prop.restricted !== true) { // send logmsg about restriction and remove prop from user
+                        uploadProp(json.upload_url,prop.id);
+                    }
+                }
+            }
+        },
+        function(status) {
+            logmsg('Prop upload request failed (HTTP ERROR): '+status);
+        }
+    );
 }
-
-
 
 
 function uploadProp(url,pid) {
 	var aProp = allProps[pid];
-	if (aProp.img && aProp.img.naturalWidth > 0) {
+	if (aProp.blob && aProp.blob.size > 0) {
 
         var formData = new FormData();
 		formData.append('id', String(pid));
 		formData.append('prop', aProp.blob);
 
-		httpPostAsync(
-            url,
-            function(response) {
-                try {
-                    let json = JSON.parse(response);
+		httpPostAsync(url,'json',formData,
+            function(json) {
+                if (json) {
                     if (json.success !== true) {
                         logmsg('Prop upload failed (server error), prop id: '+pid);
+                        if (json.errormsg) logmsg(json.errormsg);
                     }
-                }
-                catch(err) {
+                } else {
                     logmsg('Prop upload failed (unexpected server response): '+response);
                 }
-            },function(status,response) { // handle error, maybe retry upload
-                logmsg('Prop upload failed (HTTP ERROR): '+status+'\n\n'+response);
             },
-            formData
+            function(status) { // handle error, maybe retry upload
+                logmsg('Prop upload failed (HTTP ERROR): '+status);
+            }
         );
-	} else {
-		logmsg('Prop '+pid+' failed to upload: image data not available');
 	}
 }
 
 
-function downloadPropInfoCallBack(response) { // need to handle possible http error and retry props (store array of requested)
-	var propsInfo = JSON.parse(response);
 
-	for (var i = 0; i < propsInfo.props.length; i++) {
-		var prop = propsInfo.props[i];
-		var aProp = allProps[prop.id];
-		if (aProp && aProp.rcounter !== undefined) {
-			if (prop.success === false) {
-                if (aProp.rcounter === 0) { // only request legacy prop once and only if normal prop request fails.
-                    palace.sendAssetQuery(prop.id);
-                }
-				retryProps.props.push(prop.id);
-				aProp.rcounter++;
-			} else {
-				delete aProp.rcounter;
-				aProp.setInfo(prop);
-				aProp.requestPropImage(propsInfo.img_url + aProp.id);
-			}
-		}
-	}
-
-
-	if (retryProps.props.length > 0) {
-		setTimeout(function() {
-			loadProps(dedup(retryProps.props));
-            retryProps.delay += 1000;
-			retryProps.props = [];
-		}, retryProps.delay);
-	} else {
-        retryProps.delay = 2500;
-    }
-}
 
 function loadProps(pids,fromSelf,callback) {
 	if (pids && pids.length > 0) {
 		var toLoad = {props:[]};
-		for (var i = 0; i < pids.length; i++) {
+		for (let i = 0; i < pids.length; i++) {
 			var pid = Number(pids[i]);
 			var aProp = allProps[pid];
 			if (!aProp) {
@@ -217,13 +199,41 @@ function loadProps(pids,fromSelf,callback) {
 			}
 		}
 		if (toLoad.props.length > 0) {
-			httpPostAsync(
-                palace.mediaUrl + 'webservice/props/get/',
-                downloadPropInfoCallBack,
-                function(status,response) { // handle error, maybe retry upload
-                    logmsg('Prop download failed (HTTP ERROR): '+status+'\n\n'+response);
+			httpPostAsync(palace.mediaUrl + 'webservice/props/get/', 'json', JSON.stringify(toLoad),
+                function(json) { // need to handle possible http error and retry props (store array of requested)
+                    if (json) {
+                        for (let i = 0; i < json.props.length; i++) {
+                            let prop = json.props[i];
+                            let aProp = allProps[prop.id];
+                            if (aProp && aProp.rcounter !== undefined) {
+                                if (prop.success === false) {
+                                    if (aProp.rcounter === 0) { // only request legacy prop once and only if normal prop request fails.
+                                        palace.sendAssetQuery(prop.id);
+                                    }
+                                    retryProps.props.push(prop.id);
+                                    aProp.rcounter++;
+                                } else {
+                                    delete aProp.rcounter;
+                                    aProp.setInfo(prop);
+                                    aProp.requestPropImage(json.img_url + aProp.id);
+                                }
+                            }
+                        }
+
+                        if (retryProps.props.length > 0) {
+                            setTimeout(function() {
+                                loadProps(dedup(retryProps.props));
+                                retryProps.delay += 1000;
+                                retryProps.props = [];
+                            }, retryProps.delay);
+                        } else {
+                            retryProps.delay = 2500;
+                        }
+                    }
                 },
-                JSON.stringify(toLoad)
+                function(status) { // handle error, maybe retry upload
+                    logmsg('Prop download failed (HTTP ERROR): '+status);
+                }
             );
         }
 	}
@@ -421,31 +431,11 @@ function cacheBagProp(id,toUpload,callback) {
 	var store = propBagDB.transaction("props","readonly").objectStore("props");
 	var get = store.get(id);
 	get.onsuccess = function(event) {
-		var aProp = new PalaceProp(id,get.result);
+		let aProp = new PalaceProp(id,get.result);
 		allProps[id] = aProp;
 		if (callback) callback();
 		if (toUpload) {
-			var p = {
-                props:[
-                        {
-                            format:aProp.blob.type.split('/')[1],
-                            name:aProp.name,
-                            size:{w:aProp.w,h:aProp.h},
-                            offsets:{x:aProp.x,y:aProp.y},
-                            flags:aProp.encodePropFlags,
-                            id:aProp.id,
-                            crc:0
-                        }
-                    ]
-            };
-			httpPostAsync(
-				palace.mediaUrl + 'webservice/props/new/',
-				propUploadCallBack,
-				function(status,response) {
-					logmsg('Prop upload request failed (HTTP ERROR): '+status+'\n\n'+response);
-				},
-				JSON.stringify(p)
-			);
+			uploadPropInfo(aProp);
 		}
 	};
 }
@@ -745,7 +735,7 @@ function processVideo(file,dither,resizer,endedCallBack) {
 		if (this.currentTime >= this.duration) {
 			this.onseeked = null;
 		}
-		if (frameCount >= 256) {
+		if (frameCount >= 556) {
 			vid.onended();
 			return;
 		}

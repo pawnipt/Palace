@@ -11,7 +11,8 @@ class PalaceUser {
 		this.domAvatar = document.createElement('div');
 		this.style = this.domAvatar.style;
 		this.domNametag = document.createElement('div');
-
+		this.domNametag.innerText = this.name;
+		
 		this.setAvatarLocation();
 		if (entered) {
 			this.shrink();
@@ -26,7 +27,7 @@ class PalaceUser {
 		this.domAvatar.appendChild(this.domNametag);
 		this.setDomProps();
 		palace.container.appendChild(this.domAvatar);
-		this.setName();
+		this.setName(true);
 
 	}
 
@@ -272,8 +273,8 @@ class PalaceUser {
 		}
 	}
 
-	setName() {
-		this.domNametag.innerText = this.name;
+	setName(dont) {
+		if (!dont) this.domNametag.innerText = this.name;
 		this.nameWidth = this.domNametag.offsetWidth;
 		this.nameHeight = this.domNametag.offsetHeight;
 		this.setNameLocation();
