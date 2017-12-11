@@ -299,7 +299,7 @@ function initializePropBagDB() {
                         get.onsuccess = function(event) {
                             let item = get.result;
                             item.prop.blob = dataURItoBlob(item.prop.img);
-                            console.log(item)
+                            //console.log(item)
                     		delete item.prop.img;
                             let put = store.put(item);
                             put.onerror = function() {
