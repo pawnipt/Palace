@@ -16,9 +16,11 @@ class PalaceUser {
 		 Keeping at least one filter applied to prevent
 		 element offsets visually glitching when a
 		 filter is applied and removed */
-		if (/^win/.test(process.platform)) {
-			this.putFilters(['grayscale(0%)']);
-		}
+
+		 // only appears to be a problem when running in a vm without d3 support (disabling for now)
+		//if (/^win/.test(process.platform)) {
+			//this.putFilters(['grayscale(0%)']);
+		//}
 
 		this.setAvatarLocation();
 		if (entered) {
