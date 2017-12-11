@@ -12,16 +12,6 @@ class PalaceUser {
 		this.style = this.domAvatar.style;
 		this.domNametag = document.createElement('div');
 
-		/* Fixes a bug that happens on windows;
-		 Keeping at least one filter applied to prevent
-		 element offsets visually glitching when a
-		 filter is applied and removed */
-
-		 // only appears to be a problem when running in a vm without d3 support (disabling for now)
-		//if (/^win/.test(process.platform)) {
-			//this.putFilters(['grayscale(0%)']);
-		//}
-
 		this.setAvatarLocation();
 		if (entered) {
 			this.shrink();
@@ -36,7 +26,6 @@ class PalaceUser {
 		this.domAvatar.appendChild(this.domNametag);
 		this.setDomProps();
 		palace.container.appendChild(this.domAvatar);
-		this.domAvatar.offsetWidth; // hack to force update css changes
 		this.setName();
 
 	}

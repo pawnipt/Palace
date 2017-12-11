@@ -17,12 +17,8 @@ body {
 }
 
 .avatar {
-    will-change: transform;
   z-index             : 55;
-  box-sizing          : border-box;
   position            : absolute;
-  top                 : 0;
-  left                : 0;
   width               : 220px;
   height              : 220px;
   overflow            : visible;
@@ -36,8 +32,7 @@ body {
   white-space         : break-word;
   backface-visibility : hidden;
   transition-property : transform,
-                        filter,
-                        opacity;
+                        filter;
   transition-duration : 0.2s,
                         0.15s,
                         0.3s;
@@ -45,17 +40,15 @@ body {
 }
 
 .avprop {
-
-  z-index             : -1;
-  position            : absolute;
-  top                 : 88px;
-  left                : 88px;
-  background-repeat   : no-repeat;
-  transition          : opacity 0.3s;
+  z-index           : -1;
+  position          : absolute;
+  top               : 88px;
+  left              : 88px;
+  background-repeat : no-repeat;
+  transition        : opacity 0.3s;
 }
 
 .avnametag {
-    will-change: transform;
   display             : inline-block;
   position            : relative;
   top                 : 122px;
@@ -73,7 +66,6 @@ body {
   position            : absolute;
   background-repeat   : no-repeat;
   background-position : center;
-  backface-visibility : hidden;
 }
 
 .spinloading {
@@ -110,14 +102,13 @@ body {
 }
 
 #container {
-  position            : relative;
-  top                 : 45px;
-  overflow            : hidden;
-  backface-visibility : hidden;
-  transform-origin    : 0 0;
-  transition          : transform 0.3s,
-                        width 0.3s,
-                        height 0.3s;
+  position         : relative;
+  top              : 45px;
+  overflow         : hidden;
+  transform-origin : 0 0;
+  transition       : transform 0.3s,
+                     width 0.3s,
+                     height 0.3s;
 }
 
 #mainlayer {
@@ -138,19 +129,17 @@ body {
 }
 
 .chatBubble {
-  z-index                : 58;
-  display                : inline-block;
-  position               : absolute;
-  max-width              : 169px;
-  margin                 : 0px;
-  padding                : 1px;
-  overflow               : auto;
-  text-align             : center;
-  font-size              : medium;
-  -webkit-font-smoothing : subpixel-antialiased;
-  word-wrap              : break-word;
-  backface-visibility    : hidden;
-  pointer-events         : none;
+  z-index             : 58;
+  display             : inline-block;
+  position            : absolute;
+  max-width           : 169px;
+  padding             : 1px;
+  overflow            : auto;
+  text-align          : center;
+  font-size           : medium;
+  word-wrap           : break-word;
+  backface-visibility : hidden;
+  pointer-events      : none;
 }
 
 #navsearch {
