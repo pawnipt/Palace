@@ -1402,9 +1402,11 @@ class PalaceClient extends PalaceProtocol {
 		this.canvas2.height = h;
 
 		if (this.theRoom) {
-			this.theRoom.context.lineJoin = 'round';
-			this.theRoom.context.lineCap = 'round';
-			this.theRoom.context.imageSmoothingEnabled = false;
+			[this.theRoom.context,this.theRoom.topcontext].forEach((ctx) => {
+				ctx.lineJoin = 'round';
+				ctx.lineCap = 'round';
+				ctx.imageSmoothingEnabled = false;
+			});
 		}
 		scale2Fit();
 		this.background.style.width = w+'px';
