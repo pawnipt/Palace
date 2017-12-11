@@ -712,6 +712,11 @@ function processVideo(file,dither,resizer,endedCallBack) {
 	vid.defaultMuted = true;
 
 	vid.onloadedmetadata = function() {
+        if (this.videoHeight === 0) {
+            vid.src = ''; // abort, no video track
+            endedCallBack();
+            return;
+        }
         resizer.setNewSize(this.videoWidth, this.videoHeight);
 		vid.width = this.videoWidth;
 		vid.height = this.videoHeight;
