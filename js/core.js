@@ -474,7 +474,7 @@ class PalaceRoom extends Renderer {
 	}
 
 	mouseMove(event) {
-		if (palace.theRoom && palace.theUser) {
+		if (this.users && palace.theUser) {
 			var isDrawing = document.getElementById('drawcheckbox').checked;
 
 			if (isDrawing) {
