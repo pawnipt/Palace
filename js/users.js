@@ -6,28 +6,39 @@ class PalaceUser {
 
 		this.cssFilters = {};
 		this.cssTransforms = {};
-
 		this.domProp = [];
+		this.nameTagTranslate = '';
+
 		this.domAvatar = document.createElement('div');
 		this.style = this.domAvatar.style;
 		this.domNametag = document.createElement('div');
 		this.domNametag.innerText = this.name;
-		
-		this.setAvatarLocation();
-		if (entered) {
-			this.shrink();
 
-		}
+		this.domNametag.style.transition = 'none';
 
-		this.setColor();
+
 
 		this.domAvatar.className = 'avatar';
 		this.domNametag.className = 'avnametag';
 
-		this.domAvatar.appendChild(this.domNametag);
-		this.setDomProps();
-		palace.container.appendChild(this.domAvatar);
+		palace.container.appendChild(this.domNametag);
+
 		this.setName(true);
+
+		this.setAvatarLocation(true);
+		if (entered) {
+			this.shrink();
+		}
+
+		this.setDomProps();
+		this.setColor();
+
+		palace.container.appendChild(this.domAvatar);
+		this.domAvatar.offsetWidth;
+
+		if (!entered) {
+			this.domNametag.style.transition = '';
+		}
 
 	}
 
@@ -51,6 +62,7 @@ class PalaceUser {
 			filters += this.cssFilters[name]+' ';
  		}
 		this.style.filter = filters;
+		this.domNametag.style.filter = filters;
 	}
 
 	putTransforms(transforms) {
@@ -73,6 +85,7 @@ class PalaceUser {
 			transforms += this.cssTransforms[name]+' ';
  		}
 		this.style.transform = transforms;
+		this.domNametag.style.transform = transforms.replace(/translate\([^\)]+\)/,this.nameTagTranslate);
 	}
 
 	setDomProps(dlPid) {
@@ -203,35 +216,29 @@ class PalaceUser {
 
 	findDomProp(pid) {
 		return this.domProp.find((d) => {
-			return d.constructor === Object && d.prop.id === pid;
+			return d.prop.id === pid;
 		});
 	}
 
-	changeUserProps(props,fromSelf) {
-
-		let same = (this.props.length === props.length &&
-			this.props.every( (v,i) => { return v === props[i] }));
-
-		this.props = props;
-
-		if (!same) {
-			loadProps(this.props,fromSelf);
-			if (this === palace.theUser) {
-				enablePropButtons();
-			}
-			this.setDomProps();
-			return true;
-		}
+	setName(dont) {
+		if (!dont) this.domNametag.innerText = this.name;
+		this.nameWidth = this.domNametag.offsetWidth;
+		this.nameHeight = this.domNametag.offsetHeight;
+		this.setNameLocation();
 	}
 
 	setNameLocation() {
 		let bounds = this.nameRectBounds;
-		this.domNametag.style.transform = 'translate('+bounds.x+'px, '+bounds.y+'px)';
+		this.nameTagTranslate = 'translate('+bounds.x+'px,'+bounds.y+'px)'
+		let s = this.domNametag.style.transform.replace(/translate\([^\)]+\)/,this.nameTagTranslate);
+		if (s === '') s = this.nameTagTranslate;
+		this.domNametag.style.transform = s;
+
 	}
 
-	setAvatarLocation() {
+	setAvatarLocation(dont) {
 		this.putTransforms(['translate('+(this.x-110)+'px,'+(this.y-110)+'px)']);
-		this.setNameLocation();
+		if (!dont) this.setNameLocation();
 	}
 
 	setColor() {
@@ -245,13 +252,13 @@ class PalaceUser {
 
 	poke() {
 		let end = () => {
-			this.style.transitionDuration = '0.2s, 0.15s, 0.3s';
+			this.domAvatar.removeEventListener('transitionend',end);
+			this.style.transitionDuration = '0.2s, 0.15s';
 			this.domAvatar.offsetWidth; // hack to force update css changes
 			this.removeTransforms(['scale','scale3d']);
-			this.domAvatar.removeEventListener('transitionend',end);
 		}
 
-		this.style.transitionDuration = '0.01s, 0.15s, 0.3s';
+		this.style.transitionDuration = '0.01s, 0.15s';
 		this.domAvatar.offsetWidth; // hack to force update css changes
 		this.putTransforms(['scale(0.95)','scale3d(1.1, 1, 1)']);
 
@@ -260,7 +267,10 @@ class PalaceUser {
 	}
 
 	grow() {
-		this.removeTransforms(['scale']);
+		setTimeout(() => {
+			this.domNametag.style.transition = '';
+			this.removeTransforms(['scale']);
+		},0);
 	}
 
 	shrink(exit) {
@@ -273,17 +283,14 @@ class PalaceUser {
 		}
 	}
 
-	setName(dont) {
-		if (!dont) this.domNametag.innerText = this.name;
-		this.nameWidth = this.domNametag.offsetWidth;
-		this.nameHeight = this.domNametag.offsetHeight;
-		this.setNameLocation();
-	}
+
 
 	removeFromDom() {
 		if (this.animateTimer) {
 			clearInterval(this.animateTimer);
 		}
+
+		palace.container.removeChild(this.domNametag);
 		palace.container.removeChild(this.domAvatar);
 	}
 
@@ -315,7 +322,24 @@ class PalaceUser {
 		if (y < 0) y = 0;
 		if (y > bgh-h) y = bgh-h;
 
-		return {x:(x-this.x+halfW),y:(y-this.y-halfH)};
+		return {x:x,y:y};
+	}
+
+	changeUserProps(props,fromSelf) {
+
+		let same = (this.props.length === props.length &&
+			this.props.every( (v,i) => { return v === props[i] }));
+
+		this.props = props;
+
+		if (!same) {
+			loadProps(this.props,fromSelf);
+			if (this === palace.theUser) {
+				enablePropButtons();
+			}
+			this.setDomProps();
+			return true;
+		}
 	}
 
 	popBubbles() {

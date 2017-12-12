@@ -17,25 +17,18 @@ body {
 }
 
 .avatar {
-  z-index             : 55;
+  z-index             : 54;
   position            : absolute;
   width               : 220px;
   height              : 220px;
   overflow            : visible;
   background-repeat   : no-repeat;
   background-position : center;
-  text-align          : center;
-  text-shadow         : 0px 0px 1px black,
-                        0px 0px 2px black,
-                        0px 1px 3px black;
-  font                : bold 18px sans-serif;
-  white-space         : break-word;
   backface-visibility : hidden;
   transition-property : transform,
                         filter;
   transition-duration : 0.2s,
-                        0.15s,
-                        0.3s;
+                        0.15s;
   pointer-events      : none;
 }
 
@@ -49,11 +42,21 @@ body {
 }
 
 .avnametag {
+  z-index             : 55;
   display             : inline-block;
-  position            : relative;
-  top                 : 122px;
+  position            : absolute;
+  text-align          : center;
+  text-shadow         : 0px 0px 1px black,
+                        0px 0px 2px black,
+                        0px 1px 3px black;
+  font                : bold 18px sans-serif;
   backface-visibility : hidden;
-  transition          : transform 0.2s;
+  transform-origin: 	50% -50%;
+  transition-property : transform,
+                        filter;
+  transition-duration : 0.2s,
+                        0.15s;
+  pointer-events      : none;
 }
 
 #soundplayer,
