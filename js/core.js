@@ -1052,7 +1052,7 @@ class PalaceRoom extends Renderer {
 			var user = this.getUser(userid);
 			this.users.forEach((u) => {
 				if (u !== user && palace.theUser !== u) {
-					u.putFilters(['blur(1px)','opacity(75%)']);
+					u.opacity('0.5');
 				}
 			});
 
@@ -1069,7 +1069,7 @@ class PalaceRoom extends Renderer {
 		if (user) {
 			this.users.forEach((u) => {
 				if (u !== user && palace.theUser !== u) {
-					u.removeFilters(['blur','opacity']);
+					u.opacity('');
 				}
 				if (u !== this.mouseHoverUser) {
 					u.removeFilters(['brightness','drop-shadow']);
