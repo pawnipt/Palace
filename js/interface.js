@@ -1154,7 +1154,8 @@ function requestDirectory() {
 
 function loadDirectoryList(list) {
 	directoryList = list;
-
+	if (!directoryList) return;
+	
 	let listbox = document.getElementById('navlistbox'),
 		navframe = document.getElementById('navframe'),
 		scount = directoryList.directory.length,
