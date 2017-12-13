@@ -102,6 +102,7 @@ body {
 .spotpic {
   position       : absolute;
   pointer-events : none;
+  backface-visibility : hidden;
 }
 
 .spotpic.ontop {
