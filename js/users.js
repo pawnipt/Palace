@@ -42,6 +42,11 @@ class PalaceUser {
 
 	}
 
+	opacity(value) {
+		this.domNametag.style.opacity = value;
+		this.style.opacity = value;
+	}
+
 	putFilters(filters) {
 		for (let i = 0; i < filters.length; i++) {
 			this.cssFilters[filters[i].match(/^[^\(]+/)] = filters[i];
@@ -253,12 +258,12 @@ class PalaceUser {
 	poke() {
 		let end = () => {
 			this.domAvatar.removeEventListener('transitionend',end);
-			this.style.transitionDuration = '0.2s, 0.15s';
+			this.style.transitionDuration = '0.2s, 0.15s, 0.2s';
 			this.domAvatar.offsetWidth; // hack to force update css changes
 			this.removeTransforms(['scale','scale3d']);
 		}
 
-		this.style.transitionDuration = '0.01s, 0.15s';
+		this.style.transitionDuration = '0.01s, 0.15s, 0.2s';
 		this.domAvatar.offsetWidth; // hack to force update css changes
 		this.putTransforms(['scale(0.95)','scale3d(1.1, 1, 1)']);
 
