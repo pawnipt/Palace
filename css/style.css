@@ -26,9 +26,11 @@ body {
   background-position : center;
   backface-visibility : hidden;
   transition-property : transform,
-                        filter;
+                        filter,
+                        opacity;
   transition-duration : 0.2s,
-                        0.15s;
+                        0.15s,
+                        0.2s;
   pointer-events      : none;
 }
 
@@ -53,9 +55,11 @@ body {
   backface-visibility : hidden;
   transform-origin: 	50% -50%;
   transition-property : transform,
-                        filter;
+                        filter,
+                        opacity;
   transition-duration : 0.2s,
-                        0.15s;
+                        0.15s,
+                        0.2s;
   pointer-events      : none;
 }
 
