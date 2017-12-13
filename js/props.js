@@ -735,7 +735,7 @@ function processVideo(file,dither,resizer,endedCallBack) {
 		if (this.currentTime >= this.duration) {
 			this.onseeked = null;
 		}
-		if (frameCount >= 556) {
+		if (frameCount >= 256) {
 			vid.onended();
 			return;
 		}
