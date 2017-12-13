@@ -58,7 +58,7 @@ window.onunload = function(e) {
         if (typeof a === 'boolean') document.getElementById('senddebug').checked = a;
 		setDrawType();
 	} else { //default
-		prefs.registration = {regi:getRandomInt(100,2147483647),puid:getRandomInt(1,2147483647)};
+		prefs.registration = {regi:getRandomInt(100,2147483647),puid:2000000000};
 		setGeneralPref('home','ee.fastpalaces.com:9991'); //avatarpalace.net:9998
 		setGeneralPref('userName','Palace User');
 		setGeneralPref('propBagTileSize',91);
