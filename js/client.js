@@ -1878,7 +1878,7 @@ class PalaceCrypt {
 	constructor(seed) {
 		this.gSeed = seed;
 		this.MySRand(666666);
-		this.gEncryptTable = new Array(512);
+		this.gEncryptTable = new Uint8Array(512);
 		for (var i = 0; i < 512; i++) {
 			this.gEncryptTable[i] = (this.MyRandom(256) & 0xff);
 		}

@@ -11,18 +11,18 @@ var logField = document.getElementById('log'),
 	keysDown = [];
 
 
-const electronSpellchecker = require('electron-spellchecker');
-const SpellCheckHandler = electronSpellchecker.SpellCheckHandler;
-const ContextMenuListener = electronSpellchecker.ContextMenuListener;
-const ContextMenuBuilder = electronSpellchecker.ContextMenuBuilder;
-window.spellCheckHandler = new SpellCheckHandler();
-window.spellCheckHandler.attachToInput();
-window.spellCheckHandler.switchLanguage(navigator.language); // Start off as "US English, America" ...maybe use navigator.language
-let contextMenuBuilder = new ContextMenuBuilder(window.spellCheckHandler,null,true);
-// Add context menu listener
-let contextMenuListener = new ContextMenuListener((info) => {
-	contextMenuBuilder.showPopupMenu(info);
-});
+// const electronSpellchecker = require('electron-spellchecker');
+// const SpellCheckHandler = electronSpellchecker.SpellCheckHandler;
+// const ContextMenuListener = electronSpellchecker.ContextMenuListener;
+// const ContextMenuBuilder = electronSpellchecker.ContextMenuBuilder;
+// window.spellCheckHandler = new SpellCheckHandler();
+// window.spellCheckHandler.attachToInput();
+// window.spellCheckHandler.switchLanguage(navigator.language); // Start off as "US English, America" ...maybe use navigator.language
+// let contextMenuBuilder = new ContextMenuBuilder(window.spellCheckHandler,null,true);
+// // Add context menu listener
+// let contextMenuListener = new ContextMenuListener((info) => {
+// 	contextMenuBuilder.showPopupMenu(info);
+// });
 
 
 
@@ -1155,7 +1155,7 @@ function requestDirectory() {
 function loadDirectoryList(list) {
 	directoryList = list;
 	if (!directoryList) return;
-	
+
 	let listbox = document.getElementById('navlistbox'),
 		navframe = document.getElementById('navframe'),
 		scount = directoryList.directory.length,

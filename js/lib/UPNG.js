@@ -2,10 +2,15 @@
 ;(function(){
 var UPNG = {};
 
-// Make available for import by `require()`
 var pako;
-window.UPNG = UPNG;
-pako = window.pako;
+if (typeof window !== 'undefined') {
+	window.UPNG = UPNG;
+	pako = window.pako;
+} else if (typeof self !== 'undefined') {
+	self.UPNG = UPNG;
+	pako = self.pako;
+}
+
 function log() { if (typeof process=="undefined" || process.env.NODE_ENV=="development") console.log.apply(console, arguments);  }
 (function(UPNG, pako){
 
@@ -516,7 +521,7 @@ UPNG.encode.compress = function(bufs, w, h, ps, forGIF, forbidPlte)
 		}
 	}
 
-	var brute = gotAlpha ? forGIF : false;		// brute : frames can only be copied, not "blended"
+	var brute = true;//gotAlpha ? forGIF : false;		// brute : frames can only be copied, not "blended"
 	var cc=plte.length;  //console.log(cc);
 	if(cc<=256 && forbidPlte==false) {
 		if(cc<= 2) depth=1;  else if(cc<= 4) depth=2;  else if(cc<=16) depth=4;  else depth=8;

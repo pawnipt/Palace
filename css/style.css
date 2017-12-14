@@ -1,15 +1,13 @@
 body {
-  position               : absolute;
-  margin                 : 0px;
-  overflow               : hidden;
-  background-color       : #b1b1b1;
-  font                   : medium sans-serif;
-
-  -webkit-font-smoothing : subpixel-antialiased;
-  -moz-user-select       : none;
-  -ms-user-select        : none;
-  -webkit-user-select    : none;
-  user-select            : none;
+  position            : absolute;
+  margin              : 0px;
+  overflow            : hidden;
+  background-color    : #b1b1b1;
+  font                : medium sans-serif;
+  -moz-user-select    : none;
+  -ms-user-select     : none;
+  -webkit-user-select : none;
+  user-select         : none;
 }
 
 .avpropholder {
@@ -17,10 +15,11 @@ body {
 }
 
 .avatar {
+    /* background-color: red; */
   z-index             : 54;
   position            : absolute;
-  width               : 220px;
-  height              : 220px;
+  width               : 44px;
+  height              : 44px;
   overflow            : visible;
   background-repeat   : no-repeat;
   background-position : center;
@@ -37,8 +36,6 @@ body {
 .avprop {
   z-index           : -1;
   position          : absolute;
-  top               : 88px;
-  left              : 88px;
   background-repeat : no-repeat;
   transition        : opacity 0.3s;
 }
@@ -51,9 +48,9 @@ body {
   text-shadow         : 0px 0px 1px black,
                         0px 0px 2px black,
                         0px 1px 3px black;
-  font                : bold 18px sans-serif;
+  font-weight         : bold;
   backface-visibility : hidden;
-  transform-origin: 	50% -50%;
+  transform-origin    : 50% -50%;
   transition-property : transform,
                         filter,
                         opacity;
@@ -100,9 +97,9 @@ body {
 }
 
 .spotpic {
-  position       : absolute;
-  pointer-events : none;
+  position            : absolute;
   backface-visibility : hidden;
+  pointer-events      : none;
 }
 
 .spotpic.ontop {
@@ -113,6 +110,8 @@ body {
   position         : relative;
   top              : 45px;
   overflow         : hidden;
+  font-family      : sans-serif;
+  font-size        : large;
   transform-origin : 0 0;
   transition       : transform 0.3s,
                      width 0.3s,
@@ -749,20 +748,19 @@ input[type="color"]::-webkit-color-swatch {
 }
 
 #log {
-  min-width              : 50px;
-  max-width              : 90%;
-  padding                : 2px;
-  padding-right          : 0px;
-  padding-left           : 0px;
-  opacity                : 0;
-  box-shadow             : inset 0 0 2px WindowFrame;
-  font-size              : medium;
-  -webkit-font-smoothing : subpixel-antialiased;
-  word-wrap              : break-word;
-  -moz-user-select       : initial;
-  -ms-user-select        : initial;
-  -webkit-user-select    : initial;
-  user-select            : initial;
+  min-width           : 50px;
+  max-width           : 90%;
+  padding             : 2px;
+  padding-right       : 0px;
+  padding-left        : 0px;
+  opacity             : 0;
+  box-shadow          : inset 0 0 2px WindowFrame;
+  font-size           : medium;
+  word-wrap           : break-word;
+  -moz-user-select    : initial;
+  -ms-user-select     : initial;
+  -webkit-user-select : initial;
+  user-select         : initial;
 }
 
 .userlogwhisper {

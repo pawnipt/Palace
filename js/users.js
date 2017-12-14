@@ -14,6 +14,8 @@ class PalaceUser {
 		this.domNametag = document.createElement('div');
 		this.domNametag.innerText = this.name;
 
+		//this.putTransforms(['translateZ(0)']);
+
 		this.domNametag.style.transition = 'none';
 
 
@@ -125,8 +127,9 @@ class PalaceUser {
 						this.domAvatar.appendChild(dd.div);
 					}
 					if (dlPid === prop.id) {
-						dd.div.offsetWidth; //hack to force it to render so that opacity will transition
-						dd.div.style.opacity = '';
+						setTimeout(function() {
+							dd.div.style.opacity = '';
+						},0);
 					}
 				} else if (wrongProp && d.prop) { // replace wrong prop with placeholder since new one isn't yet available
 					this.propPlaceHolder(i,d.div);
@@ -241,7 +244,7 @@ class PalaceUser {
 	}
 
 	setAvatarLocation(dont) {
-		this.putTransforms(['translate('+(this.x-110)+'px,'+(this.y-110)+'px)']);
+		this.putTransforms(['translate('+(this.x-21)+'px,'+(this.y-21)+'px)']);
 		if (!dont) this.setNameLocation();
 	}
 
