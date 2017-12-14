@@ -214,7 +214,8 @@ class PalaceProtocol {
 			}
 		} else {
 			console.log('Socket error: ' + err);
-			serverDown();
+			this.soc.destroy();
+			this.serverDown('Server has dropped your connection.');
 		}
 	}
 
@@ -1358,6 +1359,8 @@ class PalaceClient extends PalaceProtocol {
 			if (this.currentBG === bg.src) {
 				this.maximizeRoomView("url(img/error.png)");
 			}
+			this.currentBG = '';
+			this.lastLoadedBG = '';
 		};
 
 		bg.src = url;
@@ -1859,15 +1862,8 @@ class PalaceRegistration {
 	computeLicenseCRC(v) {
 		var mask = PalaceRegistration.CRCMask;
 		var crc = PalaceRegistration.CRC_MAGIC;
-		var p = BufferView.alloc(4);
-		p.littleEndian = false;
-		p.setInt32(0,v);
-		for (var i = 0; i < 4; i++) {
-			if ((crc & 0x80000000) == 0) {
-				crc = (crc << 1) ^ mask[p.getUint8(i)];
-			} else {
-				crc = ((crc << 1) + 1) ^ mask[p.getUint8(i)];
-			}
+		for (var i = 4; --i >= 0;) {
+			crc = ((crc << 1) | ((crc & 0x80000000)?1:0)) ^ mask[(v >> (i*8) & 0xFF)];
 		}
 		return crc;
 	}
@@ -1949,8 +1945,12 @@ class LegacyPropDecoder {
 		c.width = 44;
 		c.height = 44;
 		this.ctx = c.getContext("2d");
+
 		this.imageData = this.ctx.getImageData(0, 0, 44, 44);
 		this.colors = LegacyPropDecoder.colorPalette;
+
+		this.empty = new Uint8Array(7744);
+		this.buf32 = new Uint32Array(this.imageData.data.buffer);
 	}
 
 	PROP_20BIT(flags) { return Boolean(flags & 64); }
@@ -1959,10 +1959,9 @@ class LegacyPropDecoder {
 	PROP_16BIT(flags) { return Boolean(flags & 128); }
 
 	decode8bit(b,callback) {
-		let Read = 0,Skip = 0,l = 0,x = 7744,o = 0,index = 0,len = b.length,
-			buf = new ArrayBuffer(7744),
-			buf8 = new Uint8ClampedArray(buf),
-			data = new Uint32Array(buf);
+		let Read = 0,Skip = 0,l = 0,x = 7744,o = 0,index = 0,len = b.length;
+
+		this.imageData.data.set(this.empty);
 
 		while (x > 0) {
 			if (o>=len) break; //went too far
@@ -1977,13 +1976,13 @@ class LegacyPropDecoder {
 			o++;
 
 			while (Read--) {
-				data[l] = this.colors[index = b[o]];
+				this.buf32[l] = this.colors[index = b[o]];
 				o++;
 				l++;
 			}
 		}
 
-		this.imageData.data.set(buf8);
+
 		this.ctx.putImageData(this.imageData,0,0);
 		this.ctx.canvas.toBlob(callback);
 	}
@@ -2022,7 +2021,6 @@ class LegacyPropDecoder {
 			inc+=5;
 		}
 
-		//this.imageData.data.set(buf8);
 		this.ctx.putImageData(this.imageData,0,0);
 		this.ctx.canvas.toBlob(callback);
 	}
@@ -2053,7 +2051,6 @@ class LegacyPropDecoder {
 			inc+=5;
 		}
 
-		//this.imageData.data.set(buf8);
 		this.ctx.putImageData(this.imageData,0,0);
 		this.ctx.canvas.toBlob(callback);
 	}

@@ -894,9 +894,8 @@ class PalaceRoom extends Renderer {
 				user.remove();
 			} else {
 				logmsg(user.name+' has '+(info.logoff?'signed off.':'left the room.'));
-				user.shrink(10);
+				user.shrink(true);
 			}
-
 			return true;
 		}
 	}
@@ -1067,16 +1066,16 @@ class PalaceRoom extends Renderer {
 		document.getElementById('chatbox').placeholder = 'Chat...';
 		var user = this.getUser(this.whisperUserID);
 		if (user) {
-			this.users.forEach((u) => {
-				if (u !== user && palace.theUser !== u) {
-					u.opacity('');
-				}
-				if (u !== this.mouseHoverUser) {
-					u.removeFilters(['brightness','drop-shadow']);
-				}
-			});
 			user.poke();
+			if (user !== this.mouseHoverUser) {
+				user.removeFilters(['brightness','drop-shadow']);
+			}
 		}
+		this.users.forEach((u) => {
+			if (u !== user && palace.theUser !== u) {
+				u.opacity('');
+			}
+		});
 		this.whisperUserID = null;
 	}
 

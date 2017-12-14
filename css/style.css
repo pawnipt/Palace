@@ -3,8 +3,8 @@ body {
   margin                 : 0px;
   overflow               : hidden;
   background-color       : #b1b1b1;
-  font-family            : sans-serif;
-  font-size              : medium;
+  font                   : medium sans-serif;
+
   -webkit-font-smoothing : subpixel-antialiased;
   -moz-user-select       : none;
   -ms-user-select        : none;

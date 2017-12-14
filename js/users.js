@@ -135,8 +135,6 @@ class PalaceUser {
 				}
 			} else if (d.prop.animated) {
 				animatedProps.push(d);
-			} else {
-				this.setDomPropVisibility(d,true);
 			}
 		}
 
@@ -152,8 +150,9 @@ class PalaceUser {
 
 		if (animatedProps.length > 1) {
 			this.animate(animatedProps);
+		} else if (animatedProps.length === 1) { // unhide potentially hidden animated prop
+			this.setDomPropVisibility(animatedProps[0],true);
 		}
-
 	}
 
 	propPlaceHolder(i,div) {
@@ -260,12 +259,12 @@ class PalaceUser {
 			this.domAvatar.removeEventListener('transitionend',end);
 			this.style.transitionDuration = '0.2s, 0.15s, 0.2s';
 			this.domAvatar.offsetWidth; // hack to force update css changes
-			this.removeTransforms(['scale','scale3d']);
+			this.removeTransforms(['scale']);
 		}
 
 		this.style.transitionDuration = '0.01s, 0.15s, 0.2s';
 		this.domAvatar.offsetWidth; // hack to force update css changes
-		this.putTransforms(['scale(0.95)','scale3d(1.1, 1, 1)']);
+		this.putTransforms(['scale(1.09, 0.95)']);
 
 
 		this.domAvatar.addEventListener('transitionend',end);
@@ -304,7 +303,6 @@ class PalaceUser {
 		this.removeFromDom();
 		palace.theRoom.users.splice(palace.theRoom.users.indexOf(this),1);
 		palace.theRoom.setUserCount();
-		palace.theRoom.reDraw();
 	}
 
 
