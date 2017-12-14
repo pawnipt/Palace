@@ -693,11 +693,12 @@ class ImageDown {
 	}
 }
 
-function processVideo(file,dither,resizer,endedCallBack) {
+function videoToPng(file,dither,resizer,endedCallBack) {
 	let vid = document.createElement('video'),
 		sampleInterval = Math.round(1000 / 20),
 		frameCount = 0,
-		gifEncoder;
+		frames = [],
+        delays = [];
 
 	vid.defaultMuted = true;
 
@@ -710,23 +711,12 @@ function processVideo(file,dither,resizer,endedCallBack) {
         resizer.setNewSize(this.videoWidth, this.videoHeight);
 		vid.width = this.videoWidth;
 		vid.height = this.videoHeight;
-		gifEncoder = new GIF({
-			workers: 3,
-			quality: 5,
-			width:resizer.width,
-			height:resizer.height,
-			workerScript: 'js/workers/gif.worker.js',
-			dither: dither,
-			globalPalette: false
-		});
-		gifEncoder.on('finished', function(blob) {
-			endedCallBack(blob,gifEncoder.options.width,gifEncoder.options.height);
-		});
+
 	};
 	vid.onended = function() {
 		this.src = ''
 		resizer.finish(function() {
-			gifEncoder.render();
+            encodeAPNG(frames,resizer.width,resizer.height,delays,endedCallBack);
         });
 	};
 	let doFrame = function() {
@@ -741,7 +731,8 @@ function processVideo(file,dither,resizer,endedCallBack) {
 		}
         resizer.resize(this,
             function(data) { // video, dont-clear buffer canvas, async receive!
-                gifEncoder.addFrame(data,{delay:sampleInterval});
+                frames.push(data.data.buffer);
+                delays.push(sampleInterval);
             }
         );
 		this.currentTime = this.currentTime + sampleInterval / 1000;
@@ -752,9 +743,7 @@ function processVideo(file,dither,resizer,endedCallBack) {
 	vid.onseeked = doFrame;
 
 	vid.onerror = function() {
-		if (gifEncoder) {
-            gifEncoder.abort();
-        }
+
         console.log('error with video');
     	resizer.destroy();
 		endedCallBack();
@@ -763,54 +752,172 @@ function processVideo(file,dither,resizer,endedCallBack) {
 	vid.src = file.path;
 }
 
-function processGif(file,dither,resizer,endedCallBack) {
+function encodeAPNG(frames,w,h,delays,callback) {
+    var pngWork = new Worker('js/workers/apng-worker.js');
+    pngWork.addEventListener('message', function(e) {
+        var blob = new Blob([e.data.buffer],{type:'image/apng'});
+        callback(blob,w,h);
+        this.terminate();
+    });
+    pngWork.addEventListener('error', function(e) {
+        this.terminate();
+    });
+    pngWork.postMessage({frames:frames,width:w,height:h,delays:delays},frames);
+}
 
-	let gifEncoder;
+function gifToPng(file,dither,resizer,endedCallBack) {
+
+	let frames = [],
+        delays = [];
 
 	let decoder = new GifDecoder(file,
 		function(w,h,nbrFrames) { // start
             if (nbrFrames === 1) {
                 // if gif has only one frame then import as a normal 32bit image
-                resizer.alphaTrim = false;
                 resizer.exportAsCanvas = true;
                 processImage(file,resizer,endedCallBack);
                 return true; // aborts GifDecoder
             }
             resizer.setNewSize(w,h);
-			gifEncoder = new GIF({
-				workers: 3,
-				quality: 5,
-				width:resizer.width,
-				height:resizer.height,
-				workerScript: 'js/workers/gif.worker.js',
-				dither: dither, //FloydSteinberg-serpentine
-				globalPalette: false
-		 	});
 
-		 	gifEncoder.on('finished', function(blob) {
-				endedCallBack(blob,gifEncoder.options.width,gifEncoder.options.height);
-			});
 		},
 		function(image,transparent,delay) { // recieved frame
             resizer.resize(image,function(data) {
-                gifEncoder.setOption('transparent',transparent);
-    			gifEncoder.addFrame(data, {delay:delay});
+                frames.push(data.data.buffer);
+                delays.push(delay);
             });
 		},
 		function(err) { // finished (err should be undefined)
 			if (err) {
 				endedCallBack();
-				gifEncoder.abort();
-    			gifEncoder.frames = [];
 			} else {
                 resizer.finish(function() {
-                    gifEncoder.render();
+                    encodeAPNG(frames,resizer.width,resizer.height,delays,endedCallBack);
                 });
 			}
 		}
 	);
 
 }
+
+// function videoToGif(file,dither,resizer,endedCallBack) {
+// 	let vid = document.createElement('video'),
+// 		sampleInterval = Math.round(1000 / 20),
+// 		frameCount = 0,
+// 		gifEncoder;
+//
+// 	vid.defaultMuted = true;
+//
+// 	vid.onloadedmetadata = function() {
+//         if (this.videoHeight === 0) {
+//             vid.src = ''; // abort, no video track
+//             endedCallBack();
+//             return;
+//         }
+//         resizer.setNewSize(this.videoWidth, this.videoHeight);
+// 		vid.width = this.videoWidth;
+// 		vid.height = this.videoHeight;
+// 		gifEncoder = new GIF({
+// 			workers: 3,
+// 			quality: 5,
+// 			width:resizer.width,
+// 			height:resizer.height,
+// 			workerScript: 'js/workers/gif.worker.js',
+// 			dither: dither,
+// 			globalPalette: false
+// 		});
+// 		gifEncoder.on('finished', function(blob) {
+// 			endedCallBack(blob,gifEncoder.options.width,gifEncoder.options.height);
+// 		});
+// 	};
+// 	vid.onended = function() {
+// 		this.src = ''
+// 		resizer.finish(function() {
+// 			gifEncoder.render();
+//         });
+// 	};
+// 	let doFrame = function() {
+// 		this.oncanplaythrough = null;
+// 		this.onerror = null;
+// 		if (this.currentTime >= this.duration) {
+// 			this.onseeked = null;
+// 		}
+// 		if (frameCount >= 256) {
+// 			vid.onended();
+// 			return;
+// 		}
+//         resizer.resize(this,
+//             function(data) { // video, dont-clear buffer canvas, async receive!
+//                 gifEncoder.addFrame(data,{delay:sampleInterval});
+//             }
+//         );
+// 		this.currentTime = this.currentTime + sampleInterval / 1000;
+//         frameCount++
+// 		//console.log(Math.round(this.currentTime/this.duration*100) + '% frame:'+(frameCount++));
+// 	};
+// 	vid.oncanplaythrough = doFrame;
+// 	vid.onseeked = doFrame;
+//
+// 	vid.onerror = function() {
+// 		if (gifEncoder) {
+//             gifEncoder.abort();
+//         }
+//         console.log('error with video');
+//     	resizer.destroy();
+// 		endedCallBack();
+// 	};
+//
+// 	vid.src = file.path;
+// }
+
+// function gifToGif(file,dither,resizer,endedCallBack) {
+//
+// 	let gifEncoder;
+//
+// 	let decoder = new GifDecoder(file,
+// 		function(w,h,nbrFrames) { // start
+//             if (nbrFrames === 1) {
+//                 // if gif has only one frame then import as a normal 32bit image
+//                 resizer.alphaTrim = false;
+//                 resizer.exportAsCanvas = true;
+//                 processImage(file,resizer,endedCallBack);
+//                 return true; // aborts GifDecoder
+//             }
+//             resizer.setNewSize(w,h);
+// 			gifEncoder = new GIF({
+// 				workers: 3,
+// 				quality: 5,
+// 				width:resizer.width,
+// 				height:resizer.height,
+// 				workerScript: 'js/workers/gif.worker.js',
+// 				dither: dither, //FloydSteinberg-serpentine
+// 				globalPalette: false
+// 		 	});
+//
+// 		 	gifEncoder.on('finished', function(blob) {
+// 				endedCallBack(blob,gifEncoder.options.width,gifEncoder.options.height);
+// 			});
+// 		},
+// 		function(image,transparent,delay) { // recieved frame
+//             resizer.resize(image,function(data) {
+//                 gifEncoder.setOption('transparent',transparent);
+//     			gifEncoder.addFrame(data, {delay:delay});
+//             });
+// 		},
+// 		function(err) { // finished (err should be undefined)
+// 			if (err) {
+// 				endedCallBack();
+// 				gifEncoder.abort();
+//     			gifEncoder.frames = [];
+// 			} else {
+//                 resizer.finish(function() {
+//                     gifEncoder.render();
+//                 });
+// 			}
+// 		}
+// 	);
+//
+// }
 
 
 function createNewProps(list) {
@@ -837,14 +944,13 @@ function createNewProps(list) {
 			let file = files.pop();
 
 			if (file.type == 'image/gif') {
-                resizer.alphaTrim = 85;
                 resizer.exportAsCanvas = false;
-				processGif(file,dither,resizer,port); // change so if not animated, processed as regular image
+				gifToPng(file,dither,resizer,port); // change so if not animated, processed as regular image
 			} else if (file.type.match(/^video\/.*/)){
                 resizer.exportAsCanvas = false;
-				processVideo(file,dither,resizer,port);
+				videoToPng(file,dither,resizer,port);
 			} else {
-                resizer.exportAsCanvas = true;
+                resizer.exportAsCanvas = false;
                 processImage(file,resizer,port);
 			}
 		} else {
@@ -864,10 +970,15 @@ function processImage(file,resizer,endedCallBack) {
     let img = document.createElement('img');
 
     img.onload = function() {
-        resizer.resize(this,function(canvas) {
-            canvas.toBlob(function(blob) {
-                endedCallBack(blob,canvas.width,canvas.height);
-            });
+        resizer.resize(this,function(data) {
+            endedCallBack(
+                new Blob([UPNG.encode([data.data.buffer], resizer.width, resizer.height)],{type:'image/png'}),
+                resizer.width,
+                resizer.height
+            );
+            // canvas.toBlob(function(blob) {
+            //     endedCallBack(blob,canvas.width,canvas.height);
+            // });
         });
     };
 
