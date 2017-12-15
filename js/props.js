@@ -1,8 +1,12 @@
 // @flow
 
-var allProps = {},
-    nbrProps = 0, // keep record of the number of props loaded into memory because counting allProps object properties is inefficient
+var cacheProps = {},
+    nbrProps = 0, // keep record of the number of props loaded into memory because counting cacheProps object properties is inefficient
     retryProps = {props:[],delay:2500},
+    propBag = document.getElementById('props'),
+    propBagRetainer = document.getElementById('propbagretainer'),
+    selectedBagProps = [],
+	dragPropID = null,
     propBagDB;
 
 
@@ -12,6 +16,281 @@ const   PROP_HEAD = 2,
     	PROP_ANIMATED = 16,
     	PROP_BOUNCE = 32,
     	PROP_PNG = 1024;
+
+
+function refreshPropBagView(refresh) {
+	var bagWidth = propBag.clientWidth,
+		tileSize = prefs.general.propBagTileSize,
+		visibleColumns = (bagWidth / tileSize).fastRound(),
+		visibleRows = ((window.innerHeight - palace.container.offsetTop) / tileSize).fastRound(), // 45 is main toolbar height
+		count = visibleRows * visibleColumns,
+		max = propBagList.length,
+		scroll = (propBag.scrollTop/tileSize).fastRound(),
+		toView = {};
+
+	var cheight = ((propBagList.length/visibleColumns).fastRound()*tileSize).fastRound();
+	if (Number(propBagRetainer.dataset.height) !== cheight) propBagRetainer.style.height = cheight + 'px';
+	propBagRetainer.dataset.height = cheight;
+
+	if (visibleColumns < 1) visibleColumns = 1;
+	scroll -= 2; // -2 for a little extra loaded up top
+	if (scroll < 0) scroll = 0;
+
+	for (var y = scroll; y < visibleRows+scroll+4; y++) { // +4 for a little extra loaded down below
+		for (var x = 0; x < visibleColumns; x++) {
+			var propIndex = y*visibleColumns+x;
+			if (max > propIndex) toView[propBagList[propIndex]] = {x:x*tileSize,y:y*tileSize};
+		}
+	}
+	var keys = Object.keys(toView);
+
+	var cachedTiles = {}; // prevent excessive database calls
+	var children = propBag.children;
+
+	for (var i = children.length - 1; i >= 0; i--) {
+		var tile = children[i];
+		var pid = tile.dataset.pid;
+		var preTile = toView[pid];
+		if (tile !== propBagRetainer && (refresh || !preTile || preTile.x !== Number(tile.dataset.left) || preTile.y !== Number(tile.dataset.top))) {
+			cachedTiles[pid] = children[i];
+			propBag.removeChild(children[i]);
+		}
+	}
+
+	var alreadyInDom = function(id) {
+		for (var i = children.length - 1; i >= 0; i--) {
+			if (id == Number(children[i].dataset.pid)) {
+				return children[i];
+			}
+		}
+	};
+
+	// free up transaction queue...
+	for (let i = 0, l = keys.length; i < l; i++) {
+		delete getTransactions[keys[i]];
+	}
+	for (let i = 0, pids = Object.keys(getTransactions), l = keys.length; i < l; i++) {
+		let trans = getTransactions[pids[i]];
+		if (trans) trans.abort();
+	}
+	getTransactions = {};
+
+
+	for (let i = 0, l = keys.length; i < l; i++) {
+		let key = keys[i];
+		let e = toView[key];
+		let pid = Number(key);
+		let pc = alreadyInDom(pid);
+		let img;
+		if (!pc) {
+  			if (cachedTiles[key]) {
+  				pc = cachedTiles[key];
+  			} else {
+				justadded = true;
+  				pc = document.createElement('div');
+
+				pc.dataset.pid = pid;
+				img = document.createElement('img');
+				img.className = 'bagprop';
+				getBagProp(pid,img);
+				pc.appendChild(img);
+  			}
+			if (Number(pc.dataset.size) !== tileSize) {
+				pc.style.width = tileSize+'px';
+				pc.style.height = tileSize+'px';
+				pc.dataset.size = tileSize;
+			}
+
+			if (Number(pc.dataset.left) !== e.x || Number(pc.dataset.top) !== e.y) {
+				pc.style.transform = 'translate('+e.x+'px,'+e.y+'px)';
+				// pc.style.left = e.x + 'px';
+				// pc.style.top = e.y + 'px';
+				pc.dataset.left = e.x;
+				pc.dataset.top = e.y;
+			}
+
+			propBag.appendChild(pc);
+		}
+		pc.className = selectedBagProps.indexOf(pid) > -1?'selectedbagprop':'';
+	}
+}
+
+(function () { // setup propBag
+	propBag.onscroll = function() {
+		refreshPropBagView();
+	};
+	let lastDragOver;
+	propBag.addEventListener("dragover",function(event) {
+		if (dragPropID) {
+			if (lastDragOver) lastDragOver.style.borderRight = '';
+			let target = this.getParent(event.target);
+			if (target) {
+                let pid = Number(target.dataset.pid);
+				let fromIndex = propBagList.indexOf(dragPropID);
+				let toIndex = propBagList.indexOf(pid);
+                if (fromIndex > toIndex) {
+                    target.style.borderLeft = '2px dashed black';
+                } else {
+                    target.style.borderRight = '2px dashed black';
+                }
+
+				lastDragOver = target;
+			}
+			event.dataTransfer.effectAllowed = 'move';
+			//event.dataTransfer.dropEffect = 'move';
+		} else {
+			this.style.boxShadow = '0px 0px 1px 10px LawnGreen inset';
+		}
+		event.preventDefault();
+		event.stopImmediatePropagation();
+
+	},true);
+	propBag.addEventListener("drop",function(event) {
+		if (!dragPropID) {
+			this.style.boxShadow = '';
+			var dt = event.dataTransfer;
+			if (dt.items) {
+				for (let i = 0; i < dt.items.length; i++) {
+					let item = dt.items[i];
+					if (item.kind == "file") {
+						createNewProps([item.getAsFile()]);
+						return;
+					} else if (item.kind === 'string' && item.type === 'text/uri-list') {
+						item.getAsString(function(str) {
+							httpGetAsync(str,'blob',function(blob) {
+								if (blob.type.match(/^image|video/)) {
+									blob.path = URL.createObjectURL(blob);
+									createNewProps([blob],function() { // finished import
+										URL.revokeObjectURL(blob.path);
+									});
+								}
+							});
+						});
+						return;
+					}
+				}
+			} else if (dt.files && dt.files.length > 0) {
+				createNewProps(dt.files);
+			}
+		} else {
+			let target = this.getParent(event.target);
+			if (target) {
+				let pid = Number(target.dataset.pid);
+				let fromIndex = propBagList.indexOf(dragPropID);
+				let toIndex = propBagList.indexOf(pid);
+				if (toIndex > -1 && fromIndex > -1) {
+					propBagList.splice(toIndex, 0, propBagList.splice(fromIndex, 1)[0]);
+					refreshPropBagView(true);
+				}
+			}
+		}
+	},true);
+	propBag.ondragleave = function(event) {
+		this.style.boxShadow = '';
+		if (lastDragOver) {
+			lastDragOver.style.borderRight = '';
+            lastDragOver.style.borderLeft = '';
+			lastDragOver = null;
+		}
+	};
+	propBag.ondragend = function(event) {
+		dragPropID = null;
+		if (lastDragOver) {
+            lastDragOver.style.borderRight = '';
+            lastDragOver.style.borderLeft = '';
+			lastDragOver = null;
+		}
+	};
+	propBag.ondragstart = function(event) {
+		dragPropID = Number(event.target.parentNode.dataset.pid);
+		var img = event.target;
+		var n = img.parentNode.className;
+		img.parentNode.className = '';
+		event.dataTransfer.setDragImage(img,img.width/2,img.height/2);
+		setTimeout(function() {
+			img.parentNode.className = n;
+		},0);
+	};
+	propBag.getParent = function(target) { // adding function to element! lol
+		if (target.constructor === HTMLDivElement || target.constructor === HTMLImageElement) {
+			if (target.constructor === HTMLImageElement) return target.parentNode;
+			return target;
+		}
+	};
+	propBag.ondblclick = function(event) {
+		if (this.getParent(event.target).dataset.pid) wearSelectedProps();
+	};
+	propBag.onmousemove = function(event) {
+		if (event.target === this && event.x-this.offsetLeft < 2) {
+			this.style.cursor = 'col-resize';
+		} else {
+			this.style.cursor = 'auto';
+		}
+	};
+	propBag.onmousedown = function(event) {
+		var newTarget = this.getParent(event.target);
+		if (event.target.constructor !== HTMLImageElement) {
+			event.preventDefault();
+		}
+		if (newTarget && (newTarget.className == '' || event.shiftKey || platformCtrlKey(event))) {
+			var newPid = Number(newTarget.dataset.pid);
+			if (newPid != null) {
+
+				var lastPid;
+				if (!platformCtrlKey(event)) {
+					if (event.shiftKey) lastPid = selectedBagProps[0];
+					selectedBagProps = [];
+				}
+
+				if (platformCtrlKey(event)) {
+					let already = selectedBagProps.indexOf(newPid);
+					if (already > -1) {
+						selectedBagProps.splice(already,1);
+					} else {
+						selectedBagProps.push(newPid);
+					}
+				} else if (!lastPid) {
+					selectedBagProps = [newPid];
+				} else {
+					let lastIdx = propBagList.indexOf(lastPid);
+					let newIdx = propBagList.indexOf(newPid);
+					let max = Math.max(newIdx,lastIdx);
+					let min = Math.min(newIdx,lastIdx);
+					selectedBagProps = propBagList.slice(min,max+1);
+					if (newIdx < lastIdx) {
+						selectedBagProps.reverse();
+					}
+				}
+				refreshPropBagView(true);
+				setPropButtons();
+			}
+		} else if (event.x-this.offsetLeft < 2) {
+			event.preventDefault();
+			let initialX = event.pageX-window.scrollX;
+			let initialW = this.offsetWidth;
+
+			let mouseMovePropBag = (event) => {
+				this.style.cursor = 'col-resize';
+				event.stopImmediatePropagation();
+				let w = initialX-event.x+initialW;
+				this.style.width = w+'px';
+				setGeneralPref('propBagWidth',w);
+				refreshPropBagView();
+				return false;
+			};
+			let mouseUpPropBag = function(event) {
+				event.stopImmediatePropagation();
+				window.removeEventListener('mouseup',mouseUpPropBag,true);
+				window.removeEventListener('mousemove',mouseMovePropBag,true);
+			};
+
+			window.addEventListener('mouseup',mouseUpPropBag,true);
+			window.addEventListener('mousemove',mouseMovePropBag,true);
+
+		}
+	};
+})();
+
 
 
 
@@ -25,10 +304,10 @@ class PalaceProp {
     	}
     	nbrProps++;
     	if (nbrProps > palace.theRoom.nbrRoomProps+66) { // limit props stored in memory
-    		for (var k in allProps) {
+    		for (var k in cacheProps) {
     			if (!palace.theRoom.propInUse(parseInt(k))) {
-                    URL.revokeObjectURL(allProps[k].src);
-    				delete allProps[k];
+                    URL.revokeObjectURL(cacheProps[k].src);
+    				delete cacheProps[k];
     				nbrProps--;
     			}
     		}
@@ -151,7 +430,7 @@ function uploadPropInfo(aProp) {
 
 
 function uploadProp(url,pid) {
-	var aProp = allProps[pid];
+	var aProp = cacheProps[pid];
 	if (aProp.blob && aProp.blob.size > 0) {
 
         var formData = new FormData();
@@ -184,12 +463,12 @@ function loadProps(pids,fromSelf,callback) {
 		var toLoad = {props:[]};
 		for (let i = 0; i < pids.length; i++) {
 			var pid = Number(pids[i]);
-			var aProp = allProps[pid];
+			var aProp = cacheProps[pid];
 			if (!aProp) {
 				if (propBagList.indexOf(pid) > -1) { // already have it in prop bag?
 					cacheBagProp(pid,fromSelf,callback); // potentially upload..
 				} else {
-					allProps[pid] = new PalaceProp(pid);
+					cacheProps[pid] = new PalaceProp(pid);
 					toLoad.props.push({id:pid});
 				}
 			} else if (aProp.rcounter !== undefined && aProp.rcounter > 0 && aProp.rcounter < 12) {
@@ -204,7 +483,7 @@ function loadProps(pids,fromSelf,callback) {
                     if (json) {
                         for (let i = 0; i < json.props.length; i++) {
                             let prop = json.props[i];
-                            let aProp = allProps[prop.id];
+                            let aProp = cacheProps[prop.id];
                             if (aProp && aProp.rcounter !== undefined) {
                                 if (prop.success === false) {
                                     if (aProp.rcounter === 0) { // only request legacy prop once and only if normal prop request fails.
@@ -397,7 +676,7 @@ function addPropsToDB(props) {
 function saveProp(pids,flush) {
     var props = [];
     pids.forEach(function(p) {
-        var prop = allProps[p];
+        var prop = cacheProps[p];
     	if (prop) {
             props.push(prop)
         }
@@ -432,7 +711,7 @@ function cacheBagProp(id,toUpload,callback) {
 	var get = store.get(id);
 	get.onsuccess = function(event) {
 		let aProp = new PalaceProp(id,get.result);
-		allProps[id] = aProp;
+		cacheProps[id] = aProp;
 		if (callback) callback();
 		if (toUpload) {
 			uploadPropInfo(aProp);
@@ -673,7 +952,7 @@ class ImageDown {
 	}
 }
 
-function videoToPng(file,dither,resizer,endedCallBack) {
+function videoToPng(file,resizer,endedCallBack) {
 	let vid = document.createElement('video'),
 		sampleInterval = Math.round(1000 / 20),
 		frameCount = 0,
@@ -745,7 +1024,7 @@ function encodeAPNG(frames,w,h,delays,callback) {
     pngWork.postMessage({frames:frames,width:w,height:h,delays:delays},frames);
 }
 
-function gifToPng(file,dither,resizer,endedCallBack) {
+function gifToPng(file,resizer,endedCallBack) {
 
 	let frames = [],
         delays = [];
@@ -754,7 +1033,6 @@ function gifToPng(file,dither,resizer,endedCallBack) {
 		function(w,h,nbrFrames) { // start
             if (nbrFrames === 1) {
                 // if gif has only one frame then import as a normal 32bit image
-                resizer.exportAsCanvas = true;
                 processImage(file,resizer,endedCallBack);
                 return true; // aborts GifDecoder
             }
@@ -781,23 +1059,21 @@ function gifToPng(file,dither,resizer,endedCallBack) {
 }
 
 
-function createNewProps(list) {
+function createNewProps(list,finishedCallback) {
 	for (var i = 0, files = new Array(list.length); i < list.length; i++) {
 		files[i] = list[i]; // moving the list to an actual array so pop works , lol
 	}
 	var button = document.getElementById('newprops');
 	button.className += ' loadingbutton';
 
-
-
     let resizer = new ImageDown(220); // use {filter:'lanczos'} for firefox later
-    let dither = false;//'FloydSteinberg'; //FloydSteinberg-serpentine
 
     let port = function(blob,w,h) {
         if (blob) {
             addPropsToDB([createNewProp(blob,w,h)]);
         }
         importFile();
+
     };
 
 	let importFile = function() {
@@ -805,16 +1081,19 @@ function createNewProps(list) {
 			let file = files.pop();
 
 			if (file.type == 'image/gif') {
-				gifToPng(file,dither,resizer,port); // change so if not animated, processed as regular image
+				gifToPng(file,resizer,port); // change so if not animated, processed as regular image
 			} else if (file.type.match(/^video\/.*/)){
-				videoToPng(file,dither,resizer,port);
+				videoToPng(file,resizer,port);
 			} else {
                 processImage(file,resizer,port);
 			}
 		} else {
             resizer.finish(function() {
                 button.className = 'tbcontrol tbbutton';
-                resizer.destroy();
+                this.destroy();
+                if (finishedCallback) {
+                    finishedCallback();
+                }
             });
         }
 	};

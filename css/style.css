@@ -10,9 +10,6 @@ body {
   user-select         : none;
 }
 
-.avpropholder {
-  display : none;
-}
 
 .avatar {
   z-index             : 54;
@@ -624,7 +621,8 @@ input[type="color"]::-webkit-color-swatch {
   background-color : RGBA(221,221,221,.95);
   transform        : translateX(200px);
   transition       : transform 0.3s,
-                     opacity 0.3s;
+                     opacity 0.3s,
+                     box-shadow 0.2s;
   pointer-events   : initial;
 }
 
@@ -1067,8 +1065,8 @@ input[type="color"]::-webkit-color-swatch {
 }
 
 .selectedbagprop {
-  border-color     : PaleGreen;
-  background-color : PaleGreen;
+  border-color     : RGBA(100,255,100,0.5);
+  background-color : RGBA(100,255,100,0.5);
 }
 
 .bagprop.ghost {
