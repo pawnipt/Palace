@@ -645,21 +645,9 @@ class ImageDown {
         if (this.options.canvas) {
             callback(this.canvas);
         } else {
-            let imgData = this.ctx.getImageData(0,0,this.width,this.height);
-            if (this.options.alphaTrim) {
-                this.trimAlpha(imgData.data,this.options.alphaTrim);
-            }
-            callback(imgData);
+            callback(this.imageData);
         }
 	}
-
-    trimAlpha(pixels,alpha) {
-        for (let i = 3, len = pixels.length; i < len; i += 4) {
-            if (pixels[i] < alpha) {
-                pixels[i] = 0; // drop semi transparent pixels
-            }
-        }
-    }
 
     destroy() {
         if (this.worker) {
@@ -667,16 +655,8 @@ class ImageDown {
         }
     }
 
-	get result() {
-		return this.canvas;
-	}
-
-	dataUrl(mime) {
-		return this.canvas.toDataURL(mime);
-	}
-
 	get imageData() {
-		return this.ctx.getImageData(this.canvas.width,this.canvas.height);
+		return this.ctx.getImageData(0,0,this.canvas.width,this.canvas.height);
 	}
 
 	setNewSize(w,h) {
@@ -725,7 +705,7 @@ function videoToPng(file,dither,resizer,endedCallBack) {
 		if (this.currentTime >= this.duration) {
 			this.onseeked = null;
 		}
-		if (frameCount >= 256) {
+		if (frameCount >= 300) {
 			vid.onended();
 			return;
 		}
@@ -800,125 +780,6 @@ function gifToPng(file,dither,resizer,endedCallBack) {
 
 }
 
-// function videoToGif(file,dither,resizer,endedCallBack) {
-// 	let vid = document.createElement('video'),
-// 		sampleInterval = Math.round(1000 / 20),
-// 		frameCount = 0,
-// 		gifEncoder;
-//
-// 	vid.defaultMuted = true;
-//
-// 	vid.onloadedmetadata = function() {
-//         if (this.videoHeight === 0) {
-//             vid.src = ''; // abort, no video track
-//             endedCallBack();
-//             return;
-//         }
-//         resizer.setNewSize(this.videoWidth, this.videoHeight);
-// 		vid.width = this.videoWidth;
-// 		vid.height = this.videoHeight;
-// 		gifEncoder = new GIF({
-// 			workers: 3,
-// 			quality: 5,
-// 			width:resizer.width,
-// 			height:resizer.height,
-// 			workerScript: 'js/workers/gif.worker.js',
-// 			dither: dither,
-// 			globalPalette: false
-// 		});
-// 		gifEncoder.on('finished', function(blob) {
-// 			endedCallBack(blob,gifEncoder.options.width,gifEncoder.options.height);
-// 		});
-// 	};
-// 	vid.onended = function() {
-// 		this.src = ''
-// 		resizer.finish(function() {
-// 			gifEncoder.render();
-//         });
-// 	};
-// 	let doFrame = function() {
-// 		this.oncanplaythrough = null;
-// 		this.onerror = null;
-// 		if (this.currentTime >= this.duration) {
-// 			this.onseeked = null;
-// 		}
-// 		if (frameCount >= 256) {
-// 			vid.onended();
-// 			return;
-// 		}
-//         resizer.resize(this,
-//             function(data) { // video, dont-clear buffer canvas, async receive!
-//                 gifEncoder.addFrame(data,{delay:sampleInterval});
-//             }
-//         );
-// 		this.currentTime = this.currentTime + sampleInterval / 1000;
-//         frameCount++
-// 		//console.log(Math.round(this.currentTime/this.duration*100) + '% frame:'+(frameCount++));
-// 	};
-// 	vid.oncanplaythrough = doFrame;
-// 	vid.onseeked = doFrame;
-//
-// 	vid.onerror = function() {
-// 		if (gifEncoder) {
-//             gifEncoder.abort();
-//         }
-//         console.log('error with video');
-//     	resizer.destroy();
-// 		endedCallBack();
-// 	};
-//
-// 	vid.src = file.path;
-// }
-
-// function gifToGif(file,dither,resizer,endedCallBack) {
-//
-// 	let gifEncoder;
-//
-// 	let decoder = new GifDecoder(file,
-// 		function(w,h,nbrFrames) { // start
-//             if (nbrFrames === 1) {
-//                 // if gif has only one frame then import as a normal 32bit image
-//                 resizer.alphaTrim = false;
-//                 resizer.exportAsCanvas = true;
-//                 processImage(file,resizer,endedCallBack);
-//                 return true; // aborts GifDecoder
-//             }
-//             resizer.setNewSize(w,h);
-// 			gifEncoder = new GIF({
-// 				workers: 3,
-// 				quality: 5,
-// 				width:resizer.width,
-// 				height:resizer.height,
-// 				workerScript: 'js/workers/gif.worker.js',
-// 				dither: dither, //FloydSteinberg-serpentine
-// 				globalPalette: false
-// 		 	});
-//
-// 		 	gifEncoder.on('finished', function(blob) {
-// 				endedCallBack(blob,gifEncoder.options.width,gifEncoder.options.height);
-// 			});
-// 		},
-// 		function(image,transparent,delay) { // recieved frame
-//             resizer.resize(image,function(data) {
-//                 gifEncoder.setOption('transparent',transparent);
-//     			gifEncoder.addFrame(data, {delay:delay});
-//             });
-// 		},
-// 		function(err) { // finished (err should be undefined)
-// 			if (err) {
-// 				endedCallBack();
-// 				gifEncoder.abort();
-//     			gifEncoder.frames = [];
-// 			} else {
-//                 resizer.finish(function() {
-//                     gifEncoder.render();
-//                 });
-// 			}
-// 		}
-// 	);
-//
-// }
-
 
 function createNewProps(list) {
 	for (var i = 0, files = new Array(list.length); i < list.length; i++) {
@@ -944,13 +805,10 @@ function createNewProps(list) {
 			let file = files.pop();
 
 			if (file.type == 'image/gif') {
-                resizer.exportAsCanvas = false;
 				gifToPng(file,dither,resizer,port); // change so if not animated, processed as regular image
 			} else if (file.type.match(/^video\/.*/)){
-                resizer.exportAsCanvas = false;
 				videoToPng(file,dither,resizer,port);
 			} else {
-                resizer.exportAsCanvas = false;
                 processImage(file,resizer,port);
 			}
 		} else {
