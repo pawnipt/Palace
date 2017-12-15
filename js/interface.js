@@ -251,14 +251,14 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	window.addEventListener('keyup', function(e) {
 		if (palace && palace.theRoom && palace.theRoom.hideUserNames && !platformCtrlKey(e) && !e.altKey) {
 			palace.theRoom.hideUserNames = false;
-			palace.theRoom.reDraw();
+			palace.theRoom.toggleUserNames(true);
 		}
 	},true);
 	window.addEventListener('keydown', function(e) {
 		if (platformCtrlKey(e)) {
-			if (e.altKey && palace && palace.theRoom) {
+			if (e.altKey && palace && palace.theRoom && !palace.theRoom.hideUserNames) {
 				palace.theRoom.hideUserNames = true;
-				palace.theRoom.reDraw();
+				palace.theRoom.toggleUserNames(false);
 			}
 			switch (e.key) {
 				case 'd':
