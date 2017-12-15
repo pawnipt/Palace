@@ -1038,7 +1038,13 @@ class PalaceRoom extends Renderer {
 		document.getElementById('palaceroom').title = this.users.length + ' / ' + palace.serverUserCount;
 	}
 
-
+	toggleUserNames(on) {
+		if (this.users) {
+			this.users.forEach((user) => {
+				user.domNametag.style.display = on?'':'none';
+			});
+		}
+	}
 
 	enterWhisperMode(userid,name) {
 		var cancel = (this.whisperUserID === userid);
