@@ -180,6 +180,7 @@ function refreshPropBagView(refresh) {
 				let toIndex = propBagList.indexOf(pid);
 				if (toIndex > -1 && fromIndex > -1) {
 					propBagList.splice(toIndex, 0, propBagList.splice(fromIndex, 1)[0]);
+                    updatePropBagList();
 					refreshPropBagView(true);
 				}
 			}
@@ -631,6 +632,10 @@ function deletePropsFromDB(propIds) {
 	store.put({id: 'propList', list: propBagList});
 }
 
+function updatePropBagList() {
+	var store = propBagDB.transaction("props", "readwrite").objectStore("props");
+	store.put({id: 'propList', list: propBagList});
+}
 
 function addPropsToDB(props) {
 	var tx = propBagDB.transaction("props", "readwrite");
