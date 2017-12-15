@@ -1514,10 +1514,10 @@ class PalaceClient extends PalaceProtocol {
 		this.unloadBgVideo();
 		toggleZoomPanel('authenticate',0);
 
-		for (var k in allProps) {
-			URL.revokeObjectURL(allProps[k].src);
+		for (var k in cacheProps) {
+			URL.revokeObjectURL(cacheProps[k].src);
 		}
-		allProps = {};
+		cacheProps = {};
 
 		if (this.theRoom) {
 			this.theRoom.exitWhisperMode();
@@ -1676,7 +1676,7 @@ class PalaceClient extends PalaceProtocol {
 		this.propDecoder.decode(data.flags,data.img,
 			function(blob) {
 				let aProp = new PalaceProp(data.id,data);
-				allProps[data.id] = aProp;
+				cacheProps[data.id] = aProp;
 				aProp.loadBlob(blob);
 				delete aProp.rcounter; // no need to retry
 			}
