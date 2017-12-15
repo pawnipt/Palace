@@ -1,16 +1,12 @@
 // @flow
 
 var logField = document.getElementById('log'),
-	selectedBagProps = [],
-	propBag = document.getElementById('props'),
-	propBagRetainer = document.getElementById('propbagretainer'), // adjust retainer size to set the scrollbar
 	directoryList = null,
 	viewScale = 1,
 	viewScaleTimer = null,
-	dragPropID = null,
 	keysDown = [];
 
-
+//import {SpellCheckHandler, ContextMenuListener, ContextMenuBuilder} from 'electron-spellchecker';
 const electronSpellchecker = require('electron-spellchecker');
 const SpellCheckHandler = electronSpellchecker.SpellCheckHandler;
 const ContextMenuListener = electronSpellchecker.ContextMenuListener;
@@ -49,11 +45,9 @@ let contextMenuListener = new ContextMenuListener((info) => {
 
 
 	var preventFileDrop = function(event) {
-		if (event.target !== palace.canvas) {
-			event.preventDefault();
-			event.dataTransfer.effectAllowed = 'none';
-			event.dataTransfer.dropEffect = 'none';
-		}
+		event.preventDefault();
+		event.dataTransfer.effectAllowed = 'none';
+		event.dataTransfer.dropEffect = 'none';
 	};
 	window.addEventListener("dragover",preventFileDrop);
 	window.addEventListener("drop",preventFileDrop);
@@ -105,97 +99,6 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	};
 
 
-	propBag.onscroll = function() {
-		refreshPropBagView();
-	};
-	propBag.ondragstart = function(event) {
-		dragPropID = Number(event.target.parentNode.dataset.pid);
-		var img = event.target;
-		var n = img.parentNode.className;
-		img.parentNode.className = '';
-		event.dataTransfer.setDragImage(img,img.width/2,img.height/2);
-		setTimeout(function() {
-			img.parentNode.className = n;
-		},0);
-	};
-	propBag.clickedProp = function(target) { // adding function to element! lol
-		if (target.nodeName == 'DIV' || target.nodeName == 'IMG') {
-			if (target.nodeName == 'IMG') return target.parentNode;
-			return target;
-		}
-	};
-	propBag.ondblclick = function(event) {
-		if (this.clickedProp(event.target).dataset.pid) wearSelectedProps();
-	};
-	propBag.onmousemove = function(event) {
-		if (event.target === this && event.x-this.offsetLeft < 2) {
-			this.style.cursor = 'col-resize';
-		} else {
-			this.style.cursor = 'auto';
-		}
-	};
-	propBag.onmousedown = function(event) {
-		var newTarget = this.clickedProp(event.target);
-		if (event.target.nodeName != 'IMG') {
-			event.preventDefault();
-		}
-		if (newTarget && (newTarget.className == '' || event.shiftKey || platformCtrlKey(event))) {
-			var newPid = Number(newTarget.dataset.pid);
-			if (newPid != null) {
-
-				var lastPid;
-				if (!platformCtrlKey(event)) {
-					if (event.shiftKey) lastPid = selectedBagProps[0];
-					selectedBagProps = [];
-				}
-
-				if (platformCtrlKey(event)) {
-					let already = selectedBagProps.indexOf(newPid);
-					if (already > -1) {
-						selectedBagProps.splice(already,1);
-					} else {
-						selectedBagProps.push(newPid);
-					}
-				} else if (!lastPid) {
-					selectedBagProps = [newPid];
-				} else {
-					let lastIdx = propBagList.indexOf(lastPid);
-					let newIdx = propBagList.indexOf(newPid);
-					let max = Math.max(newIdx,lastIdx);
-					let min = Math.min(newIdx,lastIdx);
-					selectedBagProps = propBagList.slice(min,max+1);
-					if (newIdx < lastIdx) {
-						selectedBagProps.reverse();
-					}
-				}
-				refreshPropBagView(true);
-				setPropButtons();
-			}
-		} else if (event.x-this.offsetLeft < 2) {
-			event.preventDefault();
-			let initialX = event.pageX-window.scrollX;
-			let initialW = this.offsetWidth;
-
-			let mouseMovePropBag = (event) => {
-				this.style.cursor = 'col-resize';
-				event.stopImmediatePropagation();
-				let w = initialX-event.x+initialW;
-				this.style.width = w+'px';
-				setGeneralPref('propBagWidth',w);
-				refreshPropBagView();
-				return false;
-			};
-			let mouseUpPropBag = function(event) {
-				event.stopImmediatePropagation();
-				window.removeEventListener('mouseup',mouseUpPropBag,true);
-				window.removeEventListener('mousemove',mouseMovePropBag,true);
-			};
-
-			window.addEventListener('mouseup',mouseUpPropBag,true);
-			window.addEventListener('mousemove',mouseMovePropBag,true);
-
-		}
-	};
 	document.getElementById('deleteprops').onclick = function() {
 		deletePropsFromDB(selectedBagProps);
 		selectedBagProps = [];
@@ -363,7 +266,13 @@ let contextMenuListener = new ContextMenuListener((info) => {
 		}
 	};
 
-	logField.onmousemove = propBag.onmousemove; // same basic functionality...
+	logField.onmousemove = function(event) {
+		if (event.target === this && event.x-this.offsetLeft < 2) {
+			this.style.cursor = 'col-resize';
+		} else {
+			this.style.cursor = 'auto';
+		}
+	};
 	logField.onmousedown = function(event) { // trigger for log resizing
 		if (event.target === this && event.x-this.offsetLeft < 2) {
 			event.preventDefault();
@@ -917,111 +826,6 @@ function enablePropButtons() {
 		document.getElementById('removeprops').disabled = (palace.theUser.props.length == 0);
 	}
 }
-
-
-function refreshPropBagView(refresh) {
-	var bagWidth = propBag.clientWidth,
-		tileSize = prefs.general.propBagTileSize,
-		visibleColumns = (bagWidth / tileSize).fastRound(),
-		visibleRows = ((window.innerHeight - palace.container.offsetTop) / tileSize).fastRound(), // 45 is main toolbar height
-		count = visibleRows * visibleColumns,
-		max = propBagList.length,
-		scroll = (propBag.scrollTop/tileSize).fastRound(),
-		toView = {};
-
-	var cheight = ((propBagList.length/visibleColumns).fastRound()*tileSize).fastRound();
-	if (Number(propBagRetainer.dataset.height) !== cheight) propBagRetainer.style.height = cheight + 'px';
-	propBagRetainer.dataset.height = cheight;
-
-	if (visibleColumns < 1) visibleColumns = 1;
-	scroll -= 2; // -2 for a little extra loaded up top
-	if (scroll < 0) scroll = 0;
-
-	for (var y = scroll; y < visibleRows+scroll+4; y++) { // +4 for a little extra loaded down below
-		for (var x = 0; x < visibleColumns; x++) {
-			var propIndex = y*visibleColumns+x;
-			if (max > propIndex) toView[propBagList[propIndex]] = {x:x*tileSize,y:y*tileSize};
-		}
-	}
-	var keys = Object.keys(toView);
-
-	var cachedTiles = {}; // prevent excessive database calls
-	var children = propBag.children;
-
-	for (var i = children.length - 1; i >= 0; i--) {
-		var tile = children[i];
-		var pid = tile.dataset.pid;
-		var preTile = toView[pid];
-		if (tile !== propBagRetainer && (refresh || !preTile || preTile.x !== Number(tile.dataset.left) || preTile.y !== Number(tile.dataset.top))) {
-			cachedTiles[pid] = children[i];
-			propBag.removeChild(children[i]);
-		}
-	}
-
-	var alreadyInDom = function(id) {
-		for (var i = children.length - 1; i >= 0; i--) {
-			if (id == Number(children[i].dataset.pid)) {
-				return children[i];
-			}
-		}
-	};
-
-	// free up transaction queue...
-	for (let i = 0, l = keys.length; i < l; i++) {
-		delete getTransactions[keys[i]];
-	}
-	for (let i = 0, pids = Object.keys(getTransactions), l = keys.length; i < l; i++) {
-		let trans = getTransactions[pids[i]];
-		if (trans) trans.abort();
-	}
-	getTransactions = {};
-
-
-	for (let i = 0, l = keys.length; i < l; i++) {
-		let key = keys[i];
-		let e = toView[key];
-		let pid = Number(key);
-		let pc = alreadyInDom(pid);
-		let img;
-		if (!pc) {
-  			if (cachedTiles[key]) {
-  				pc = cachedTiles[key];
-  			} else {
-				justadded = true;
-  				pc = document.createElement('div');
-
-				pc.dataset.pid = pid;
-				img = document.createElement('img');
-				img.className = 'bagprop';
-				getBagProp(pid,img);
-				pc.appendChild(img);
-  			}
-			if (Number(pc.dataset.size) !== tileSize) {
-				pc.style.width = tileSize+'px';
-				pc.style.height = tileSize+'px';
-				pc.dataset.size = tileSize;
-			}
-
-			if (Number(pc.dataset.left) !== e.x || Number(pc.dataset.top) !== e.y) {
-				pc.style.transform = 'translate('+e.x+'px,'+e.y+'px)';
-				// pc.style.left = e.x + 'px';
-				// pc.style.top = e.y + 'px';
-				pc.dataset.left = e.x;
-				pc.dataset.top = e.y;
-			}
-
-			propBag.appendChild(pc);
-		}
-		pc.className = selectedBagProps.indexOf(pid) > -1?'selectedbagprop':'';
-	}
-
-
-}
-
-
-
-
-
 
 
 
