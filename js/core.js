@@ -267,7 +267,7 @@ class Renderer {
 	}
 
 	drawLooseProp(lProp) {
-		var aProp = allProps[lProp.id];
+		var aProp = cacheProps[lProp.id];
 		if (aProp && aProp.isComplete) {
 			var gAlpha = 1;
 			if (aProp.ghost) gAlpha = gAlpha/2;
@@ -294,7 +294,7 @@ class Renderer {
 
 	drawLimboProp() { /* when dragging a prop from self or another location */
 		if (this.grabbedProp && !this.grabbedProp.looseprop) {
-			var aProp = allProps[this.grabbedProp.id];
+			var aProp = cacheProps[this.grabbedProp.id];
 			if (aProp && aProp.isComplete) {
 				if (aProp.ghost) this.context.globalAlpha = 0.5;
 				this.context.globalAlpha = this.context.globalAlpha/2;
@@ -441,6 +441,7 @@ class PalaceRoom extends Renderer {
 
 	dragOver(event) {
 		event.preventDefault();
+		event.stopImmediatePropagation();
 	}
 
 	drop(event) {
@@ -452,7 +453,7 @@ class PalaceRoom extends Renderer {
 			var dragpid = dragPropID;
 
 			loadProps([dragpid],true,function() { //callback to drop the prop once it is loaded from the users bag
-				var prop = allProps[dragpid];
+				var prop = cacheProps[dragpid];
 				if (prop) {
 					if (!overSelf) {
 						palace.sendPropDrop(x-prop.w/2,y-prop.h/2,dragpid);
@@ -660,7 +661,7 @@ class PalaceRoom extends Renderer {
 					}
 
 					if (pid) {
-						let aProp = allProps[pid];
+						let aProp = cacheProps[pid];
 						this.makeDragProp(null, pid, x, y, x-aProp.x-palace.theUser.x+22, y-aProp.y-palace.theUser.y+22);
 					} else if (lpIndex != null) {
 						let lProp = this.looseProps[lpIndex];
@@ -1110,7 +1111,7 @@ class PalaceRoom extends Renderer {
 	mouseOverSelfProp(x,y) {
 		if (!this.grabbedProp) {
 			for (var i = palace.theUser.props.length; --i >= 0;) {
-				var aProp = allProps[palace.theUser.props[i]];
+				var aProp = cacheProps[palace.theUser.props[i]];
 				var px = (palace.theUser.x + aProp.x)-22;
 				var py = (palace.theUser.y + aProp.y)-22;
 				if (aProp && (!aProp.animated || palace.theUser.animatePropID === undefined || palace.theUser.animatePropID == aProp.id) && aProp.isComplete && px < x && (px+aProp.w) > x && py < y && (py+aProp.h) > y) {
@@ -1126,7 +1127,7 @@ class PalaceRoom extends Renderer {
 		if (!this.grabbedProp) {
 			for (var i = this.looseProps.length; --i >= 0;) {
 				var lProp = this.looseProps[i];
-				var aProp = allProps[lProp.id];
+				var aProp = cacheProps[lProp.id];
 				if (aProp && aProp.isComplete && lProp.x < x && (lProp.x+aProp.w) > x && lProp.y < y && (lProp.y+aProp.h) > y) {
 					if (this.mouseOverProp(aProp,x,y,lProp.x,lProp.y)) {
 						return i; /* maybe pass object instead of index */
