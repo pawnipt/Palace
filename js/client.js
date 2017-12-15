@@ -1520,6 +1520,7 @@ class PalaceClient extends PalaceProtocol {
 		allProps = {};
 
 		if (this.theRoom) {
+			this.theRoom.exitWhisperMode();
 			this.removeUserDomElements();
 			this.theRoom.spots = [];
 			this.theRoom.draws = [];
