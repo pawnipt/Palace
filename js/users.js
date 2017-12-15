@@ -116,7 +116,7 @@ class PalaceUser {
 			let pid = this.props[i];
 			let wrongProp = (d && (!d.prop || d.prop.id !== pid));
 			if (wrongProp || !d) {
-				let prop = allProps[pid];
+				let prop = cacheProps[pid];
 				if (prop && prop.img && prop.img.src) {
 					if (d) d = d.div; // if dom prop is a placeholder or another prop
 					let dd = this.createDomProp(i,prop,dlPid,d); //now recycles div elements
@@ -315,7 +315,7 @@ class PalaceUser {
 		var halfW = (w/2);
 		var halfH = (h/2);
 		var x = this.x;
-		var y = this.y;
+		var y = this.y+2;
 		var bgw = palace.roomWidth;
 		var bgh = palace.roomHeight;
 
