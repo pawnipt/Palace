@@ -15,7 +15,6 @@ body {
 }
 
 .avatar {
-    /* background-color: red; */
   z-index             : 54;
   position            : absolute;
   width               : 44px;
@@ -107,15 +106,15 @@ body {
 }
 
 #container {
-  position         : relative;
-  top              : 45px;
-  overflow         : hidden;
-  font-family      : sans-serif;
-  font-size        : large;
-  transform-origin : 0 0;
-  transition       : transform 0.3s,
-                     width 0.3s,
-                     height 0.3s;
+  position               : relative;
+  top                    : 45px;
+  overflow               : hidden;
+  font-family            : sans-serif;
+  font-size              : large;
+  transform-origin       : 0 0;
+  transition             : transform 0.3s,
+                           width 0.3s,
+                           height 0.3s;
 }
 
 #mainlayer {
