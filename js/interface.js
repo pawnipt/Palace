@@ -328,6 +328,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	};
 	document.getElementById('fileprops').onchange = function(event) {
 		createNewProps(event.target.files);
+		this.value = null;
 	};
 	document.getElementById('removeprops').onclick = function(){palace.setprops([])}; // get naked button
 	// document.getElementById('editprop').onclick = function() {
