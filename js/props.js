@@ -759,9 +759,8 @@ class GifDecoder {
 	start(w,h,nbrFrames) {
 		this.gifCanvas.width = w;
 		this.gifCanvas.height = h;
-        // if function returns true then abort
+        // if function returns true abort was requested
 		if (this.startCallBack(w,h,nbrFrames)) {
-            console.log('test abort')
             this.worker.terminate();
         }
 	}
@@ -801,6 +800,7 @@ class GifDecoder {
 	error(e) {
 		console.log('Gif Decoder errored!');
 		console.log(e);
+        this.worker.terminate();
 		this.end(e);
 	}
 }
@@ -1021,7 +1021,6 @@ function encodeAPNG(frames,w,h,delays,callback) {
     pngWork.addEventListener('message', function(e) {
         var blob = new Blob([e.data.buffer],{type:'image/apng'});
         callback(blob,w,h);
-        this.terminate();
     });
     pngWork.addEventListener('error', function(e) {
         this.terminate();
