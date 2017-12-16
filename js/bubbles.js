@@ -82,10 +82,9 @@ class Bubble {
 	remove(now) {
 		if (now) {
 			var index = chatBubs.indexOf(this);
-			if (this.timer) clearInterval(this.timer);
-			this.timer = null;
 			if (this.popTimer) clearTimeout(this.popTimer);
 			this.popTimer = null;
+			this.cancelAnimation();
 			this.user = null;
 			if (index > -1) {
 				palace.container.removeChild(this.p);
@@ -117,41 +116,46 @@ class Bubble {
 	}
 	inflate() {
 		this.deflated = false;
-		if (this.timer) clearInterval(this.timer);
-		this.timer = setInterval(() => {
-			if (this.size < 1) {
-				this.size += 0.08;
+		this.cancelAnimation();
+		let start;
+		let grow = (timestamp) => {
+			if (!start) start = timestamp;
+			let progress = timestamp - start;
+			this.size = Math.min((progress / 300) + 0.5,1);
+			palace.theRoom.reDrawTop();
+			if (progress < 150) {
+				this.raf = requestAnimationFrame(grow);
 			} else {
-				this.size = 1;
-				if (this.timer) {
-					clearInterval(this.timer);
-					this.timer = null;
-				}
+				this.raf = null;
 				this.p.style.left = this.x+'px';
 				this.p.style.top = this.y+'px';
 			}
-			palace.theRoom.reDrawTop();
-		},20);
+		};
+		this.raf = requestAnimationFrame(grow);
 	}
 	deflate(remove) {
 		this.p.style.top = '-9999px';
 		this.deflated = true;
-		if (this.timer) clearInterval(this.timer);
-		this.timer = null;
-		this.timer = setInterval(() => {
-			if (this.size > 0.6) {
-				this.size -= 0.1;
-			} else {
-				this.size = 0.5;
-				if (this.timer) {
-					clearInterval(this.timer);
-					this.timer = null;
-				}
-				if (remove) this.remove(true);
+		this.cancelAnimation();
+		let start;
+		let shrink = (timestamp) => {
+			if (!start) start = timestamp;
+			let progress = timestamp - start;
+			this.size = Math.max(1 - (progress / 200), 0.5);
+			if (progress < 100) {
+				this.raf = requestAnimationFrame(shrink);
+			} else if (remove) {
+				this.raf = null;
+				this.remove(true);
 			}
-
 			palace.theRoom.reDrawTop();
-		},20);
+		};
+		this.raf = requestAnimationFrame(shrink);
+	}
+	cancelAnimation() {
+		if (this.raf) {
+			cancelAnimationFrame(this.raf);
+		}
 	}
 	makeShoutBubble(ctx) {
 		var w = this.textWidth*this.size;

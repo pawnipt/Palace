@@ -131,7 +131,7 @@ class Renderer {
 
 	reDrawTop() {
 		if (!this.drawTimer2) {
-			this.drawTimer2 = setTimeout(() => {this.refreshTop();},15);
+			this.drawTimer2 = setTimeout(() => {this.refreshTop();},5);
 		}
 	}
 
@@ -162,7 +162,7 @@ class Renderer {
 
 	reDraw() {
 		if (!this.drawTimer) {
-			this.drawTimer = setTimeout(() => {this.refresh();},15);
+			this.drawTimer = setTimeout(() => {this.refresh();},5);
 		}
 	}
 
@@ -923,7 +923,6 @@ class PalaceRoom extends Renderer {
 		this.users.push(dude);
 
 		loadProps(dude.props);
-		dude.grow();
 		this.setUserCount();
 	}
 
@@ -1168,31 +1167,35 @@ class PalaceRoom extends Renderer {
 		if (!this.mouseHoverUser && !this.mouseSelfProp) {
 			this.mouseExitLooseProp();
 			this.mouseLooseProp = lpIndex;
-			this.looseProps[this.mouseLooseProp].light = 1;
+			let target = this.looseProps[this.mouseLooseProp];
+			if (target.raf) {
+				cancelAnimationFrame(target.raf);
+				target.raf = null;
+			}
+			target.light = 1;
 			this.reDraw();
 		}
 	}
 
 	mouseExitLooseProp() {
 		if (this.mouseLooseProp !== null) {
-			var target = this.looseProps[this.mouseLooseProp];
-			if (target) {
-				target.light = 1;
-				var fadeTimer = setInterval(() => {
-					var idx = this.looseProps.indexOf(target);
-					if (target.light - 0.1 <= 0 || target == this.looseProps[this.mouseLooseProp] || idx < 0) {
-						if (target != this.looseProps[this.mouseLooseProp]) target.light = 0;
-						clearInterval(fadeTimer);
-						//delete fadeTimer;
-					} else {
-						target.light -= 0.09;
-						this.reDraw();
-					}
-
-				},20);
-			}
+			let target = this.looseProps[this.mouseLooseProp];
 			this.mouseLooseProp = null;
-			this.reDraw();
+			if (target) {
+				let start;
+				let fade = (timestamp) => {
+					if (!start) start = timestamp;
+					let progress = timestamp - start;
+					target.light = Math.max(1 - (progress / 150), 0);
+					this.reDraw();
+					if (progress < 150) {
+						target.raf = requestAnimationFrame(fade);
+					} else {
+						target.raf = null;
+					}
+				};
+				target.raf = requestAnimationFrame(fade);
+			}
 		}
 	}
 
