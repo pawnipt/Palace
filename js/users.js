@@ -101,6 +101,10 @@ class PalaceUser {
 			clearInterval(this.animateTimer);
 			this.animateTimer = null;
 		}
+		if (this.raf) {
+			cancelAnimationFrame(this.raf);
+			this.raf = null;
+		}
 
 		for (let i = this.props.length; i < 9; i++) {
 			let d = this.domProp[i];
@@ -196,6 +200,7 @@ class PalaceUser {
 			if (i !== 0) this.setDomPropVisibility(d,false);
 		});
 		let index = 0, last, forward = true, animator = () => {
+			this.raf = null;
 			if (last) this.setDomPropVisibility(last,false);
 			last = animatedProps[index];
 			this.setDomPropVisibility(last,true);
@@ -206,7 +211,9 @@ class PalaceUser {
 			}
 			forward?index++:index--;
 		};
-		this.animateTimer = setInterval(animator,350);
+		this.animateTimer = setInterval(() => {
+			this.raf = requestAnimationFrame(animator);
+		},350);
 		animator();
 	}
 
