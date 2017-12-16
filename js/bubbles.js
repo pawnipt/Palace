@@ -121,9 +121,9 @@ class Bubble {
 		let grow = (timestamp) => {
 			if (!start) start = timestamp;
 			let progress = timestamp - start;
-			this.size = Math.min((progress / 300) + 0.5,1);
+			this.size = Math.min((progress / (this.size*1.4) / 300) + 0.5,1);
 			palace.theRoom.reDrawTop();
-			if (progress < 150) {
+			if (progress < 200) {
 				this.raf = requestAnimationFrame(grow);
 			} else {
 				this.raf = null;
