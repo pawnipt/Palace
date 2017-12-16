@@ -144,7 +144,7 @@ body {
   backface-visibility : hidden;
   pointer-events      : none;
   transform: scale(0.4);
-  transition: transform 0.2s ease-out;
+  transition: transform 0.18s ease-out;
 }
 
 #navsearch {
