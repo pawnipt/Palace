@@ -37,6 +37,7 @@ self.addEventListener('message', function(e) {
 		reader.onerror = function(err) {
 			console.log(err);
 			self.postMessage(err);
+			close();
 		};
 		reader.readAsArrayBuffer(e.data);
 	}
