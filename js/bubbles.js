@@ -125,12 +125,13 @@ class Bubble {
 			if (!start) start = timestamp;
 			let progress = timestamp - start;
 			this.size = Math.min((progress / (this.size*1.14) / 300) + 0.5,1);
-			palace.theRoom.reDrawTop();
 			if (progress < 150) {
 				this.raf = requestAnimationFrame(grow);
 			} else {
+				this.size = 1;
 				this.raf = null;
 			}
+			palace.theRoom.reDrawTop();
 		};
 		this.raf = requestAnimationFrame(grow);
 	}
@@ -150,6 +151,7 @@ class Bubble {
 				this.raf = null;
 				this.remove(true);
 			} else {
+				this.size = 0.5;
 				this.p.style.top = '-9999px';
 			}
 			palace.theRoom.reDrawTop();
