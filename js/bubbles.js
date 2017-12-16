@@ -119,14 +119,12 @@ class Bubble {
 		this.cancelAnimation();
 		this.p.style.left = this.x+'px';
 		this.p.style.top = this.y+'px';
-		this.p.style.transform = 'scale(1)';
+		this.p.className += ' inflatedBubble';
 		let start;
 		let grow = (timestamp) => {
 			if (!start) start = timestamp;
 			let progress = timestamp - start;
 			this.size = Math.min((progress / (this.size*1.14) / 300) + 0.5,1);
-			//this.size = Math.min((progress / 300) + 0.5,1);
-			//console.log(this.size)
 			palace.theRoom.reDrawTop();
 			if (progress < 150) {
 				this.raf = requestAnimationFrame(grow);
@@ -140,7 +138,7 @@ class Bubble {
 
 		this.deflated = true;
 		this.cancelAnimation();
-		this.p.style.transform = 'scale(0.4)';
+		this.p.className = 'chatBubble';
 		let start;
 		let shrink = (timestamp) => {
 			if (!start) start = timestamp;
@@ -209,16 +207,9 @@ class Bubble {
 		let dist = 23;
 		let space = 4;
 
-
-
 		let w = width;
-		if (this.right) {
-			width = width*this.size;
-			x = x + w/4 - (width*this.size)/4;
-		} else {
-			width = width*this.size;
-			x = x + w/3 - (width*this.size)/3;
-		}
+		width = width*this.size;
+		x = x + w/3 - (width*this.size)/3;
 
 		let h = height;
 		height = height*this.size;

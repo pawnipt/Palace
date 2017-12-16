@@ -143,8 +143,15 @@ body {
   word-wrap           : break-word;
   backface-visibility : hidden;
   pointer-events      : none;
+  transition: transform 0.10s linear,opacity 0.10s linear;
   transform: scale(0.4);
-  transition: transform 0.18s ease-out;
+  opacity: 0.4;
+}
+
+.inflatedBubble {
+    transition: transform 0.19s ease-out,opacity 0.19s ease-out;
+    transform: scale(1);
+    opacity: 1;
 }
 
 #navsearch {
