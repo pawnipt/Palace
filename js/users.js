@@ -17,7 +17,7 @@ class PalaceUser {
 		//this.putTransforms(['translateZ(0)']);
 
 		this.domNametag.style.transition = 'none';
-
+		this.style.transition = 'none';
 
 
 		this.domAvatar.className = 'avatar';
@@ -28,19 +28,19 @@ class PalaceUser {
 		this.setName(true);
 
 		this.setAvatarLocation(true);
-		if (entered) {
-			this.shrink();
-		}
+		if (entered) this.shrink();
 
 		this.setDomProps();
 		this.setColor();
 
 		palace.container.appendChild(this.domAvatar);
-		this.domAvatar.offsetWidth;
 
-		if (!entered) {
+		setTimeout(() => {
 			this.domNametag.style.transition = '';
-		}
+			this.style.transition = '';
+			if (entered) this.grow();
+		},0);
+
 
 	}
 
@@ -120,17 +120,8 @@ class PalaceUser {
 				if (prop && prop.img && prop.img.src) {
 					if (d) d = d.div; // if dom prop is a placeholder or another prop
 					let dd = this.createDomProp(i,prop,dlPid,d); //now recycles div elements
-					if (prop.animated) {
-						animatedProps.push(dd);
-					}
-					if (!d) { // if domProp was empty, and a prop was found
-						this.domAvatar.appendChild(dd.div);
-					}
-					if (dlPid === prop.id) {
-						setTimeout(function() {
-							dd.div.style.opacity = '';
-						},0);
-					}
+					if (prop.animated) animatedProps.push(dd);
+					if (!d) this.domAvatar.appendChild(dd.div);
 				} else if (wrongProp && d.prop) { // replace wrong prop with placeholder since new one isn't yet available
 					this.propPlaceHolder(i,d.div);
 				} else if (!d) { // append placeholder if empty
@@ -171,7 +162,14 @@ class PalaceUser {
 
 	createDomProp(i,prop,dlPid,div) {
 		let im = div && div.constructor === HTMLDivElement?div:document.createElement('div');
-		if (dlPid === prop.id) im.style.opacity = '0';
+		if (dlPid === prop.id) {
+			im.style.transition = 'none';
+			im.style.opacity = '0';
+			setTimeout(function() {
+				im.style.transition = '';
+				im.style.opacity = '';
+			},0);
+		}
 		im.style.width = prop.w+'px';
 		im.style.height = prop.h+'px';
 		im.style.backgroundImage = 'url('+prop.img.src+')';
@@ -274,10 +272,7 @@ class PalaceUser {
 	}
 
 	grow() {
-		setTimeout(() => {
-			this.domNametag.style.transition = '';
-			this.removeTransforms(['scale']);
-		},0);
+		this.removeTransforms(['scale']);
 	}
 
 	shrink(exit) {
