@@ -117,6 +117,9 @@ class Bubble {
 	inflate() {
 		this.deflated = false;
 		this.cancelAnimation();
+		this.p.style.left = this.x+'px';
+		this.p.style.top = this.y+'px';
+		this.p.style.transform = 'scale(1)';
 		let start;
 		let grow = (timestamp) => {
 			if (!start) start = timestamp;
@@ -129,16 +132,15 @@ class Bubble {
 				this.raf = requestAnimationFrame(grow);
 			} else {
 				this.raf = null;
-				this.p.style.left = this.x+'px';
-				this.p.style.top = this.y+'px';
 			}
 		};
 		this.raf = requestAnimationFrame(grow);
 	}
 	deflate(remove) {
-		this.p.style.top = '-9999px';
+
 		this.deflated = true;
 		this.cancelAnimation();
+		this.p.style.transform = 'scale(0.4)';
 		let start;
 		let shrink = (timestamp) => {
 			if (!start) start = timestamp;
@@ -149,6 +151,8 @@ class Bubble {
 			} else if (remove) {
 				this.raf = null;
 				this.remove(true);
+			} else {
+				this.p.style.top = '-9999px';
 			}
 			palace.theRoom.reDrawTop();
 		};
