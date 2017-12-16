@@ -1132,4 +1132,5 @@ input[type=range]::-webkit-slider-thumb {
   opacity    : 0;
   text-align : right;
   cursor     : inherit;
+  pointer-events:none;
 }
