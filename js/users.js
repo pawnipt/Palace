@@ -44,6 +44,15 @@ class PalaceUser {
 
 	}
 
+	get propMuted() {
+		return Boolean(this._propMuted);
+	}
+
+	set propMuted(bool) {
+		this._propMuted = Boolean(bool);
+		this.domAvatar.className = this._propMuted?'avatar avpropmuted':'avatar';
+	}
+
 	opacity(value) {
 		this.domNametag.style.opacity = value;
 		this.style.opacity = value;

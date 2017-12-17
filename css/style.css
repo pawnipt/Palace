@@ -29,6 +29,10 @@ body {
   pointer-events      : none;
 }
 
+.avpropmuted > .avprop {
+    display:none;
+}
+
 .avprop {
   z-index           : -1;
   position          : absolute;

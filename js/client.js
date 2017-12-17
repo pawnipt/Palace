@@ -1211,7 +1211,6 @@ class PalaceClient extends PalaceProtocol {
 			var user = this.theRoom.getUser(menuStore.userid);
 			if (user) {
 				user.propMuted = !user.propMuted;
-				this.theRoom.reDraw();
 			}
 		}}));
 
