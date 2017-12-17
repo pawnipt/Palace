@@ -4,8 +4,8 @@ const url = require('url');
 const os = require('os');
 const Raven = require('raven');
 
-Raven.config('https://2e2f7f94e86c471189b46bc12abcf6c9@sentry.pchat.palaceworld.net/2', {
-    captureUnhandledRejections: true,
+Raven.config('https://39bb765f1f3c4ebdb1c86cb5d3e90a3f@sentry.pchat.palaceworld.net/3', {
+    captureUnhandledRejections: false,
     tags: {
         process: process.type,
         electron: process.versions.electron,
