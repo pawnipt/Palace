@@ -117,14 +117,19 @@ class Bubble {
 	inflate() {
 		this.deflated = false;
 		this.cancelAnimation();
-		this.p.style.left = this.x+'px';
-		this.p.style.top = this.y+'px';
-		this.p.className += ' inflatedBubble';
+
 		let start;
 		let grow = (timestamp) => {
-			if (!start) start = timestamp;
+			if (!start) {
+				start = timestamp;
+				setTimeout(() => {
+					this.p.style.left = this.x+'px';
+					this.p.style.top = this.y+'px';
+					this.p.className += ' inflatedBubble';
+				},0);
+			}
 			let progress = timestamp - start;
-			this.size = Math.min((progress / (this.size*1.14) / 300) + 0.5,1);
+			this.size = Math.min((progress / this.size / 360) + 0.5,1);
 			if (progress < 150) {
 				this.raf = requestAnimationFrame(grow);
 			} else {
@@ -136,13 +141,14 @@ class Bubble {
 		this.raf = requestAnimationFrame(grow);
 	}
 	deflate(remove) {
-
 		this.deflated = true;
 		this.cancelAnimation();
-		this.p.className = 'chatBubble';
 		let start;
 		let shrink = (timestamp) => {
-			if (!start) start = timestamp;
+			if (!start) {
+				start = timestamp;
+				this.p.className = 'chatBubble';
+			}
 			let progress = timestamp - start;
 			this.size = Math.max(1 - (progress / 200), 0.5);
 			if (progress < 100) {
@@ -151,7 +157,6 @@ class Bubble {
 				this.raf = null;
 				this.remove(true);
 			} else {
-				this.size = 0.5;
 				this.p.style.top = '-9999px';
 			}
 			palace.theRoom.reDrawTop();
@@ -211,11 +216,11 @@ class Bubble {
 
 		let w = width;
 		width = width*this.size;
-		x = x + w/3 - (width*this.size)/3;
+		x += w/3 - (width*this.size)/3;
 
 		let h = height;
 		height = height*this.size;
-		y = y + h/3 - (height*this.size)/3;
+		y += h/3 - (height*this.size)/3;
 
 		ctx.beginPath();
 		ctx.moveTo(x + radius, y);

@@ -147,7 +147,8 @@ body {
   word-wrap           : break-word;
   backface-visibility : hidden;
   pointer-events      : none;
-  transition: transform 0.10s linear,opacity 0.10s linear;
+  transform-origin: 52% 50%;
+  transition: transform 0.14s linear,opacity 0.14s linear;
   transform: scale(0.4);
   opacity: 0.4;
 }
