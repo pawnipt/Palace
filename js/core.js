@@ -446,20 +446,22 @@ class PalaceRoom extends Renderer {
 
 	drop(event) {
 
-		if (palace.theUser && dragPropID) {
+		if (palace.theUser && dragBagProp) {
 			event.preventDefault();
-			var x = (event.layerX/viewScale).fastRound();
-			var y = (event.layerY/viewScale).fastRound();
+			var x = Math.round(event.layerX/viewScale);
+			var y = Math.round(event.layerY/viewScale);
 			var overSelf = (palace.theUser && palace.theUser.x-22 < x && palace.theUser.x+22 > x && palace.theUser.y-22 < y && palace.theUser.y+22 > y);
-			var dragpid = dragPropID;
+			var dragBP = dragBagProp;
 
-			loadProps([dragpid],true,function() { //callback to drop the prop once it is loaded from the users bag
-				var prop = cacheProps[dragpid];
+			loadProps([dragBP.id],true,function() { //callback to drop the prop once it is loaded from the users bag
+				var prop = cacheProps[dragBP.id];
 				if (prop) {
 					if (!overSelf) {
-						palace.sendPropDrop(x-prop.w/2,y-prop.h/2,dragpid);
+						let dx = Math.round(dragBP.x * prop.w / dragBP.w);
+						let dy = Math.round(dragBP.y * prop.h / dragBP.h);
+						palace.sendPropDrop(x-dx,y-dy,dragBP.id);
 					} else {
-						palace.addSelfProp(dragpid);
+						palace.addSelfProp(dragBP.id);
 						palace.selfPropChange(); //normally the mouse up even for the canvas would handle this but we're now async?
 					}
 				}

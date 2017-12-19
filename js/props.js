@@ -6,7 +6,7 @@ var cacheProps = {},
     propBag = document.getElementById('props'),
     propBagRetainer = document.getElementById('propbagretainer'),
     selectedBagProps = [],
-	dragPropID = null,
+	dragBagProp = null,
     propBagDB;
 
 
@@ -116,6 +116,14 @@ function refreshPropBagView(refresh) {
 }
 
 (function () { // setup propBag
+
+    function getParent(target) { // adding function to element! lol
+		if (target.constructor === HTMLDivElement || target.constructor === HTMLImageElement) {
+			if (target.constructor === HTMLImageElement) return target.parentNode;
+			return target;
+		}
+	}
+
 	propBag.onscroll = function() {
 		refreshPropBagView();
 	};
@@ -123,12 +131,12 @@ function refreshPropBagView(refresh) {
 	propBag.ondragover = function(event) {
         event.preventDefault();
 		event.stopImmediatePropagation();
-		if (dragPropID) {
+		if (dragBagProp) {
 			if (lastDragOver) lastDragOver.style.borderRight = '';
-			let target = this.getParent(event.target);
+			let target = getParent(event.target);
 			if (target) {
                 let pid = Number(target.dataset.pid);
-				let fromIndex = propBagList.indexOf(dragPropID);
+				let fromIndex = propBagList.indexOf(dragBagProp.id);
 				let toIndex = propBagList.indexOf(pid);
                 if (fromIndex > toIndex) {
                     target.style.borderLeft = '2px dashed black';
@@ -147,7 +155,7 @@ function refreshPropBagView(refresh) {
 
 	};
 	propBag.addEventListener("drop",function(event) {
-		if (!dragPropID) {
+		if (!dragBagProp) {
 			this.style.boxShadow = '';
 			var dt = event.dataTransfer;
 			if (dt.items) {
@@ -160,10 +168,7 @@ function refreshPropBagView(refresh) {
 						item.getAsString(function(str) {
 							httpGetAsync(str,'blob',function(blob) {
 								if (blob.type.match(/^image|video/)) {
-									blob.path = URL.createObjectURL(blob);
-									createNewProps([blob],function() { // finished import
-										URL.revokeObjectURL(blob.path);
-									});
+									createNewProps([blob]);
 								}
 							});
 						});
@@ -174,10 +179,10 @@ function refreshPropBagView(refresh) {
 				createNewProps(dt.files);
 			}
 		} else {
-			let target = this.getParent(event.target);
+			let target = getParent(event.target);
 			if (target) {
 				let pid = Number(target.dataset.pid);
-				let fromIndex = propBagList.indexOf(dragPropID);
+				let fromIndex = propBagList.indexOf(dragBagProp.id);
 				let toIndex = propBagList.indexOf(pid);
 				if (toIndex > -1 && fromIndex > -1) {
 					propBagList.splice(toIndex, 0, propBagList.splice(fromIndex, 1)[0]);
@@ -196,7 +201,7 @@ function refreshPropBagView(refresh) {
 		}
 	};
 	propBag.ondragend = function(event) {
-		dragPropID = null;
+		dragBagProp = null;
 		if (lastDragOver) {
             lastDragOver.style.borderRight = '';
             lastDragOver.style.borderLeft = '';
@@ -204,23 +209,30 @@ function refreshPropBagView(refresh) {
 		}
 	};
 	propBag.ondragstart = function(event) {
-		dragPropID = Number(event.target.parentNode.dataset.pid);
+        let rect = event.target.parentNode.getBoundingClientRect();
+        let left = rect.left;
+        let top = rect.top;
+        //console.log(event.x - left)
+
+		dragBagProp = {
+            id:Number(event.target.parentNode.dataset.pid),
+            x:event.x - left - 2 - event.target.offsetLeft,
+            y:event.y - top - 2 - event.target.offsetTop,
+            w:event.target.offsetWidth,
+            h:event.target.offsetHeight
+        };
+
 		var img = event.target;
 		var n = img.parentNode.className;
 		img.parentNode.className = '';
-		event.dataTransfer.setDragImage(img,img.width/2,img.height/2);
+		event.dataTransfer.setDragImage(img,dragBagProp.x,dragBagProp.y);
 		setTimeout(function() {
 			img.parentNode.className = n;
 		},0);
 	};
-	propBag.getParent = function(target) { // adding function to element! lol
-		if (target.constructor === HTMLDivElement || target.constructor === HTMLImageElement) {
-			if (target.constructor === HTMLImageElement) return target.parentNode;
-			return target;
-		}
-	};
+
 	propBag.ondblclick = function(event) {
-		if (this.getParent(event.target).dataset.pid) wearSelectedProps();
+		if (getParent(event.target).dataset.pid) wearSelectedProps();
 	};
 	propBag.onmousemove = function(event) {
 		if (event.target === this && event.x-this.offsetLeft < 2) {
@@ -230,7 +242,7 @@ function refreshPropBagView(refresh) {
 		}
 	};
 	propBag.onmousedown = function(event) {
-		var newTarget = this.getParent(event.target);
+		var newTarget = getParent(event.target);
 		if (event.target.constructor !== HTMLImageElement) {
 			event.preventDefault();
 		}
@@ -537,11 +549,13 @@ function initializePropBagDB() {
 		propBagDB = DBOpenRequest.result;
 
 		var store = propBagDB.transaction("props").objectStore("props");
-		var request = store.get('propList');
-		request.onsuccess = function() {
-			if (request.result) {
-				propBagList = request.result.list;
-				//refreshPropBagView();
+		var get = store.get('propList');
+		get.onsuccess = function() {
+			if (get.result) {
+				propBagList = get.result.list;
+                if (propBag.dataset.state === '1') {
+                    refreshPropBagView();
+                }
 			}
 		};
 
@@ -969,6 +983,7 @@ function videoToPng(file,resizer,endedCallBack) {
 
 	vid.onloadedmetadata = function() {
         if (this.videoHeight === 0) {
+            URL.revokeObjectURL(vid.src);
             vid.src = ''; // abort, no video track
             endedCallBack();
             return;
@@ -979,9 +994,10 @@ function videoToPng(file,resizer,endedCallBack) {
 
 	};
 	vid.onended = function() {
-		this.src = ''
 		resizer.finish(function() {
             encodeAPNG(frames,resizer.width,resizer.height,delays,endedCallBack);
+            URL.revokeObjectURL(vid.src);
+            this.src = '';
         });
 	};
 	let doFrame = function() {
@@ -1014,7 +1030,7 @@ function videoToPng(file,resizer,endedCallBack) {
 		endedCallBack();
 	};
 
-	vid.src = file.path;
+	vid.src = URL.createObjectURL(file);
 }
 
 function encodeAPNG(frames,w,h,delays,callback) {
@@ -1103,8 +1119,6 @@ function createNewProps(list,finishedCallback) {
         }
 	};
 	importFile();
-
-
 }
 
 
@@ -1118,17 +1132,15 @@ function processImage(file,resizer,endedCallBack) {
                 resizer.width,
                 resizer.height
             );
-            // canvas.toBlob(function(blob) {
-            //     endedCallBack(blob,canvas.width,canvas.height);
-            // });
         });
+        URL.revokeObjectURL(this.src);
     };
 
     img.onerror = function() {
         endedCallBack();
     };
 
-    img.src = file.path;
+    img.src = URL.createObjectURL(file);
 }
 
 
@@ -1157,18 +1169,13 @@ function createNewProp(blob,w,h) {
 	return prop;
 }
 
-document.onpaste = function(e){
-	var loadImage = function (file,type) {
-		var reader = new FileReader();
-		reader.onload = function(e){
-			createNewProps([{path:e.target.result,type:type}]);
-		};
-		reader.readAsDataURL(file);
-	};
+document.onpaste = function(e) {
     var items = e.clipboardData.items;
     for (var i = 0; i < items.length; i++) {
         if (/^image/i.test(items[i].type)) {
-            loadImage(items[i].getAsFile(),items[i].type);
+            let file = items[i].getAsFile();
+            file.type = items[i].type;
+            createNewProps([file]);
             return;
         }
     }
