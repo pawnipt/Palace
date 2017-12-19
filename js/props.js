@@ -120,7 +120,9 @@ function refreshPropBagView(refresh) {
 		refreshPropBagView();
 	};
 	let lastDragOver;
-	propBag.addEventListener("dragover",function(event) {
+	propBag.ondragover = function(event) {
+        event.preventDefault();
+		event.stopImmediatePropagation();
 		if (dragPropID) {
 			if (lastDragOver) lastDragOver.style.borderRight = '';
 			let target = this.getParent(event.target);
@@ -141,10 +143,9 @@ function refreshPropBagView(refresh) {
 		} else {
 			this.style.boxShadow = '0px 0px 1px 10px LawnGreen inset';
 		}
-		event.preventDefault();
-		event.stopImmediatePropagation();
 
-	},true);
+
+	};
 	propBag.addEventListener("drop",function(event) {
 		if (!dragPropID) {
 			this.style.boxShadow = '';
