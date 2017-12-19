@@ -131,7 +131,7 @@ class Renderer {
 
 	reDrawTop() {
 		if (!this.drawTimer2) {
-			this.drawTimer2 = setTimeout(() => {this.refreshTop();},5);
+			this.drawTimer2 = setTimeout(() => {this.refreshTop();},1);
 		}
 	}
 
@@ -162,7 +162,7 @@ class Renderer {
 
 	reDraw() {
 		if (!this.drawTimer) {
-			this.drawTimer = setTimeout(() => {this.refresh();},5);
+			this.drawTimer = setTimeout(() => {this.refresh();},8);
 		}
 	}
 
@@ -445,8 +445,9 @@ class PalaceRoom extends Renderer {
 	}
 
 	drop(event) {
-		event.preventDefault();
+
 		if (palace.theUser && dragPropID) {
+			event.preventDefault();
 			var x = (event.layerX/viewScale).fastRound();
 			var y = (event.layerY/viewScale).fastRound();
 			var overSelf = (palace.theUser && palace.theUser.x-22 < x && palace.theUser.x+22 > x && palace.theUser.y-22 < y && palace.theUser.y+22 > y);
@@ -822,6 +823,7 @@ class PalaceRoom extends Renderer {
 			spot.y = info.y;
 			this.setSpotImg(spot);
 			this.reDraw();
+			this.reDrawTop();
 		}
 	}
 
@@ -920,7 +922,17 @@ class PalaceRoom extends Renderer {
 			logmsg(dude.name+' has '+(loggedOn?'signed on.':'entered the room.'));
 		}
 
+
+
 		this.users.push(dude);
+
+		if (this.whisperUserID) {
+			if (this.whisperUserID === dude.id) {
+				dude.putFilters(['brightness(112%)','drop-shadow(0px 0px 4px PaleGreen)']);
+			} else if (palace.theUser !== dude) {
+				dude.opacity('0.5');
+			}
+		}
 
 		loadProps(dude.props);
 		this.setUserCount();
@@ -945,6 +957,7 @@ class PalaceRoom extends Renderer {
 		this.setUserCount();
 
 		super.refresh();
+		super.refreshTop();
 	}
 
 
@@ -953,7 +966,6 @@ class PalaceRoom extends Renderer {
 		if (user && user.color !== info.color) {
 			user.color = info.color;
 			user.setColor();
-			this.reDraw();
 			return true;
 		}
 	}
@@ -962,7 +974,6 @@ class PalaceRoom extends Renderer {
 		if (user && user.face !== info.face) {
 			user.face = info.face;
 			user.setFace();
-			this.reDraw();
 			return true;
 		}
 	}
@@ -978,7 +989,6 @@ class PalaceRoom extends Renderer {
 			user.face = info.face;
 			user.setColor();
 			user.changeUserProps(info.props);
-			this.reDraw();
 		}
 	}
 	userNameChange(info) {
@@ -987,7 +997,6 @@ class PalaceRoom extends Renderer {
 			user.name = info.name;
 			user.setName();
 			user.setColor();
-			this.reDraw();
 		}
 	}
 	userMove(info) {
@@ -997,7 +1006,6 @@ class PalaceRoom extends Renderer {
 			user.x = info.x;
 			user.y = info.y;
 			user.setAvatarLocation();
-			//this.reDraw();
 		}
 	}
 	userChat(chat) {
