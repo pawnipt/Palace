@@ -64,7 +64,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 	document.getElementById('chatbox').onkeypress = function(event) {
 		if (event.keyCode == 13) {
 			var chat = event.target.value;
-			if (chat.length > 0 && palace.theRoom) {
+			if (chat.length > 0) {
 				var chatCmd = chat.match(/^~([^ ]+)\s{0,1}(.*)$/);
 				if (chatCmd && chatCmd.length > 2) {
 					switch(chatCmd[1]) { // eventually add more client side commands
@@ -81,7 +81,7 @@ let contextMenuListener = new ContextMenuListener((info) => {
 					}
 				} else if (chat.charAt(0) == '/') {
 					eval(chat.substring(1));
-				} else {
+				} else if (palace.theRoom) {
 					while (chat.length > 0) {
 						var seg = chat.slice(0,250);
 						chat = chat.slice(250,chat.length);
@@ -407,8 +407,8 @@ let contextMenuListener = new ContextMenuListener((info) => {
 })();
 
 function platformCtrlKey(keyboardEvent) {
-	var windows = (/^win/.test(process.platform));
-	return (windows && keyboardEvent.ctrlKey) || (!windows && keyboardEvent.metaKey);
+	var mac = (/^Mac/.test(navigator.platform));
+	return (!mac && keyboardEvent.ctrlKey) || (mac && keyboardEvent.metaKey);
 }
 
 function updateDrawPreview() {
