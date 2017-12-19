@@ -1,4 +1,4 @@
-self.importScripts('../lib/pako.min.js');
+self.importScripts('../lib/pako_deflate.min.js');
 self.importScripts('../lib/UPNG.js');
 
 self.addEventListener('message', function(e) {
