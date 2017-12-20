@@ -147,17 +147,11 @@ body {
   word-wrap           : break-word;
   backface-visibility : hidden;
   pointer-events      : none;
-  transform-origin: 52% 50%;
-  transition: transform 0.14s linear,opacity 0.14s linear;
-  transform: scale(0.4);
-  opacity: 0.4;
+  transform-origin: 53% 52%;
+  transform: scale(0.5);
+  opacity: 0.5;
 }
 
-.inflatedBubble {
-    transition: transform 0.19s ease-out,opacity 0.19s ease-out;
-    transform: scale(1);
-    opacity: 1;
-}
 
 #navsearch {
   width               : calc(100% - 20px);
@@ -178,7 +172,7 @@ body {
   resize              : none;
 }
 
-.navframe {}
+/* .navframe {} */
 
 .navframeusers {
   transform : translateX(4px);

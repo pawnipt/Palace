@@ -125,18 +125,21 @@ class Bubble {
 				setTimeout(() => {
 					this.p.style.left = this.x+'px';
 					this.p.style.top = this.y+'px';
-					this.p.className += ' inflatedBubble';
+					this.p.style.transition = 'transform 0.18s ease-out,opacity 0.18s ease-out';
+					this.p.style.transform = 'scale(1)';
+					this.p.style.opacity = '1';
 				},0);
 			}
 			let progress = timestamp - start;
 			this.size = Math.min((progress / this.size / 360) + 0.5,1);
+			palace.theRoom.reDrawTop();
 			if (progress < 150) {
 				this.raf = requestAnimationFrame(grow);
 			} else {
 				this.size = 1;
 				this.raf = null;
 			}
-			palace.theRoom.reDrawTop();
+
 		};
 		this.raf = requestAnimationFrame(grow);
 	}
@@ -147,10 +150,13 @@ class Bubble {
 		let shrink = (timestamp) => {
 			if (!start) {
 				start = timestamp;
-				this.p.className = 'chatBubble';
+				this.p.style.transition = 'transform 0.14s linear,opacity 0.14s linear;';
+				this.p.style.transform = '';
+				this.p.style.opacity = '';
 			}
 			let progress = timestamp - start;
 			this.size = Math.max(1 - (progress / 200), 0.5);
+			palace.theRoom.reDrawTop();
 			if (progress < 100) {
 				this.raf = requestAnimationFrame(shrink);
 			} else if (remove) {
@@ -159,7 +165,6 @@ class Bubble {
 			} else {
 				this.p.style.top = '-9999px';
 			}
-			palace.theRoom.reDrawTop();
 		};
 		this.raf = requestAnimationFrame(shrink);
 	}
