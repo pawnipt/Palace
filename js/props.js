@@ -22,7 +22,7 @@ function refreshPropBagView(refresh) {
 	var bagWidth = propBag.clientWidth,
 		tileSize = prefs.general.propBagTileSize,
 		visibleColumns = (bagWidth / tileSize).fastRound(),
-		visibleRows = ((window.innerHeight - palace.container.offsetTop) / tileSize).fastRound(), // 45 is main toolbar height
+		visibleRows = ((window.innerHeight - palace.containerOffsetTop) / tileSize).fastRound(), // 45 is main toolbar height
 		count = visibleRows * visibleColumns,
 		max = propBagList.length,
 		scroll = (propBag.scrollTop/tileSize).fastRound(),
@@ -709,21 +709,31 @@ function getBagProp(id,img) {
 	var transaction = propBagDB.transaction("props","readonly");
 	getTransactions[id] = transaction;
 	var store = transaction.objectStore("props");
-	var result = store.get(id);
-	result.onsuccess = function(event) {
+	var get = store.get(id);
+	get.onsuccess = function(event) {
 		delete getTransactions[id];
-		if (result.result.prop.ghost) img.className = 'bagprop ghost';
+		if (get.result.prop.ghost) img.className = 'bagprop ghost';
         img.onload = function() {
             URL.revokeObjectURL(this.src);
         };
-        let prop = result.result.prop.blob;
-        img.title = String(prop.size/1000000).match(/^\d+\.0*[1-9]{1}/) + 'mb';
-		img.src = URL.createObjectURL(prop);
+        let result = get.result;
+        let prop = result.prop;
+        img.title = result.name+'\n'+formatBytes(prop.blob.size);//String(prop.size/1000000).match(/^\d+\.0*[1-9]{1}/) + 'mb';
+		img.src = URL.createObjectURL(prop.blob);
 	};
 	transaction.onabort = function(event) {
 
 		delete getTransactions[id];
 	};
+}
+
+function formatBytes(bytes,decimals) {
+   if(bytes === 0) return '0 Bytes';
+   var k = 1000,
+       dm = decimals || 2,
+       sizes = ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'],
+       i = Math.floor(Math.log(bytes) / Math.log(k));
+   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
 function cacheBagProp(id,toUpload,callback) {
@@ -1052,7 +1062,7 @@ function gifToPng(file,resizer,endedCallBack) {
 
 	let decoder = new GifDecoder(file,
 		function(w,h,nbrFrames) { // start
-            if (nbrFrames === 1) {
+            if (nbrFrames <= 1) {
                 // if gif has only one frame then import as a normal 32bit image
                 processImage(file,resizer,endedCallBack);
                 return true; // aborts GifDecoder
