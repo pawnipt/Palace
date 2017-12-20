@@ -2,6 +2,13 @@
 
 var chatBubs = [];
 var quedBubbles = [];
+const bubbleConsts = {
+	padding : 9,
+	spikeSize : 3,
+	spikeSpread : 10,
+	spoof : /(\-?\d+\s*)[\s,]*(\-?\d+\s*)/i,
+	sound : /([a-zA-Z0-9\._-]*)(\s?)/i
+};
 
 class Bubble {
 	constructor(user,chat,bubInfo) {

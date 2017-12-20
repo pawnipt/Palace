@@ -578,6 +578,8 @@ function logspecial(name) {
 
 
 function makeHyperLinks(str,parent) { /* fix this, oddly; numbers fail! */
+	const linkSearch = /(\bhttps?:\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/i;
+	
 	var parts = str.split(linkSearch);
 	var l = parts.length;
 	var s = document.createElement('span');

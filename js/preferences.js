@@ -4,7 +4,12 @@ var prefs = {general:{},control:{},draw:{type:0,size:2,front:true,color:"rgba(25
 	propBagList = [];
 
 
-
+window.onerror = function(e, url, line){
+	if(prefs.general.senddebug) {
+		Raven.captureException(e);
+	}
+	logerror(e + "<br>" + url.split('/').pop() + "&nbsp;&nbsp;&nbsp;&nbsp;Line:" + line + '<br><br>');
+};
 
 function setControlPrefs(id,obj) {
 	prefs.control[id] = obj;

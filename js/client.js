@@ -62,6 +62,31 @@ const	MSG_ASSETNEW = 0x61417374,
 		MSG_SMSG = 0x736d7367,
 		MSG_ALTLOGONREPLY = 0x72657032;
 
+const spotConsts = {
+	PicturesAboveAll : 0x00000001,
+	DontMoveHere : 0x00000002,
+	PicturesAboveProps : 0x00000004,
+	ShowName : 0x00000008,
+	ShowFrame : 0x00000010,
+	Shadow : 0x00000020,
+	PicturesAboveNameTags : 0x00000040,
+	Forbidden : 0x00000080,
+	Mandatory : 0x00000100,
+	Landingpad : 0x00000200,
+	types : {normal:0,passage:1,shutable:2,lockable:3,deadBolt:4,navArea:5}
+};
+
+
+const drawType = {
+	OVAL : 0x4000,
+	TEXT : 0x2000,
+	ERASER : 0x1000,
+	SHAPE : 0x0100,
+	PENFRONT : 0x8000,
+	CLEAN : 0x0002,
+	UNDO : 0x0004
+};
+
 const net = require('net');
 
 class BufferView extends DataView {
@@ -88,6 +113,10 @@ class BufferView extends DataView {
 
 	set(uint8,offset) {
 		new Uint8Array(super.buffer).set(uint8,offset);
+	}
+
+	pBuffer(offset) {
+		return new Uint8Array(super.buffer.slice(offset+1,offset+this.getUint8(offset)+1));
 	}
 
 	pString(offset,decoder) {
@@ -426,13 +455,16 @@ class PalaceProtocol {
 		var roomPstring = (b,offset) => {
 			return b.pString(readPointer(b,offset),this.textDecoder);
 		};
+		var roomPcrypt = (b,offset) => {
+			return this.crypt.Decrypt(b.pBuffer(readPointer(b,offset)),new TextDecoder('macintosh'));
+		};
 
 		var room = {id:p.data.getInt16(20),
 					flags:p.data.getInt32(12),
 					name:roomPstring(p.data,22),
 					artist:roomPstring(p.data,26),
 					background:roomPstring(p.data,24),
-					password:'',
+					password:roomPcrypt(p.data,28),
 					looseProps:[],
 					spots:[],
 					pictures:[],
@@ -454,7 +486,7 @@ class PalaceProtocol {
 		for (var i = 0; i < count; i++) { //hotspots aka doors
 			var flags = p.data.getInt32(nxt+4);
 			var spot = {flags:flags,
-							layer:(flags & 0x00000004 || flags & 0x00000040 || flags & 0x00000001)?1:0,
+							toplayer:Boolean(flags & spotConsts.PicturesAboveProps || flags & spotConsts.PicturesAboveProps || flags & spotConsts.PicturesAboveNameTags),
 							y:p.data.getInt16(nxt+16),
 							x:p.data.getInt16(nxt+18),
 							id:p.data.getInt16(nxt+20),

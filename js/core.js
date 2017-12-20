@@ -205,7 +205,7 @@ class Renderer {
 	}
 
 	drawSpot(spot,above,ctx) {
-		if (above === Boolean(spotConsts.PicturesAboveAll & spot.flags || spotConsts.PicturesAboveProps & spot.flags || spotConsts.PicturesAboveNameTags & spot.flags)) {
+		if (above === spot.toplayer) {
 			if ((spotConsts.ShowFrame & spot.flags) || (spotConsts.Shadow & spot.flags)) {
 				this.makeHotSpot(spot); /* the spots polygon frame */
 
