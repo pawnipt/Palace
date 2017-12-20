@@ -1087,10 +1087,10 @@ class PalaceProtocol {
 		reg.setInt8(20,name.length);
 		reg.set(name,21);//should truncate to 31 bytes max
 
-		if (/^win/.test(process.platform)) { //add linux/unix identifier.
-			reg.setUint32(84,0x80000004); //must validate since value is
+		if (/^Win/.test(navigator.platform)) { // 7 and higher for new platform values (for new plugin)
+			reg.setUint32(84,0x80000004);
 		} else {
-			reg.setUint32(84,0x80000002);
+			reg.setUint32(84,0x80000002); // use 7 for "Intel Mac" (for pserver plugin)
 		}
 
 		reg.setInt32(88,this.puid.counter);
@@ -1130,18 +1130,27 @@ class PalaceProtocol {
 
 class PalaceClient extends PalaceProtocol {
 	constructor(regi,puid) {
-		let {remote} = require('electron');
-		let {Menu, MenuItem} = remote;
+		let remote,
+			Menu,
+			MenuItem,
+			version = '0.0.6';
+
+		if (window.require) {
+			remote = require('electron').remote;
+			MenuItem = remote.MenuItem;
+			Menu = remote.Menu;
+			version = remote.app.getVersion();
+		}
+
 
 		let reg = new PalaceRegistration(regi,puid);
-
 		super(
 			{crc:reg.crc,counter:reg.counter},
 			{crc:reg.puidCrc,counter:reg.puidCounter},
-			'PC5'+remote.app.getVersion().replace(/\./g, '').slice(-3)
+			'PC5'+version.replace(/\./g, '').slice(-3)
 		);
 
-		this.webFrame = require('electron').webFrame;
+
 
 		this.propDecoder = new LegacyPropDecoder();
 
@@ -1150,6 +1159,10 @@ class PalaceClient extends PalaceProtocol {
 		this.container = document.getElementById('container');
 		this.canvas = document.getElementById('mainlayer');
 		this.canvas2 = document.getElementById('toplayer');
+
+		//precalculated measurements
+		this.containerOffsetTop = this.container.offsetTop;
+		this.chatBoxHeight = document.getElementById('chatbox').offsetHeight;
 
 		this.sounds = {
 			signon:PalaceClient.preloadAudio('SignOn'),
@@ -1173,116 +1186,85 @@ class PalaceClient extends PalaceProtocol {
 		    this.videobg.style.display = 'block';
 		};
 
-		// building right click menu for users and loose props
-		let menuStore = {};
-		const loosePropMenu = new Menu();
-		loosePropMenu.append(new MenuItem({label: 'Save Prop', click:
-		() => {
-			saveProp([menuStore.looseprop.id]);
-		}}));
-		loosePropMenu.append(new MenuItem({type: 'separator'}));
-		loosePropMenu.append(new MenuItem({label: 'Remove Prop', click:
-		() => {
-			var index = this.theRoom.looseProps.indexOf(menuStore.looseprop);
-			if (index > -1) {
-				super.sendPropDelete(index);
-			}
-		}}));
-
-		const userMenu = new Menu();
-		userMenu.append(new MenuItem({label: 'Whisper ',type: 'checkbox', click:
-		() => {
-				var user = this.theRoom.getUser(menuStore.userid);
-				if (user) {
-					this.theRoom.enterWhisperMode(user.id,user.name);
+		if (window.require) {
+			// building right click menu for users and loose props
+			let menuStore = {};
+			const loosePropMenu = new Menu();
+			loosePropMenu.append(new MenuItem({label: 'Save Prop', click:
+			() => {
+				saveProp([menuStore.looseprop.id]);
+			}}));
+			loosePropMenu.append(new MenuItem({type: 'separator'}));
+			loosePropMenu.append(new MenuItem({label: 'Remove Prop', click:
+			() => {
+				var index = this.theRoom.looseProps.indexOf(menuStore.looseprop);
+				if (index > -1) {
+					super.sendPropDelete(index);
 				}
-			}
-		}));
-		userMenu.append(new MenuItem({type: 'separator'}));
-		userMenu.append(new MenuItem({label: 'Offer avatar', click:
-		() => { super.sendWhisper("'offer",menuStore.userid); }
-		}));
-		userMenu.append(new MenuItem({label: 'Accept avatar', click:
-		() => { super.sendXtlk("'accept"); }
-		}));
-		userMenu.append(new MenuItem({type: 'separator'}));
-		userMenu.append(new MenuItem({label: 'Prop mute',type: 'checkbox', click:
-		() => {
-			var user = this.theRoom.getUser(menuStore.userid);
-			if (user) {
-				user.propMuted = !user.propMuted;
-			}
-		}}));
+			}}));
 
-		this.canvas.addEventListener('contextmenu', (e) => {
-			if (this.theRoom) {
-				e.preventDefault();
-
-				var x = (e.layerX/viewScale).fastRound();
-				var y = ((e.layerY + this.zoomFactorY) /viewScale).fastRound(); // get excess toolbar height if windows is scaling
-
-				var user = this.theRoom.mouseOverUser(x,y);
-
-				if (user && user != this.theUser) {
-					menuStore.userid = user.id;
-					userMenu.items[0].checked = Boolean(this.theRoom.whisperUserID);
-					userMenu.items[5].checked = Boolean(user.propMuted);
-					userMenu.items[2].enabled = this.theUser.props.length > 0;
-					userMenu.popup(remote.getCurrentWindow(),{x:e.x,y:e.y,async:true});
-				} else {
-					var lpIndex = this.theRoom.mouseOverLooseProp(x,y);
-					if (lpIndex != null) {
-						var lp = this.theRoom.looseProps[lpIndex];
-						loosePropMenu.items[0].enabled = (propBagList.indexOf(lp.id) < 0);
-						menuStore.looseprop = lp;
-						loosePropMenu.popup(remote.getCurrentWindow(),{x:e.x,y:e.y,async:true});
+			const userMenu = new Menu();
+			userMenu.append(new MenuItem({label: 'Whisper ',type: 'checkbox', click:
+			() => {
+					var user = this.theRoom.getUser(menuStore.userid);
+					if (user) {
+						this.theRoom.enterWhisperMode(user.id,user.name);
 					}
 				}
-			}
-		}, false);
+			}));
+			userMenu.append(new MenuItem({type: 'separator'}));
+			userMenu.append(new MenuItem({label: 'Offer avatar', click:
+			() => { super.sendWhisper("'offer",menuStore.userid); }
+			}));
+			userMenu.append(new MenuItem({label: 'Accept avatar', click:
+			() => { super.sendXtlk("'accept"); }
+			}));
+			userMenu.append(new MenuItem({type: 'separator'}));
+			userMenu.append(new MenuItem({label: 'Prop mute',type: 'checkbox', click:
+			() => {
+				var user = this.theRoom.getUser(menuStore.userid);
+				if (user) {
+					user.propMuted = !user.propMuted;
+				}
+			}}));
 
+			this.canvas.addEventListener('contextmenu', (e) => {
+				if (this.theRoom) {
+					e.preventDefault();
 
-		// window.addEventListener("message", (event) => {
-		// 	// check source and see if a palace function was executed
-		// 	if (event.source === this.sandbox && typeof event.data !== 'undefined') {
-		// 		this.scriptEvent(event.data);
-		// 	}
-		// }, false);
-        //
-        //
-		// const sandframe = document.createElement('iframe');
-		// sandframe.sandbox = 'allow-scripts';
-		// sandframe.className = 'sandbox';
-		// document.body.appendChild(sandframe);
-		// sandframe.src = 'http://pchat.org/sandbox/';
-		// this.sandbox = sandframe.contentWindow;
+					var x = (e.layerX/viewScale).fastRound();
+					var y = ((e.layerY + this.zoomFactorY) /viewScale).fastRound(); // get excess toolbar height if windows is scaling
+
+					var user = this.theRoom.mouseOverUser(x,y);
+
+					if (user && user != this.theUser) {
+						menuStore.userid = user.id;
+						userMenu.items[0].checked = Boolean(this.theRoom.whisperUserID);
+						userMenu.items[5].checked = Boolean(user.propMuted);
+						userMenu.items[2].enabled = this.theUser.props.length > 0;
+						userMenu.popup(remote.getCurrentWindow(),{x:e.x,y:e.y,async:true});
+					} else {
+						var lpIndex = this.theRoom.mouseOverLooseProp(x,y);
+						if (lpIndex != null) {
+							var lp = this.theRoom.looseProps[lpIndex];
+							loosePropMenu.items[0].enabled = (propBagList.indexOf(lp.id) < 0);
+							menuStore.looseprop = lp;
+							loosePropMenu.popup(remote.getCurrentWindow(),{x:e.x,y:e.y,async:true});
+						}
+					}
+				}
+			}, false);
+		}
 
 	}
 
-	// script(code) {
-	// 	this.sandbox.postMessage(code,'*');
-	// }
-    //
-	// scriptEvent(data) {
-	// 	console.log(data);
-	// 	switch (data.type) {
-	// 		case 'say':
-	// 			super.sendXtlk(data.params[0]);
-	// 			break;
-	// 		case 'alert':
-	// 			alert(this.servername + ' says: ' + data.params[0]);
-	// 			break;
-	// 		default:
-	// 			break;
-	// 	}
-	// }
 
 	get zoomFactorY() {
-		return (this.container.offsetTop*this.webFrame.getZoomFactor() - this.container.offsetTop);
+		return (this.containerOffsetTop * window.devicePixelRatio - this.containerOffsetTop);
 	}
 
 	maximizeRoomView(img) {
-		this.setRoomBG(window.innerWidth-logField.offsetWidth,window.innerHeight-this.container.offsetTop-document.getElementById('chatbox').offsetHeight,img);
+		this.setRoomBG(window.innerWidth-logField.offsetWidth,window.innerHeight-this.containerOffsetTop-this.chatBoxHeight,img);
 	}
 
 	connecting() {
@@ -1417,7 +1399,7 @@ class PalaceClient extends PalaceProtocol {
 		this.container.style.width = w+'px';
 	    this.container.style.height = h+'px';
 
-	    document.body.style.height = this.roomHeight + this.container.offsetTop + document.getElementById('chatbox').offsetHeight + 'px';
+	    document.body.style.height = this.roomHeight + this.containerOffsetTop + this.chatBoxHeight + 'px';
 	    setBodyWidth();
 
 		if (this.theRoom && this.theRoom.users) {

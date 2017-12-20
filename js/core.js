@@ -717,7 +717,7 @@ class PalaceRoom extends Renderer {
 
 		let drawing = (event) => {
 			var newx = ((event.x+window.scrollX-palace.container.offsetLeft)/viewScale).fastRound()-offset;
-			var newy = ((event.y+window.scrollY-palace.container.offsetTop)/viewScale).fastRound()-offset; //45 get new toolbar height if zooming
+			var newy = ((event.y+window.scrollY-palace.containerOffsetTop)/viewScale).fastRound()-offset; //45 get new toolbar height if zooming
 			if (event.shiftKey && drawPoints.length > 3) {
 				this.drawPoints[this.drawPoints.length-2] = newx;
 				this.drawPoints[this.drawPoints.length-1] = newy;

@@ -6,20 +6,21 @@ var logField = document.getElementById('log'),
 	viewScaleTimer = null,
 	keysDown = [];
 
-//import {SpellCheckHandler, ContextMenuListener, ContextMenuBuilder} from 'electron-spellchecker';
-const electronSpellchecker = require('electron-spellchecker');
-const SpellCheckHandler = electronSpellchecker.SpellCheckHandler;
-const ContextMenuListener = electronSpellchecker.ContextMenuListener;
-const ContextMenuBuilder = electronSpellchecker.ContextMenuBuilder;
-window.spellCheckHandler = new SpellCheckHandler();
-window.spellCheckHandler.attachToInput();
-window.spellCheckHandler.switchLanguage(navigator.language); // Start off as "US English, America" ...maybe use navigator.language
-let contextMenuBuilder = new ContextMenuBuilder(window.spellCheckHandler,null,true);
-// Add context menu listener
-let contextMenuListener = new ContextMenuListener((info) => {
-	contextMenuBuilder.showPopupMenu(info);
-});
-
+if (window.require) {
+	//import {SpellCheckHandler, ContextMenuListener, ContextMenuBuilder} from 'electron-spellchecker';
+	const electronSpellchecker = require('electron-spellchecker');
+	const SpellCheckHandler = electronSpellchecker.SpellCheckHandler;
+	const ContextMenuListener = electronSpellchecker.ContextMenuListener;
+	const ContextMenuBuilder = electronSpellchecker.ContextMenuBuilder;
+	window.spellCheckHandler = new SpellCheckHandler();
+	window.spellCheckHandler.attachToInput();
+	window.spellCheckHandler.switchLanguage(navigator.language); // Start off as "US English, America" ...maybe use navigator.language
+	let contextMenuBuilder = new ContextMenuBuilder(window.spellCheckHandler,null,true);
+	// Add context menu listener
+	let contextMenuListener = new ContextMenuListener((info) => {
+		contextMenuBuilder.showPopupMenu(info);
+	});
+}
 
 
 
@@ -745,7 +746,7 @@ function createChatVideoPlayer(type,info,source) {
 			info.container.appendChild(closeyt);
 			info.parent.style.position = 'sticky';
 			info.parent.style.zIndex = '100';
-			info.parent.style.top = -(info.container.offsetTop+2)+'px';
+			info.parent.style.top = -(info.containerOffsetTop+2)+'px';
 		});
 	};
 
@@ -787,16 +788,16 @@ function scale2Fit() {
 		viewScaleTimer = null;
 	}
 	var chatBox = document.getElementById('chatbox');
-	var chatBoxHeight = chatBox.offsetHeight;
+	var chatBoxHeight = palace.chatBoxHeight;
 	var logWidth = logField.offsetWidth;
 
-	if (!prefs.general.viewScales && (prefs.general.viewScaleAll || (palace.roomWidth > window.innerWidth-logWidth || palace.roomHeight > window.innerHeight-palace.container.offsetTop-chatBoxHeight))) {
+	if (!prefs.general.viewScales && (prefs.general.viewScaleAll || (palace.roomWidth > window.innerWidth-logWidth || palace.roomHeight > window.innerHeight-palace.containerOffsetTop-chatBoxHeight))) {
 		viewScaleTimer = setTimeout(function(){
 			document.body.scrollTop = 0;
 			document.body.scrollLeft = 0;
 			document.body.style.overflow = 'hidden';
 			var scaleW = ((window.innerWidth - logWidth) / palace.roomWidth);
-			var scaleH = ((window.innerHeight- palace.container.offsetTop - chatBoxHeight) / palace.roomHeight);
+			var scaleH = ((window.innerHeight- palace.containerOffsetTop - chatBoxHeight) / palace.roomHeight);
 			var scale = scaleW < scaleH?scaleW:scaleH;
 			if (viewScale != scale) palace.container.style.transform = 'scale('+scale+') translateZ(0)';
 			viewScale = scale;
