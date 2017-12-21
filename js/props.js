@@ -319,8 +319,8 @@ class PalaceProp {
     	nbrProps++;
     	if (nbrProps > palace.theRoom.nbrRoomProps+66) { // limit props stored in memory
     		for (var k in cacheProps) {
-    			if (!palace.theRoom.propInUse(parseInt(k))) {
-                    URL.revokeObjectURL(cacheProps[k].src);
+    			if (!palace.theRoom.propInUse(Number(k))) {
+                    if (!cachedImgs[k]) URL.revokeObjectURL(cacheProps[k].src);
     				delete cacheProps[k];
     				nbrProps--;
     			}
@@ -366,7 +366,12 @@ class PalaceProp {
         this.img.onload = () => {
             this.showProp();
     	};
-        this.img.src = URL.createObjectURL(blob);
+        if (cachedImgs[this.id]) { // if objectUrl was already created via the prop bag view
+            this.img.src = cachedImgs[this.id].url;
+        } else {
+            this.img.src = URL.createObjectURL(blob);
+        }
+
     }
 
     setInfo(info) {
@@ -705,26 +710,36 @@ function saveProp(pids,flush) {
 }
 
 let getTransactions = {};
+let cachedImgs = {}
 function getBagProp(id,img) {
-	var transaction = propBagDB.transaction("props","readonly");
-	getTransactions[id] = transaction;
-	var store = transaction.objectStore("props");
-	var get = store.get(id);
-	get.onsuccess = function(event) {
-		delete getTransactions[id];
-		if (get.result.prop.ghost) img.className = 'bagprop ghost';
-        img.onload = function() {
-            URL.revokeObjectURL(this.src);
-        };
-        let result = get.result;
-        let prop = result.prop;
-        img.title = result.name+'\n'+formatBytes(prop.blob.size);//String(prop.size/1000000).match(/^\d+\.0*[1-9]{1}/) + 'mb';
-		img.src = URL.createObjectURL(prop.blob);
-	};
-	transaction.onabort = function(event) {
+    let data = cachedImgs[id];
+    if (!data) {
+    	var transaction = propBagDB.transaction("props","readonly");
+    	getTransactions[id] = transaction;
+    	var store = transaction.objectStore("props");
+    	var get = store.get(id);
+    	get.onsuccess = function(event) {
+    		delete getTransactions[id];
 
-		delete getTransactions[id];
-	};
+            // img.onload = function() {
+            //     URL.revokeObjectURL(this.src);
+            // };
+            let result = get.result;
+            let prop = result.prop;
+            if (prop.ghost) img.className = 'bagprop ghost';
+            img.title = result.name+'\n'+formatBytes(prop.blob.size);//String(prop.size/1000000).match(/^\d+\.0*[1-9]{1}/) + 'mb';
+    		img.src = URL.createObjectURL(prop.blob);
+            cachedImgs[id] = {url:img.src,ghost:get.result.prop.ghost,title:img.title};
+    	};
+    	transaction.onabort = function(event) {
+
+    		delete getTransactions[id];
+    	};
+    } else {
+        img.title = data.title;
+        if (data.ghost) img.className = 'bagprop ghost';
+        img.src = data.url;
+    }
 }
 
 function formatBytes(bytes,decimals) {
