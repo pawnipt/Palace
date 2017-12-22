@@ -18,7 +18,7 @@ const   PROP_HEAD = 2,
     	PROP_PNG = 1024;
 
 
-function refreshPropBagView(refresh) {
+function refreshPropBagView(refresh) { // redo this entire thing
 	var bagWidth = propBag.clientWidth,
 		tileSize = prefs.general.propBagTileSize,
 		visibleColumns = (bagWidth / tileSize).fastRound(),
@@ -36,9 +36,9 @@ function refreshPropBagView(refresh) {
 	scroll -= 2; // -2 for a little extra loaded up top
 	if (scroll < 0) scroll = 0;
 
-	for (var y = scroll; y < visibleRows+scroll+4; y++) { // +4 for a little extra loaded down below
-		for (var x = 0; x < visibleColumns; x++) {
-			var propIndex = y*visibleColumns+x;
+	for (let y = scroll; y < visibleRows+scroll+4; y++) { // +4 for a little extra loaded down below
+		for (let x = 0; x < visibleColumns; x++) {
+			let propIndex = y*visibleColumns+x;
 			if (max > propIndex) toView[propBagList[propIndex]] = {x:x*tileSize,y:y*tileSize};
 		}
 	}
@@ -47,7 +47,7 @@ function refreshPropBagView(refresh) {
 	var cachedTiles = {}; // prevent excessive database calls
 	var children = propBag.children;
 
-	for (var i = children.length - 1; i >= 0; i--) {
+	for (let i = children.length - 1; i >= 0; i--) {
 		var tile = children[i];
 		var pid = tile.dataset.pid;
 		var preTile = toView[pid];
@@ -58,22 +58,28 @@ function refreshPropBagView(refresh) {
 	}
 
 	var alreadyInDom = function(id) {
-		for (var i = children.length - 1; i >= 0; i--) {
-			if (id == Number(children[i].dataset.pid)) {
+		for (let i = children.length - 1; i >= 0; i--) {
+			if (id === Number(children[i].dataset.pid)) {
 				return children[i];
 			}
 		}
 	};
 
 	// free up transaction queue...
-	for (let i = 0, l = keys.length; i < l; i++) {
-		delete getTransactions[keys[i]];
-	}
+	// for (let i = 0, l = keys.length; i < l; i++) {
+	// 	delete getTransactions[keys[i]];
+	// }
 	for (let i = 0, pids = Object.keys(getTransactions), l = keys.length; i < l; i++) {
-		let trans = getTransactions[pids[i]];
-		if (trans) trans.abort();
+        let id = pids[i];
+        if (!toView[id]) {
+            let trans = getTransactions[id];
+            if (trans) {
+                trans.trans.abort();
+                delete getTransactions[id];
+            }
+        }
 	}
-	getTransactions = {};
+
 
 
 	for (let i = 0, l = keys.length; i < l; i++) {
@@ -86,13 +92,17 @@ function refreshPropBagView(refresh) {
   			if (cachedTiles[key]) {
   				pc = cachedTiles[key];
   			} else {
-				justadded = true;
   				pc = document.createElement('div');
 
-				pc.dataset.pid = pid;
+				pc.dataset.pid = key;
 				img = document.createElement('img');
 				img.className = 'bagprop';
-				getBagProp(pid,img);
+                let trans = getTransactions[key];
+                if (trans) {
+                    trans.img = img;
+                } else {
+                    getBagProp(pid,img);
+                }
 				pc.appendChild(img);
   			}
 			if (Number(pc.dataset.size) !== tileSize) {
@@ -320,7 +330,7 @@ class PalaceProp {
     	if (nbrProps > palace.theRoom.nbrRoomProps+66) { // limit props stored in memory
     		for (var k in cacheProps) {
     			if (!palace.theRoom.propInUse(Number(k))) {
-                    if (!cachedImgs[k]) URL.revokeObjectURL(cacheProps[k].src);
+                    if (!cachedBagProps[k]) URL.revokeObjectURL(cacheProps[k].src);
     				delete cacheProps[k];
     				nbrProps--;
     			}
@@ -366,8 +376,8 @@ class PalaceProp {
         this.img.onload = () => {
             this.showProp();
     	};
-        if (cachedImgs[this.id]) { // if objectUrl was already created via the prop bag view
-            this.img.src = cachedImgs[this.id].url;
+        if (cachedBagProps[this.id]) { // if objectUrl was already created via the prop bag view
+            this.img.src = cachedBagProps[this.id].url;
         } else {
             this.img.src = URL.createObjectURL(blob);
         }
@@ -710,26 +720,34 @@ function saveProp(pids,flush) {
 }
 
 let getTransactions = {};
-let cachedImgs = {}
+let cachedBagProps = {}
 function getBagProp(id,img) {
-    let data = cachedImgs[id];
+    let data = cachedBagProps[id];
     if (!data) {
+        console.log('getting prop from database!')
     	var transaction = propBagDB.transaction("props","readonly");
-    	getTransactions[id] = transaction;
+    	getTransactions[id] = {trans:transaction,img:img};
     	var store = transaction.objectStore("props");
     	var get = store.get(id);
     	get.onsuccess = function(event) {
-    		delete getTransactions[id];
+            let currentImg;
+            if (getTransactions[id]) {
+                currentImg = getTransactions[id].img;
+                delete getTransactions[id];
+            } else {
+                currentImg = img;
+            }
+            if (cachedBagProps[id]) return;
 
             // img.onload = function() {
             //     URL.revokeObjectURL(this.src);
             // };
             let result = get.result;
             let prop = result.prop;
-            if (prop.ghost) img.className = 'bagprop ghost';
-            img.title = result.name+'\n'+formatBytes(prop.blob.size);//String(prop.size/1000000).match(/^\d+\.0*[1-9]{1}/) + 'mb';
-    		img.src = URL.createObjectURL(prop.blob);
-            cachedImgs[id] = {url:img.src,ghost:get.result.prop.ghost,title:img.title};
+            if (prop.ghost) currentImg.className = 'bagprop ghost';
+            currentImg.title = result.name+'\n'+formatBytes(prop.blob.size);//String(prop.size/1000000).match(/^\d+\.0*[1-9]{1}/) + 'mb';
+    		currentImg.src = URL.createObjectURL(prop.blob);
+            cachedBagProps[id] = {url:currentImg.src,ghost:prop.ghost,title:currentImg.title};
     	};
     	transaction.onabort = function(event) {
 
@@ -849,9 +867,12 @@ class GifDecoder {
 
 class ImageDown {
 	constructor(maxSize,options) {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+
         this.options = options;
         if (!this.options) this.options = {};
-        if (!this.options.noWorker) {
+        if (!this.ctx.imageSmoothingQuality) { // if no suck option then we will do our own interpolation for high quality image reizing!
             this.worker = new Worker('js/workers/resizeimage.js');
             this.worker.addEventListener('message', (e) => {
                 this.receivedMessage(e);
@@ -859,8 +880,7 @@ class ImageDown {
         }
         this.maxSize = maxSize;
 		this.callbacks = [];
-        this.canvas = document.createElement('canvas');
-        this.ctx = this.canvas.getContext('2d');
+
 	}
 
     set exportAsCanvas(value) {
@@ -874,9 +894,6 @@ class ImageDown {
     receivedMessage(e) {
         let response = e.data;
         if (response.pixels) {
-            if (this.options.alphaTrim) {
-                this.trimAlpha(response.pixels,this.options.alphaTrim);
-            }
             this.setCanvasSize(response.width, response.height);
             response = this.createImageData(response.pixels, response.width,response.height);
             if (this.options.canvas) {
@@ -907,7 +924,7 @@ class ImageDown {
 
     resize(src,callback) {
         this.setNewSize(src.width,src.height);
-        if (this.options.filter) {
+        if (this.worker) {
             this.lanczos(src,callback);
         } else {
             this.native(src,callback);
@@ -953,8 +970,7 @@ class ImageDown {
             {
 				src:imgData,
 				width:this.width,
-				height:this.height,
-                options:this.options
+				height:this.height
 			},
             [imgData.data.buffer]
         );
@@ -1112,7 +1128,7 @@ function createNewProps(list,finishedCallback) {
 	var button = document.getElementById('newprops');
 	button.className += ' loadingbutton';
 
-    let resizer = new ImageDown(220); // use {filter:'lanczos'} for firefox later
+    let resizer = new ImageDown(220);
 
     let port = function(blob,w,h) {
         if (blob) {
@@ -1136,7 +1152,7 @@ function createNewProps(list,finishedCallback) {
 		} else {
             resizer.finish(function() {
                 button.className = 'tbcontrol tbbutton';
-                this.destroy();
+                resizer.destroy();
                 if (finishedCallback) {
                     finishedCallback();
                 }

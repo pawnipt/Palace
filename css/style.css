@@ -454,7 +454,7 @@ body {
 }
 
 #drawsize {
-  top   : 5px;
+  top   : 0px;
   left  : 4px;
   width : 76px;
 }
@@ -1094,11 +1094,37 @@ input[type="color"]::-webkit-color-swatch {
 /*emulate mac range input for windows, because the windows one has a huge knob! */
 
 input[type=range] {
+  -moz-appearance : none;
   -webkit-appearance : none;
   background         : transparent;
 }
 
+input[type=range]::-moz-range-track {
+     -moz-appearance : none;
+  height              : 4px;
+  border              : 1px inset RGBA(0,0,0,0.5);
+  border-bottom-color : RGBA(0,0,0,0.2);
+  border-radius       : 2px;
+  background          : lightgray;
+  box-shadow          : 0px 1px 3px RGBA(0,0,0,0.3) inset;
+}
+
+input[type=range]::-moz-range-thumb {
+  -moz-appearance : none;
+  width              : 15px;
+  height             : 15px;
+  margin-top         : -6px;
+  border             : 1px solid RGBA(0,0,0,0.5);
+  border-radius      : 50%;
+  background         : linear-gradient(
+                         white,
+                         lightgray
+                       );
+}
+
 input[type=range]::-webkit-slider-runnable-track {
+    margin-top: 5px;
+     -webkit-appearance : none;
   height              : 5px;
   border              : 1px inset RGBA(0,0,0,0.5);
   border-bottom-color : RGBA(0,0,0,0.2);

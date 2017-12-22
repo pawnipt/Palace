@@ -87,7 +87,11 @@ const drawType = {
 	UNDO : 0x0004
 };
 
-const net = require('net');
+let net;
+if (window.require) {
+	net = require('net');
+}
+
 
 class BufferView extends DataView {
 

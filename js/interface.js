@@ -39,7 +39,7 @@ if (window.require) {
 		var item = items[i];
 		if (item.type != 'text' && item.type) {
 			item.tabIndex = -1;
-			item.onfocus=function(){this.blur()};
+			//item.onfocus=function(){this.blur()};
 		}
 	}
 
@@ -123,11 +123,12 @@ if (window.require) {
 		scale2Fit();
 	};
 
-	document.body.onkeypress = function(keyboard) {
-		if (document.activeElement.nodeName == 'BODY' && !keyboard.metaKey && !keyboard.ctrlKey) {
+	window.addEventListener('keypress',function(keyboard) {
+		if (document.activeElement.type !== 'text' && document.activeElement.contentEditable != 'true' && !keyboard.metaKey && !keyboard.ctrlKey) {
 			document.getElementById('chatbox').focus();
 		}
-	};
+	},false);
+
 	document.body.onkeyup = function(keyboard) {
 		if (keyboard.keyCode > 36 && keyboard.keyCode < 41) keysDown[keyboard.keyCode] = false;
 	};
@@ -579,7 +580,7 @@ function logspecial(name) {
 
 function makeHyperLinks(str,parent) { /* fix this, oddly; numbers fail! */
 	const linkSearch = /(\bhttps?:\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/i;
-	
+
 	var parts = str.split(linkSearch);
 	var l = parts.length;
 	var s = document.createElement('span');
