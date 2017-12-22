@@ -8,26 +8,10 @@ self.addEventListener('message', function(e) {
         return;
     }
 
-    let pixels;
-    let options = e.data.options;
-    switch(options.filter) {
-        case'linear':
-            pixels = ResampleLanczos(e.data.src,e.data.width,e.data.height,3,options.filter);
-            break;
-        case'lanczos':
-            pixels = ResampleLanczos(e.data.src,e.data.width,e.data.height,3);
-            break;
-    }
+    //let options = e.data.options;
 
+    let pixels = ResampleLanczos(e.data.src,e.data.width,e.data.height,3);
 
-    if (options.trimAlpha) {
-        let alpha = options.trimAlpha;
-		for (let i = 3, len = pixels.length; i < len; i += 4) {
-			if (pixels[i] < alpha) {
-				pixels[i] = 0; // drop semi transparent pixels
-			}
-		}
-    }
 
     self.postMessage({pixels:pixels,width:e.data.width,height:e.data.height},[pixels.buffer]);
 
