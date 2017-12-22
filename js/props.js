@@ -724,7 +724,7 @@ let cachedBagProps = {}
 function getBagProp(id,img) {
     let data = cachedBagProps[id];
     if (!data) {
-        console.log('getting prop from database!')
+        //console.log('getting prop from database!')
     	var transaction = propBagDB.transaction("props","readonly");
     	getTransactions[id] = {trans:transaction,img:img};
     	var store = transaction.objectStore("props");
