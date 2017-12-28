@@ -976,7 +976,7 @@ function loadDirectoryList(list) {
 
 		for (let i = 0; i < scount; i++) {
 			serverList = directoryList.directory[i];
-			if (word == '' || serverList.name.toLowerCase().indexOf(word) > -1) {
+			if (word === '' || serverList.name.toLowerCase().indexOf(word) > -1) {
 				li = document.createElement("li");
 				li.dataset.address = serverList.address;
 

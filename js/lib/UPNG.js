@@ -2,11 +2,12 @@
 ;(function(){
 var UPNG = {};
 
+
 var pako;
 if (typeof window !== 'undefined') {
 	window.UPNG = UPNG;
 	pako = window.pako;
-} else if (typeof self !== 'undefined') {
+} else {
 	self.UPNG = UPNG;
 	pako = self.pako;
 }
