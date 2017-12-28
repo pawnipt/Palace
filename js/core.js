@@ -4,7 +4,7 @@ const palace = new PalaceClient(prefs.registration.regi,prefs.registration.puid)
 
 
 loadSmileys(() => { // gotta be able to smile on a palace!
-	palace.goto(prefs.general.home);
+	if (prefs.general.home != '') palace.goto(prefs.general.home);
 });
 
 function loadSmileys(callback) {
@@ -1062,7 +1062,8 @@ class PalaceRoom extends Renderer {
 			this.exitWhisperMode(); /* whisper toggle */
 		}
 		if (!cancel) {
-			document.getElementById('chatbox').placeholder = 'Whisper to ' + name;
+			let chatbox = document.getElementById('chatbox');
+			chatbox.placeholder = 'Whisper to ' + name;
 			this.whisperUserID = userid;
 			var user = this.getUser(userid);
 			this.users.forEach((u) => {
@@ -1075,6 +1076,7 @@ class PalaceRoom extends Renderer {
 
 				user.poke();
 			}
+			chatbox.focus();
 		}
 	}
 
