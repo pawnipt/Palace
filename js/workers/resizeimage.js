@@ -10,7 +10,7 @@ self.addEventListener('message', function(e) {
 
     //let options = e.data.options;
 
-    let pixels = ResampleLanczos(e.data.src,e.data.width,e.data.height,3);
+    let pixels = ResampleLanczos(e.data.src,e.data.width,e.data.height,2); // slightly sharper than 3
 
 
     self.postMessage({pixels:pixels,width:e.data.width,height:e.data.height},[pixels.buffer]);

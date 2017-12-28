@@ -42,34 +42,10 @@ function refreshPropBagView(refresh) { // redo this entire thing
 			if (max > propIndex) toView[propBagList[propIndex]] = {x:x*tileSize,y:y*tileSize};
 		}
 	}
+
 	var keys = Object.keys(toView);
 
-	var cachedTiles = {}; // prevent excessive database calls
-	var children = propBag.children;
-
-	for (let i = children.length - 1; i >= 0; i--) {
-		var tile = children[i];
-		var pid = tile.dataset.pid;
-		var preTile = toView[pid];
-		if (tile !== propBagRetainer && (refresh || !preTile || preTile.x !== Number(tile.dataset.left) || preTile.y !== Number(tile.dataset.top))) {
-			cachedTiles[pid] = children[i];
-			propBag.removeChild(children[i]);
-		}
-	}
-
-	var alreadyInDom = function(id) {
-		for (let i = children.length - 1; i >= 0; i--) {
-			if (id === Number(children[i].dataset.pid)) {
-				return children[i];
-			}
-		}
-	};
-
-	// free up transaction queue...
-	// for (let i = 0, l = keys.length; i < l; i++) {
-	// 	delete getTransactions[keys[i]];
-	// }
-	for (let i = 0, pids = Object.keys(getTransactions), l = keys.length; i < l; i++) {
+    for (let i = 0, pids = Object.keys(getTransactions), l = keys.length; i < l; i++) {
         let id = pids[i];
         if (!toView[id]) {
             let trans = getTransactions[id];
@@ -79,6 +55,33 @@ function refreshPropBagView(refresh) { // redo this entire thing
             }
         }
 	}
+
+	var cachedTiles = {}; // prevent excessive database calls
+	var children = propBag.children;
+
+	for (let i = children.length - 1; i >= 0; i--) {
+		let tile = children[i];
+        if (tile !== propBagRetainer) {
+    		let pid = tile.dataset.pid;
+    		let preTile = toView[pid];
+    		if (refresh || !preTile || preTile.x !== Number(tile.dataset.left) || preTile.y !== Number(tile.dataset.top)) {
+    			cachedTiles[pid] = children[i];
+    			propBag.removeChild(children[i]);
+    		}
+            if (!preTile && tile.firstChild.src !== '') {
+                URL.revokeObjectURL(tile.firstChild.src);
+                tile.firstChild.src = '';
+            }
+        }
+	}
+
+	var alreadyInDom = function(id) {
+		for (let i = children.length - 1; i >= 0; i--) {
+			if (id === Number(children[i].dataset.pid)) {
+				return children[i];
+			}
+		}
+	};
 
 
 
@@ -231,14 +234,6 @@ function refreshPropBagView(refresh) { // redo this entire thing
             w:event.target.offsetWidth,
             h:event.target.offsetHeight
         };
-
-		var img = event.target;
-		var n = img.parentNode.className;
-		img.parentNode.className = '';
-		event.dataTransfer.setDragImage(img,dragBagProp.x,dragBagProp.y);
-		setTimeout(function() {
-			img.parentNode.className = n;
-		},0);
 	};
 
 	propBag.ondblclick = function(event) {
@@ -288,7 +283,7 @@ function refreshPropBagView(refresh) { // redo this entire thing
 				refreshPropBagView(true);
 				setPropButtons();
 			}
-		} else if (event.x-this.offsetLeft < 2) {
+		} else if (event.x-this.offsetLeft < 2) { // drag resize prop bag view
 			event.preventDefault();
 			let initialX = event.pageX-window.scrollX;
 			let initialW = this.offsetWidth;
@@ -330,7 +325,7 @@ class PalaceProp {
     	if (nbrProps > palace.theRoom.nbrRoomProps+66) { // limit props stored in memory
     		for (var k in cacheProps) {
     			if (!palace.theRoom.propInUse(Number(k))) {
-                    if (!cachedBagProps[k]) URL.revokeObjectURL(cacheProps[k].src);
+                    URL.revokeObjectURL(cacheProps[k].src);
     				delete cacheProps[k];
     				nbrProps--;
     			}
@@ -376,12 +371,7 @@ class PalaceProp {
         this.img.onload = () => {
             this.showProp();
     	};
-        if (cachedBagProps[this.id]) { // if objectUrl was already created via the prop bag view
-            this.img.src = cachedBagProps[this.id].url;
-        } else {
-            this.img.src = URL.createObjectURL(blob);
-        }
-
+        this.img.src = URL.createObjectURL(blob);
     }
 
     setInfo(info) {
@@ -720,44 +710,28 @@ function saveProp(pids,flush) {
 }
 
 let getTransactions = {};
-let cachedBagProps = {}
 function getBagProp(id,img) {
-    let data = cachedBagProps[id];
-    if (!data) {
-        //console.log('getting prop from database!')
-    	var transaction = propBagDB.transaction("props","readonly");
-    	getTransactions[id] = {trans:transaction,img:img};
-    	var store = transaction.objectStore("props");
-    	var get = store.get(id);
-    	get.onsuccess = function(event) {
-            let currentImg;
-            if (getTransactions[id]) {
-                currentImg = getTransactions[id].img;
-                delete getTransactions[id];
-            } else {
-                currentImg = img;
-            }
-            if (cachedBagProps[id]) return;
-
+	var transaction = propBagDB.transaction("props","readonly");
+	getTransactions[id] = {trans:transaction,img:img};
+	var store = transaction.objectStore("props");
+	var get = store.get(id);
+	get.onsuccess = function(event) {
+        if (getTransactions[id]) {
+            let currentImg = getTransactions[id].img;
+            delete getTransactions[id];
             // img.onload = function() {
             //     URL.revokeObjectURL(this.src);
             // };
             let result = get.result;
             let prop = result.prop;
             if (prop.ghost) currentImg.className = 'bagprop ghost';
-            currentImg.title = result.name+'\n'+formatBytes(prop.blob.size);//String(prop.size/1000000).match(/^\d+\.0*[1-9]{1}/) + 'mb';
+            currentImg.title = result.name+'\n'+formatBytes(prop.blob.size);
     		currentImg.src = URL.createObjectURL(prop.blob);
-            cachedBagProps[id] = {url:currentImg.src,ghost:prop.ghost,title:currentImg.title};
-    	};
-    	transaction.onabort = function(event) {
-
-    		delete getTransactions[id];
-    	};
-    } else {
-        img.title = data.title;
-        if (data.ghost) img.className = 'bagprop ghost';
-        img.src = data.url;
-    }
+        }
+	};
+	transaction.onabort = function(event) {
+		delete getTransactions[id];
+	};
 }
 
 function formatBytes(bytes,decimals) {
@@ -772,9 +746,12 @@ function formatBytes(bytes,decimals) {
 function cacheBagProp(id,toUpload,callback) {
 	var store = propBagDB.transaction("props","readonly").objectStore("props");
 	var get = store.get(id);
-	get.onsuccess = function(event) {
-		let aProp = new PalaceProp(id,get.result);
-		cacheProps[id] = aProp;
+	get.onsuccess = function() {
+        let aProp = cacheProps[id];
+        if (!aProp) {
+    		aProp = new PalaceProp(id,get.result);
+    		cacheProps[id] = aProp;
+        }
 		if (callback) callback();
 		if (toUpload) {
 			uploadPropInfo(aProp);
@@ -872,7 +849,7 @@ class ImageDown {
 
         this.options = options;
         if (!this.options) this.options = {};
-        if (!this.ctx.imageSmoothingQuality) { // if no suck option then we will do our own interpolation for high quality image reizing!
+        if (!this.options.nearest && !this.ctx.imageSmoothingQuality) { // if no such option then we will do our own interpolation for high quality image reizing!
             this.worker = new Worker('js/workers/resizeimage.js');
             this.worker.addEventListener('message', (e) => {
                 this.receivedMessage(e);
@@ -885,10 +862,6 @@ class ImageDown {
 
     set exportAsCanvas(value) {
         this.options.canvas = value;
-    }
-
-    set alphaTrim(alpha) {
-        this.options.alphaTrim = alpha;
     }
 
     receivedMessage(e) {
@@ -980,7 +953,7 @@ class ImageDown {
         if (!this.setCanvasSize(this.width, this.height)) {
             this.ctx.clearRect(0,0,this.width,this.height);
         }
-        this.ctx.imageSmoothingQuality = 'high';
+        this.ctx.imageSmoothingQuality = this.options.nearest?'low':'high';
 		this.ctx.drawImage(src,0,0,src.width,src.height,0,0,this.width,this.height);
         if (this.options.canvas) {
             callback(this.canvas);
@@ -1069,6 +1042,7 @@ function videoToPng(file,resizer,endedCallBack) {
         console.log('error with video');
     	resizer.destroy();
 		endedCallBack();
+        URL.revokeObjectURL(vid.src);
 	};
 
 	vid.src = URL.createObjectURL(file);
@@ -1125,17 +1099,16 @@ function createNewProps(list,finishedCallback) {
 	for (var i = 0, files = new Array(list.length); i < list.length; i++) {
 		files[i] = list[i]; // moving the list to an actual array so pop works , lol
 	}
-	var button = document.getElementById('newprops');
+	let button = document.getElementById('newprops');
 	button.className += ' loadingbutton';
 
-    let resizer = new ImageDown(220);
+    let resizer = new ImageDown(220); // {nearest:true}
 
     let port = function(blob,w,h) {
         if (blob) {
             addPropsToDB([createNewProp(blob,w,h)]);
         }
         importFile();
-
     };
 
 	let importFile = function() {
@@ -1179,6 +1152,7 @@ function processImage(file,resizer,endedCallBack) {
 
     img.onerror = function() {
         endedCallBack();
+        URL.revokeObjectURL(this.src);
     };
 
     img.src = URL.createObjectURL(file);
