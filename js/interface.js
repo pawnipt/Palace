@@ -747,6 +747,7 @@ function createChatVideoPlayer(type,info,source) {
 			info.container.replaceChild(frame,this);
 			info.container.removeChild(info.anchor);
 			info.container.appendChild(closeyt);
+			info.parent.style.top = '-'+(info.parent.firstChild.nextSibling.offsetHeight+2)+'px';
 			info.parent.style.position = 'sticky';
 			info.parent.style.zIndex = '100';
 			info.parent.style.top = -(info.containerOffsetTop+2)+'px';

@@ -1026,7 +1026,7 @@ class PalaceRoom extends Renderer {
 	 		namespan.style.color = getHsl(user.color,40);
 		} else {
 			namespan.innerText = '***';
-			if (chat.whisper !== true) chatspan.style.color = 'IndianRed';
+			if (chat.whisper !== true) chatspan.style.color = 'IndianRed'; // change to css class!
 		}
 
 		var timestamp = document.createElement('span');
