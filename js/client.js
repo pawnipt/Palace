@@ -1319,7 +1319,7 @@ class PalaceClient extends PalaceProtocol {
 			(json) => {
 				var port = String(json.port);
 				var ip = '';
-				if (typeof json.ip !== "undefined") {
+				if (json.ip !== undefined) {
 					ip = json.ip;
 				} else {
 					ip = connectInfo[0];
@@ -1539,14 +1539,25 @@ class PalaceClient extends PalaceProtocol {
 		if (this.theRoom) {
 			this.theRoom.exitWhisperMode();
 			this.removeUserDomElements();
-			this.theRoom.spots = [];
-			this.theRoom.draws = [];
-			this.theRoom.looseProps = [];
-			this.theRoom.pics = [];
-			this.theRoom.users = [];
-			this.theRoom.refresh();
-			this.theRoom.refreshTop();
 		}
+		this.theRoom = new PalaceRoom(
+			{
+				id:-1,
+				flags:0,
+				name:'',
+				artist:'',
+				background:'',
+				password:'',
+				looseProps:[],
+				spots:[],
+				pictures:[],
+				draws:[]
+			}
+		);
+		this.theRoom.users = [];
+		this.theRoom.refresh();
+		this.theRoom.refreshTop();
+
 
 		if (msg) {
 			this.maximizeRoomView("url(img/error.png)");
