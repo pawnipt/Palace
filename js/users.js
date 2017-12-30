@@ -39,7 +39,7 @@ class PalaceUser {
 			this.domNametag.style.transition = '';
 			this.style.transition = '';
 			if (entered) this.grow();
-		},0);
+		},1);
 
 
 	}

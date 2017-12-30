@@ -667,7 +667,7 @@ function addPropsToDB(props) {
 	tx.oncomplete = function() {
 		refreshPropBagView();
 	};
-
+// needs better error handling, don't add props id's to list that weren't successfully added
 	props.forEach(function(prop) {
 		if (propBagList.indexOf(prop.id) < 0 && prop.blob && prop.blob.size > 0) { //does prop exist in the bag already?
 
