@@ -2,18 +2,7 @@ const {app, Menu, BrowserWindow} = require('electron');
 const path = require('path');
 const url = require('url');
 const os = require('os');
-const Raven = require('raven');
 
-Raven.config('https://39bb765f1f3c4ebdb1c86cb5d3e90a3f@sentry.pchat.palaceworld.net/3', {
-    captureUnhandledRejections: false,
-    tags: {
-        process: process.type,
-        electron: process.versions.electron,
-        chrome: process.versions.chrome,
-        platform: os.platform(),
-        platform_release: os.release()
-    }
-}).install();
 
 let win;
 

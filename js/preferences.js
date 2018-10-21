@@ -6,7 +6,7 @@ var prefs = {general:{},control:{},draw:{type:0,size:2,front:true,color:"rgba(25
 
 window.onerror = function(e, url, line){
 	if(prefs.general.senddebug) {
-		Raven.captureException(e);
+		// Raven.captureException(e);
 	}
 	logerror(e + "<br>" + url.split('/').pop() + "&nbsp;&nbsp;&nbsp;&nbsp;Line:" + line + '<br><br>');
 };
