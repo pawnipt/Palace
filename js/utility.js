@@ -137,7 +137,7 @@ function httpPostAsync(theUrl, rtype, postContent, callback, callerror) {
 	var xmlHttp = new XMLHttpRequest();
 	if (rtype) xmlHttp.responseType = rtype;
 	xmlHttp.onerror = function() {
-		callerror(xmlHttp.status);
+		if (callerror) callerror(xmlHttp.status);
 	};
 	xmlHttp.onload = function() {
 		if (xmlHttp.status == 200) {
@@ -155,7 +155,7 @@ function httpGetAsync(theUrl, rtype, callback, callerror) {
 	var xmlHttp = new XMLHttpRequest();
 	if (rtype) xmlHttp.responseType = rtype;
 	xmlHttp.onerror = function() {
-		callerror(xmlHttp.status);
+		if (callerror) callerror(xmlHttp.status);
 	};
 	xmlHttp.onload = function() {
 		if (xmlHttp.status == 200) {
