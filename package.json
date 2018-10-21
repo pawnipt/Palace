@@ -1,6 +1,6 @@
 {
     "name": "Palace",
-    "version": "0.0.6",
+    "version": "0.0.7",
     "repository": "https://github.com/pawnipt/Palace",
     "description": "Palace visual chat app",
     "main": "main.js",
@@ -8,17 +8,19 @@
         "start": "electron .",
         "rebuild": "$(npm bin)/electron-rebuild",
         "rebuild-win32": ".\\node_modules\\.bin\\electron-rebuild.cmd",
-        "build": "electron-packager . Palace --overwrite --ignore=\"(\\.gitignore|.*/test|node_modules/@paulcbetts/cld/(deps|build))\" --prune --out=release-builds"
+        "build": "electron-packager . Palace --overwrite --ignore=\"(\\.gitignore|.*/test|node_modules/@paulcbetts/cld/deps)\" --prune --out=release-builds",
+        "flow": "flow"
     },
     "author": "Jameson Heesen",
     "license": "MIT",
     "devDependencies": {
-        "electron": "^1.8.2-beta.3",
-        "electron-packager": "^9.1.0",
-        "electron-rebuild": "^1.6.0"
+        "electron": "^3.0.5",
+        "electron-packager": "^12.0.0",
+        "electron-rebuild": "^1.8.2",
+        "flow-bin": "^0.83.0"
     },
     "dependencies": {
         "electron-spellchecker": "^1.1.2",
-        "raven": "^2.2.1"
+        "node-abi": "^2.4.4"
     }
 }
