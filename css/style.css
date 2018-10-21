@@ -37,6 +37,7 @@ body {
   z-index           : -1;
   position          : absolute;
   background-repeat : no-repeat;
+  backface-visibility : hidden;
   transition        : opacity 0.3s;
 }
 
