@@ -25,10 +25,15 @@ class PalaceUser {
 
 		palace.container.appendChild(this.domNametag);
 
-		this.setName(true);
 
+		this.setName(true);
 		this.setAvatarLocation(true);
-		if (entered) this.shrink();
+
+
+		if (entered) {
+			this.shrink();
+			this.setName(false);
+		}
 
 		this.setDomProps();
 		this.setColor();
@@ -39,7 +44,7 @@ class PalaceUser {
 			this.domNametag.style.transition = '';
 			this.style.transition = '';
 			if (entered) this.grow();
-		},1);
+		},2);
 
 
 	}
