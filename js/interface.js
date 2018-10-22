@@ -400,9 +400,6 @@ if (window.require) {
 	document.getElementById('prefautoplayvideos').onchange = function() {
 		setGeneralPref('autoplayvideos',this.checked);
 	};
-    document.getElementById('senddebug').onchange = function() {
-        setGeneralPref('senddebug',this.checked);
-    };
 
 
 

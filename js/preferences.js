@@ -5,9 +5,6 @@ var prefs = {general:{},control:{},draw:{type:0,size:2,front:true,color:"rgba(25
 
 
 window.onerror = function(e, url, line){
-	if(prefs.general.senddebug) {
-		// Raven.captureException(e);
-	}
 	logerror(e + "<br>" + url.split('/').pop() + "&nbsp;&nbsp;&nbsp;&nbsp;Line:" + line + '<br><br>');
 };
 
@@ -59,8 +56,6 @@ window.onunload = function(e) {
 		if (typeof a === 'boolean') document.getElementById('prefdisablesounds').checked = a;
 		a = getGeneralPref('autoplayvideos');
 		if (typeof a === 'boolean') document.getElementById('prefautoplayvideos').checked = a;
-        a = getGeneralPref('senddebug');
-        if (typeof a === 'boolean') document.getElementById('senddebug').checked = a;
 		setDrawType();
 	} else { //default
 		prefs.registration = {regi:getRandomInt(100,2147483647),puid:2000000000};
@@ -68,7 +63,6 @@ window.onunload = function(e) {
 		setGeneralPref('userName','Palace User');
 		setGeneralPref('propBagTileSize',91);
 		setGeneralPref('viewScaleAll',true);
-    	setGeneralPref('senddebug',true);
 	}
 	document.getElementById('prefusername').value = getGeneralPref('userName');
 	document.getElementById('prefhomepalace').value = getGeneralPref('home');
