@@ -966,7 +966,7 @@ function loadDirectoryList(list) {
 	let listbox = document.getElementById('navlistbox'),
 		navframe = document.getElementById('navframe'),
 		scount = directoryList.directory.length,
-		serverList, li, s, s2, cl;
+		serverList, li, s, s2, cl, popCount = 0, pop;
 
 	if (navframe.dataset.ctrlname === 'servers') {
 		clearListBox(listbox);
@@ -989,11 +989,15 @@ function loadDirectoryList(list) {
 				s2.className = 'listPop';
 				s2.appendChild(document.createTextNode(serverList.population));
 
+				pop = Number(serverList.population)
+				popCount += isNaN(pop)?0:pop;
+
 				li.appendChild(s);
 				li.appendChild(s2);
 				listbox.appendChild(li);
 			}
 		}
+		document.getElementById('servers').title = "Users Online: " + popCount;
 	}
 }
 
