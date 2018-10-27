@@ -763,10 +763,10 @@ input[type="color"]::-webkit-color-swatch {
   box-shadow          : inset 0 0 2px WindowFrame;
   font-size           : medium;
   word-wrap           : break-word;
-  -moz-user-select    : initial;
-  -ms-user-select     : initial;
-  -webkit-user-select : initial;
-  user-select         : initial;
+  -moz-user-select    : text;
+  -ms-user-select     : text;
+  -webkit-user-select : text;
+  user-select         : text;
 }
 
 .userlogwhisper {
@@ -920,10 +920,10 @@ input[type="color"]::-webkit-color-swatch {
   text-align          : center;
   text-overflow       : ellipsis;
   white-space         : nowrap;
-  -moz-user-select    : initial;
-  -ms-user-select     : initial;
-  -webkit-user-select : initial;
-  user-select         : initial;
+  -moz-user-select    : text;
+  -ms-user-select     : text;
+  -webkit-user-select : text;
+  user-select         : text;
 }
 
 #palaceserver {
