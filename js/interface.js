@@ -282,9 +282,12 @@ if (window.require) {
 			var initialW = this.offsetWidth;
 
 			let mouseMoveLog = (event) => {
+
 				this.style.cursor = 'col-resize';
 
+				logField.style.pointerEvents = 'none';
 				event.stopImmediatePropagation();
+
 				var w = initialX-event.x+initialW;
 
 				chatLogScrollLock(() => {
@@ -294,10 +297,10 @@ if (window.require) {
 				setBodyWidth();
 				setGeneralPref('chatLogWidth',w);
 				scale2Fit();
-				return false;
 			};
 			let mouseUpLog = function(event) {
 				event.preventDefault();
+				logField.style.pointerEvents = '';
 				window.removeEventListener('mouseup',mouseUpLog,true);
 				window.removeEventListener('mousemove',mouseMoveLog,true);
 			};
