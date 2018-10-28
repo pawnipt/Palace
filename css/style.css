@@ -882,7 +882,7 @@ input[type="color"]::-webkit-color-swatch {
   white-space   : nowrap;
 }
 
-.chatvideocontainer:hover .chatvideoiframe {
+.chatvideocontainer:hover {
   z-index : 0;
 }
 
