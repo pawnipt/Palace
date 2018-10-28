@@ -325,7 +325,7 @@ class Renderer {
 					ctx.fill();
 				}
 				ctx.stroke();
-				if (draw.type & drawType.ERASER) this.context.globalCompositeOperation='source-over';
+				if (draw.type & drawType.ERASER) ctx.globalCompositeOperation='source-over';
 			}
 		}
 	}
