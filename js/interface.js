@@ -723,6 +723,7 @@ function createChatVideoPlayer(type,info,source) {
 		};
 		frame.setAttribute('allowFullScreen', '');
 		frame.setAttribute('scrolling', 'no');
+		frame.setAttribute('allow', 'autoplay');
 		frame.tabIndex = -1;
 		frame.frameBorder = '0';
 		frame.className = 'chatvideoiframe';
