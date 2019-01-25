@@ -14,10 +14,10 @@
     "author": "Jameson Heesen",
     "license": "MIT",
     "devDependencies": {
-        "electron": "^3.0.6",
-        "electron-packager": "^12.0.0",
+        "electron": "^4.0.1",
+        "electron-packager": "^13.0.1",
         "electron-rebuild": "^1.8.2",
-        "flow-bin": "^0.83.0"
+        "flow-bin": "^0.90.0"
     },
     "dependencies": {
         "electron-spellchecker": "^1.1.2",
