@@ -490,7 +490,7 @@ function loadProps(pids,fromSelf,callback) {
 					cacheProps[pid] = new PalaceProp(pid);
 					toLoad.props.push({id:pid});
 				}
-			} else if (aProp.rcounter !== undefined && aProp.rcounter > 0 && aProp.rcounter < 12) {
+			} else if (aProp.rcounter !== undefined && aProp.rcounter > 0 && aProp.rcounter < 21) {
 				toLoad.props.push({id:pid});
 			} else if (callback) {
                 callback();
@@ -520,7 +520,7 @@ function loadProps(pids,fromSelf,callback) {
 
                         if (retryProps.props.length > 0) {
                             setTimeout(function() {
-                                loadProps(dedup(retryProps.props));
+                                loadProps(dedup(retryProps.props))
                                 retryProps.delay += 1000;
                                 retryProps.props = [];
                             }, retryProps.delay);
