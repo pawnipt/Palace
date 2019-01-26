@@ -236,9 +236,9 @@ function refreshPropBagView(refresh) { // redo this entire thing
         };
 	};
 
-	propBag.ondblclick = function(event) {
-		if (getParent(event.target).dataset.pid) wearSelectedProps();
-	};
+	// propBag.ondblclick = function(event) {
+	// 	if (getParent(event.target).dataset.pid) wearSelectedProps();
+	// };
 	propBag.onmousemove = function(event) {
 		if (event.target === this && event.x-this.offsetLeft < 2) {
 			this.style.cursor = 'col-resize';
@@ -247,7 +247,19 @@ function refreshPropBagView(refresh) { // redo this entire thing
 		}
 	};
 	propBag.onmousedown = function(event) {
-		var newTarget = getParent(event.target);
+		let newTarget = getParent(event.target);
+
+        let d = new Date();
+        let t = d.getTime();
+        if (newTarget.dataset.pid && this.clickTime && this.clickTime+500 >= t && this.clickX === event.clientX && this.clickY === event.clientY) {
+            wearSelectedProps();
+            this.clickTime = undefined;
+            return;
+        }
+        this.clickX = event.clientX;
+        this.clickY = event.clientY;
+        this.clickTime = t;
+
 		if (event.target.constructor !== HTMLImageElement) {
 			event.preventDefault();
 		}
