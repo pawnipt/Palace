@@ -385,6 +385,15 @@ if (window.require) {
 	document.getElementById('prefhomepalace').onchange = function() {
 		setGeneralPref('home',this.value);
 	};
+	document.getElementById('prefencoding').onchange = function() {
+		try {
+			palace.setEncoder(this.value);
+			setGeneralPref('encoding',this.value);
+		} catch (error) {
+			logerror(error);
+			this.value = getGeneralPref('encoding');
+		}
+	};
 	document.getElementById('prefpropbagsize').oninput = function() { // change prop bag tile size :D
 		setGeneralPref('propBagTileSize',this.value);
 		refreshPropBagView(true);

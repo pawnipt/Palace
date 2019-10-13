@@ -20,8 +20,8 @@ function setGeneralPref(id,value) {
 	prefs.general[id] = value;
 }
 
-function getGeneralPref(id) {
-	return prefs.general[id];
+function getGeneralPref(id,def) {
+	return prefs.general.hasOwnProperty(id) ? prefs.general[id] : def;
 }
 
 window.onunload = function(e) {
@@ -66,4 +66,5 @@ window.onunload = function(e) {
 	}
 	document.getElementById('prefusername').value = getGeneralPref('userName');
 	document.getElementById('prefhomepalace').value = getGeneralPref('home');
+	document.getElementById('prefencoding').value = getGeneralPref('encoding','windows-1252');
 })();

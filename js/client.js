@@ -197,8 +197,7 @@ class PalaceProtocol {
 
 	connect(ip,port) {
 
-		this.textDecoder = new TextDecoder('windows-1252'); // default server encoding
-		this.textEncoder = new TextEncoder('windows-1252', { NONSTANDARD_allowLegacyEncoding: true }); // palace default! :\
+		this.setEncoder(prefs.general.encoding);
 
 		if (!port) port = '9998';
 		this.ip = ip.trim();
@@ -1160,6 +1159,10 @@ class PalaceProtocol {
 		this.send(packet);
 	}
 
+	setEncoder(encoding) {
+		this.textDecoder = new TextDecoder(encoding);
+		this.textEncoder = new TextEncoder(encoding, { NONSTANDARD_allowLegacyEncoding: true }); // palace default! :\
+	}
 }
 
 
