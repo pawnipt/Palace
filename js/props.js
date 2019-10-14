@@ -541,8 +541,13 @@ function loadProps(pids,fromSelf,callback) {
                         }
                     }
                 },
-                function(status) { // handle error, maybe retry upload
-                    logmsg('Prop download failed (HTTP ERROR): '+status);
+                function(status) {
+					toLoad.props.map(p => cacheProps[p.id]).filter(p => p).forEach(aProp => {
+						if (aProp.rcounter === 0) { // only request legacy prop once.
+							palace.sendAssetQuery(aProp.id);
+						}
+						aProp.rcounter++;
+					});
                 }
             );
         }
