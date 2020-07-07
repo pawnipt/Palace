@@ -14,7 +14,7 @@
     "author": "Jameson Heesen",
     "license": "MIT",
     "devDependencies": {
-        "electron": "^4.0.1",
+        "electron": "^9.1.0",
         "electron-packager": "^13.0.1",
         "electron-rebuild": "^1.8.2",
         "flow-bin": "^0.90.0"
